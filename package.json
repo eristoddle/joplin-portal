@@ -22,10 +22,23 @@
     "plugin",
     "joplin",
     "notes",
-    "import"
+    "import",
+    "search",
+    "preview",
+    "productivity",
+    "note-taking",
+    "integration"
   ],
   "author": "Your Name",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/joplin-portal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/joplin-portal/issues"
+  },
+  "homepage": "https://github.com/your-username/joplin-portal#readme",
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "5.29.0",
