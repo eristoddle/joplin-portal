@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, MarkdownRenderer } from 'obsidian';
 import JoplinPortalPlugin from '../main';
 import { SearchResult, JoplinNote, ImportOptions } from './types';
 import { ErrorHandler } from './error-handler';
@@ -731,61 +731,39 @@ export class JoplinPortalView extends ItemView {
 			return;
 		}
 
-		// Convert Joplin markdown to HTML for preview
-		const htmlContent = await this.convertMarkdownToHtml(note.body);
+		// Pre-process markdown to handle Joplin resource links
+		const processedMarkdown = this.preprocessMarkdown(note.body);
 
 		// Create scrollable content area
 		const scrollableContent = contentWrapper.createDiv('joplin-preview-scrollable');
-		scrollableContent.innerHTML = htmlContent;
+
+		// Use Obsidian's built-in markdown renderer
+		await MarkdownRenderer.render(
+			this.plugin.app,
+			processedMarkdown,
+			scrollableContent,
+			'', // No source path needed for this context
+			this
+		);
 
 		// Add click handlers for internal links (future enhancement)
 		this.addLinkHandlers(scrollableContent);
 	}
 
-	private async convertMarkdownToHtml(markdown: string): Promise<string> {
-		// Basic markdown to HTML conversion
-		// This is a simplified implementation - in a real plugin you might want to use
-		// Obsidian's markdown renderer or a more robust markdown parser
+	private preprocessMarkdown(markdown: string): string {
+		if (!markdown) return '';
 
-		let html = markdown;
-
-		// Convert headers
-		html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-		html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-		html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-
-		// Convert bold and italic
-		html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
-		html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-		html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-		// Convert code blocks
-		html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-		html = html.replace(/`(.*?)`/g, '<code>$1</code>');
-
-		// Convert links
-		html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-
-		// Convert line breaks
-		html = html.replace(/\n\n/g, '</p><p>');
-		html = html.replace(/\n/g, '<br>');
-
-		// Wrap in paragraphs
-		html = '<p>' + html + '</p>';
-
-		// Clean up empty paragraphs
-		html = html.replace(/<p><\/p>/g, '');
-		html = html.replace(/<p><br><\/p>/g, '');
-
-		// Convert lists (basic implementation)
-		html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
-		html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-
-		// Convert numbered lists
-		html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
-		html = html.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
-
-		return html;
+		// Replace Joplin resource links with full URLs
+		const resourceRegex = /!\[(.*?)\]\(:\/([a-zA-Z0-9]{32})\)/g;
+		return markdown.replace(resourceRegex, (match, altText, resourceId) => {
+			const imageUrl = this.plugin.joplinService.getResourceUrl(resourceId);
+			if (imageUrl) {
+				// Return standard markdown image link with the full URL
+				return `![${altText}](${imageUrl})`;
+			}
+			// If for some reason the URL can't be generated, return the original match
+			return match;
+		});
 	}
 
 	private addLinkHandlers(container: HTMLElement): void {

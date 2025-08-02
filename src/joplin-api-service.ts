@@ -525,6 +525,18 @@ export class JoplinApiService {
 	}
 
 	/**
+	 * Get the full URL for a Joplin resource.
+	 * @param resourceId The ID of the resource.
+	 * @returns The full URL to the resource file.
+	 */
+	public getResourceUrl(resourceId: string): string {
+		if (!this.baseUrl || !this.token) {
+			return '';
+		}
+		return `${this.baseUrl}/resources/${resourceId}/file?token=${this.token}`;
+	}
+
+	/**
 	 * Internal get note method (without retry wrapper)
 	 */
 	private async getNoteInternal(id: string): Promise<JoplinNote | null> {

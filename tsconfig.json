@@ -11,6 +11,9 @@
     "importHelpers": true,
     "declaration": true,
     "outDir": "./dist",
+    "paths": {
+      "obsidian": ["./tests/mocks/obsidian-mock.ts"]
+    },
     "typeRoots": [
       "node_modules/@types"
     ],
@@ -24,7 +27,6 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "tests"
+    "dist"
   ]
 }
