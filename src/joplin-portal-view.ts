@@ -22,6 +22,9 @@ export class JoplinPortalView extends ItemView {
 	private searchDebounceTimer: NodeJS.Timeout | null = null;
 	private lastSearchQuery = '';
 	private isSearching = false;
+	private resizeObserver: ResizeObserver | null = null;
+	private globalKeydownHandler: (e: KeyboardEvent) => void;
+	private currentFocusIndex = -1;
 
 	constructor(leaf: WorkspaceLeaf, plugin: JoplinPortalPlugin) {
 		super(leaf);
@@ -45,11 +48,24 @@ export class JoplinPortalView extends ItemView {
 		container.empty();
 		container.addClass('joplin-portal-view');
 
+		// Add ARIA attributes for accessibility
+		container.setAttribute('role', 'application');
+		container.setAttribute('aria-label', 'Joplin Portal - Search and import notes from Joplin');
+
+		// Create main container with proper structure
+		const mainContainer = container.createDiv('joplin-portal-container');
+
 		// Create main layout
-		this.createSearchInterface(container);
-		this.createResultsContainer(container);
-		this.createImportOptionsPanel(container);
-		this.createPreviewContainer(container);
+		this.createSearchInterface(mainContainer);
+		this.createResultsContainer(mainContainer);
+		this.createImportOptionsPanel(mainContainer);
+		this.createPreviewContainer(mainContainer);
+
+		// Set up global keyboard shortcuts
+		this.setupGlobalKeyboardShortcuts();
+
+		// Add resize observer for responsive behavior
+		this.setupResizeObserver(container);
 	}
 
 	async onClose(): Promise<void> {
@@ -58,20 +74,40 @@ export class JoplinPortalView extends ItemView {
 			clearTimeout(this.searchDebounceTimer);
 			this.searchDebounceTimer = null;
 		}
+
+		// Cleanup resize observer
+		if (this.resizeObserver) {
+			this.resizeObserver.disconnect();
+		}
+
+		// Remove global keyboard listeners
+		this.cleanupGlobalKeyboardShortcuts();
 	}
 
 	private createSearchInterface(container: Element): void {
 		const searchContainer = container.createDiv('joplin-search-container');
+		searchContainer.setAttribute('role', 'search');
+		searchContainer.setAttribute('aria-label', 'Search Joplin notes');
 
 		// Search type selector
 		const searchTypeContainer = searchContainer.createDiv('joplin-search-type-container');
-		searchTypeContainer.createEl('label', { text: 'Search type:' });
+		const searchTypeLabel = searchTypeContainer.createEl('label', { text: 'Search type:' });
+		searchTypeLabel.setAttribute('for', 'joplin-search-type-select');
+
 		this.searchTypeSelect = searchTypeContainer.createEl('select', {
 			cls: 'joplin-search-type-select'
 		});
+		this.searchTypeSelect.id = 'joplin-search-type-select';
+		this.searchTypeSelect.setAttribute('aria-describedby', 'search-type-help');
+
 		this.searchTypeSelect.createEl('option', { value: 'text', text: 'Text Search' });
 		this.searchTypeSelect.createEl('option', { value: 'tag', text: 'Tag Search' });
 		this.searchTypeSelect.createEl('option', { value: 'combined', text: 'Combined' });
+
+		// Add help text for screen readers
+		const helpText = searchContainer.createDiv('sr-only');
+		helpText.id = 'search-type-help';
+		helpText.textContent = 'Choose between text search, tag search, or combined search modes';
 
 		// Search inputs container
 		const searchInputsContainer = searchContainer.createDiv('joplin-search-inputs');
@@ -82,6 +118,8 @@ export class JoplinPortalView extends ItemView {
 			placeholder: 'Search Joplin notes...',
 			cls: 'joplin-search-input'
 		});
+		this.searchInput.setAttribute('aria-label', 'Search text in Joplin notes');
+		this.searchInput.setAttribute('aria-describedby', 'search-help');
 
 		// Tag search input (initially hidden)
 		this.tagSearchInput = searchInputsContainer.createEl('input', {
@@ -90,12 +128,28 @@ export class JoplinPortalView extends ItemView {
 			cls: 'joplin-tag-search-input'
 		});
 		this.tagSearchInput.style.display = 'none';
+		this.tagSearchInput.setAttribute('aria-label', 'Search by tags in Joplin notes');
+		this.tagSearchInput.setAttribute('aria-describedby', 'tag-search-help');
 
 		// Search button
 		this.searchButton = searchInputsContainer.createEl('button', {
 			text: 'Search',
 			cls: 'joplin-search-button mod-cta'
 		});
+		this.searchButton.setAttribute('aria-describedby', 'search-shortcuts-help');
+
+		// Add help text for keyboard shortcuts
+		const shortcutsHelp = searchContainer.createDiv('sr-only');
+		shortcutsHelp.id = 'search-shortcuts-help';
+		shortcutsHelp.textContent = 'Keyboard shortcuts: Ctrl+F to focus search, Enter to search, Escape to clear';
+
+		const searchHelp = searchContainer.createDiv('sr-only');
+		searchHelp.id = 'search-help';
+		searchHelp.textContent = 'Enter text to search in note titles and content';
+
+		const tagSearchHelp = searchContainer.createDiv('sr-only');
+		tagSearchHelp.id = 'tag-search-help';
+		tagSearchHelp.textContent = 'Enter comma-separated tags to search for notes with specific tags';
 
 		// Cache status indicator
 		const cacheStatus = searchContainer.createDiv('joplin-cache-status');
@@ -153,10 +207,20 @@ export class JoplinPortalView extends ItemView {
 
 		// Results header
 		const resultsHeader = resultsSection.createDiv('joplin-results-header');
-		resultsHeader.createEl('h3', { text: 'Search Results' });
+		const resultsTitle = resultsHeader.createEl('h3', { text: 'Search Results' });
+		resultsTitle.id = 'search-results-title';
 
 		// Results container
 		this.resultsContainer = resultsSection.createDiv('joplin-results-container');
+		this.resultsContainer.setAttribute('role', 'listbox');
+		this.resultsContainer.setAttribute('aria-labelledby', 'search-results-title');
+		this.resultsContainer.setAttribute('aria-describedby', 'results-help');
+
+		// Add help text for keyboard navigation
+		const resultsHelp = resultsSection.createDiv('sr-only');
+		resultsHelp.id = 'results-help';
+		resultsHelp.textContent = 'Use arrow keys to navigate results, Enter to select, Space to toggle import selection';
+
 		this.resultsContainer.createDiv('joplin-no-results').setText('Enter a search query to find notes');
 	}
 
@@ -431,13 +495,37 @@ export class JoplinPortalView extends ItemView {
 	private displayLoading(): void {
 		this.resultsContainer.empty();
 		const loadingDiv = this.resultsContainer.createDiv('joplin-loading');
-		loadingDiv.setText('Searching...');
+		loadingDiv.setAttribute('role', 'status');
+		loadingDiv.setAttribute('aria-live', 'polite');
+		loadingDiv.setAttribute('aria-label', 'Searching for notes');
+
+		// Add search button loading state
+		this.searchButton.addClass('loading');
+		this.searchButton.disabled = true;
+
+		// Create skeleton loading for better UX
+		const skeletonContainer = loadingDiv.createDiv('joplin-loading-skeletons');
+		for (let i = 0; i < 3; i++) {
+			const skeleton = skeletonContainer.createDiv('joplin-result-item joplin-loading-skeleton');
+			skeleton.createDiv('joplin-skeleton-title');
+			skeleton.createDiv('joplin-skeleton-text');
+			skeleton.createDiv('joplin-skeleton-text');
+		}
+
+		const loadingText = loadingDiv.createDiv('joplin-loading-text');
+		loadingText.setText('Searching...');
 	}
 
 	private displayNoResults(message: string): void {
 		this.resultsContainer.empty();
 		const noResultsDiv = this.resultsContainer.createDiv('joplin-no-results');
+		noResultsDiv.setAttribute('role', 'status');
+		noResultsDiv.setAttribute('aria-live', 'polite');
 		noResultsDiv.setText(message);
+
+		// Remove search button loading state
+		this.searchButton.removeClass('loading');
+		this.searchButton.disabled = false;
 	}
 
 	private displayResults(results: SearchResult[]): void {
@@ -467,6 +555,7 @@ export class JoplinPortalView extends ItemView {
 				cls: 'joplin-import-checkbox'
 			});
 			checkbox.checked = result.markedForImport;
+			checkbox.setAttribute('aria-label', `Select "${result.note.title}" for import`);
 			checkbox.addEventListener('change', (e) => {
 				e.stopPropagation(); // Prevent triggering result selection
 				this.toggleImportSelection(index, checkbox.checked);
@@ -516,21 +605,37 @@ export class JoplinPortalView extends ItemView {
 			// Keyboard navigation support
 			resultItem.setAttribute('tabindex', '0');
 			resultItem.addEventListener('keydown', (e) => {
-				if (e.key === 'Enter' || e.key === ' ') {
+				if (e.key === 'Enter') {
 					e.preventDefault();
 					this.selectResult(index);
+				} else if (e.key === ' ') {
+					e.preventDefault();
+					// Toggle import selection with space
+					const currentSelection = this.currentResults[index].markedForImport;
+					this.toggleImportSelection(index, !currentSelection);
+					checkbox.checked = !currentSelection;
 				}
 			});
 
 			// Add hover effects and accessibility
 			resultItem.addClass('joplin-result-clickable');
-			resultItem.setAttribute('role', 'button');
-			resultItem.setAttribute('aria-label', `Select note: ${result.note.title}`);
+			resultItem.setAttribute('role', 'option');
+			resultItem.setAttribute('aria-label', `Note: ${result.note.title}. ${result.snippet || 'No preview available'}`);
+			resultItem.setAttribute('aria-describedby', `result-meta-${index}`);
+
+			// Add metadata ID for aria-describedby
+			metadataEl.id = `result-meta-${index}`;
 		});
 
 		// Add results count indicator
 		const resultsCount = this.resultsContainer.createDiv('joplin-results-count');
+		resultsCount.setAttribute('role', 'status');
+		resultsCount.setAttribute('aria-live', 'polite');
 		resultsCount.setText(`${results.length} result${results.length !== 1 ? 's' : ''} found`);
+
+		// Remove search button loading state
+		this.searchButton.removeClass('loading');
+		this.searchButton.disabled = false;
 
 		// Show import options panel
 		this.showImportOptionsPanel();
@@ -891,9 +996,9 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
-	 * Select all results for import
+	 * Select all results for import (public method for external access)
 	 */
-	private selectAllForImport(): void {
+	public selectAllForImport(): void {
 		this.currentResults.forEach(result => {
 			result.markedForImport = true;
 		});
@@ -962,9 +1067,9 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
-	 * Show import confirmation dialog
+	 * Show import confirmation dialog (public method for external access)
 	 */
-	private async showImportConfirmationDialog(): Promise<void> {
+	public async showImportConfirmationDialog(): Promise<void> {
 		const selectedResults = this.currentResults.filter(result => result.markedForImport);
 
 		if (selectedResults.length === 0) {
@@ -1771,5 +1876,240 @@ export class JoplinPortalView extends ItemView {
 	 */
 	private showNotice(message: string): void {
 		new Notice(message);
+	}
+
+	/**
+	 * Create progress indicator
+	 */
+	private createProgressIndicator(message: string): HTMLElement {
+		const progressContainer = this.containerEl.createDiv('joplin-progress-container');
+		progressContainer.createDiv('joplin-progress-text').setText(message);
+
+		const progressBar = progressContainer.createDiv('joplin-progress-bar');
+		const progressFill = progressBar.createDiv('joplin-progress-fill');
+		progressFill.addClass('indeterminate');
+
+		return progressContainer;
+	}
+
+	/**
+	 * Update progress indicator
+	 */
+	private updateProgressIndicator(container: HTMLElement, progress: number, message: string): void {
+		const textEl = container.querySelector('.joplin-progress-text');
+		const fillEl = container.querySelector('.joplin-progress-fill') as HTMLElement;
+
+		if (textEl) {
+			textEl.textContent = message;
+		}
+
+		if (fillEl) {
+			fillEl.removeClass('indeterminate');
+			fillEl.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+		}
+	}
+
+	/**
+	 * Remove progress indicator
+	 */
+	private removeProgressIndicator(container: HTMLElement): void {
+		container.remove();
+	}
+
+	/**
+	 * Setup global keyboard shortcuts
+	 */
+	private setupGlobalKeyboardShortcuts(): void {
+		this.globalKeydownHandler = (e: KeyboardEvent) => {
+			// Only handle shortcuts when the view is focused
+			if (!this.containerEl.contains(document.activeElement)) {
+				return;
+			}
+
+			// Ctrl/Cmd + F: Focus search input
+			if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+				e.preventDefault();
+				this.focusSearchInputInternal();
+				return;
+			}
+
+			// Escape: Clear search or close preview
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				this.handleEscapeKey();
+				return;
+			}
+
+			// Ctrl/Cmd + A: Select all for import (when results are visible)
+			if ((e.ctrlKey || e.metaKey) && e.key === 'a' && this.currentResults.length > 0) {
+				e.preventDefault();
+				this.selectAllForImport();
+				return;
+			}
+
+			// Ctrl/Cmd + Enter: Import selected notes
+			if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+				e.preventDefault();
+				this.showImportConfirmationDialog();
+				return;
+			}
+
+			// Arrow keys for result navigation
+			if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+				if (this.currentResults.length > 0 && !this.isInputFocused()) {
+					e.preventDefault();
+					this.navigateResults(e.key === 'ArrowDown' ? 'down' : 'up');
+					return;
+				}
+			}
+
+			// Enter: Select focused result
+			if (e.key === 'Enter' && !this.isInputFocused()) {
+				const focusedIndex = this.getFocusedResultIndex();
+				if (focusedIndex >= 0) {
+					e.preventDefault();
+					this.selectResult(focusedIndex);
+					return;
+				}
+			}
+
+			// Space: Toggle import selection for focused result
+			if (e.key === ' ' && !this.isInputFocused()) {
+				const focusedIndex = this.getFocusedResultIndex();
+				if (focusedIndex >= 0) {
+					e.preventDefault();
+					const currentSelection = this.currentResults[focusedIndex].markedForImport;
+					this.toggleImportSelection(focusedIndex, !currentSelection);
+					this.updateImportCheckbox(focusedIndex, !currentSelection);
+					return;
+				}
+			}
+		};
+
+		document.addEventListener('keydown', this.globalKeydownHandler);
+	}
+
+	/**
+	 * Cleanup global keyboard shortcuts
+	 */
+	private cleanupGlobalKeyboardShortcuts(): void {
+		if (this.globalKeydownHandler) {
+			document.removeEventListener('keydown', this.globalKeydownHandler);
+		}
+	}
+
+	/**
+	 * Focus the search input (public method for external access)
+	 */
+	public focusSearchInput(): void {
+		if (this.searchInput.style.display !== 'none') {
+			this.searchInput.focus();
+			this.searchInput.select();
+		} else if (this.tagSearchInput.style.display !== 'none') {
+			this.tagSearchInput.focus();
+			this.tagSearchInput.select();
+		}
+	}
+
+	/**
+	 * Focus the search input (private method for internal use)
+	 */
+	private focusSearchInputInternal(): void {
+		this.focusSearchInput();
+	}
+
+	/**
+	 * Handle escape key press
+	 */
+	private handleEscapeKey(): void {
+		// Clear search if input is focused and has content
+		if (this.isInputFocused()) {
+			if (this.searchInput.value || this.tagSearchInput.value) {
+				this.searchInput.value = '';
+				this.tagSearchInput.value = '';
+				this.displayNoResults('Enter a search query to find notes');
+				this.hideImportOptionsPanel();
+			}
+		} else {
+			// Clear result selection
+			this.clearResultSelection();
+		}
+	}
+
+	/**
+	 * Check if an input field is currently focused
+	 */
+	private isInputFocused(): boolean {
+		const activeElement = document.activeElement;
+		return activeElement === this.searchInput ||
+			   activeElement === this.tagSearchInput ||
+			   activeElement === this.importFolderInput ||
+			   activeElement === this.templatePathInput;
+	}
+
+	/**
+	 * Get the index of the currently focused result
+	 */
+	private getFocusedResultIndex(): number {
+		const activeElement = document.activeElement;
+		if (activeElement && activeElement.classList.contains('joplin-result-item')) {
+			const index = activeElement.getAttribute('data-index');
+			return index ? parseInt(index, 10) : -1;
+		}
+		return this.currentResults.findIndex(result => result.selected);
+	}
+
+	/**
+	 * Clear result selection
+	 */
+	private clearResultSelection(): void {
+		this.currentResults.forEach(result => {
+			result.selected = false;
+		});
+
+		this.resultsContainer.querySelectorAll('.joplin-result-selected').forEach(el => {
+			el.removeClass('joplin-result-selected');
+		});
+
+		// Clear preview
+		this.previewContainer.empty();
+		this.previewContainer.createDiv('joplin-no-preview').setText('Select a note to preview');
+	}
+
+	/**
+	 * Update import checkbox state
+	 */
+	private updateImportCheckbox(index: number, checked: boolean): void {
+		const resultItems = this.resultsContainer.querySelectorAll('.joplin-result-item');
+		if (resultItems[index]) {
+			const checkbox = resultItems[index].querySelector('.joplin-import-checkbox') as HTMLInputElement;
+			if (checkbox) {
+				checkbox.checked = checked;
+			}
+		}
+	}
+
+	/**
+	 * Setup resize observer for responsive behavior
+	 */
+	private setupResizeObserver(container: Element): void {
+		if ('ResizeObserver' in window) {
+			this.resizeObserver = new ResizeObserver((entries) => {
+				for (const entry of entries) {
+					const width = entry.contentRect.width;
+
+					// Update layout based on width
+					if (width < 300) {
+						container.setAttribute('data-layout', 'compact');
+					} else if (width > 500) {
+						container.setAttribute('data-layout', 'comfortable');
+					} else {
+						container.removeAttribute('data-layout');
+					}
+				}
+			});
+
+			this.resizeObserver.observe(container);
+		}
 	}
 }

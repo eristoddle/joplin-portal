@@ -85,6 +85,36 @@ export default class JoplinPortalPlugin extends Plugin {
 			}
 		});
 
+		// Add command to focus search input
+		this.addCommand({
+			id: 'focus-joplin-search',
+			name: 'Focus Joplin Search',
+			hotkeys: [{ modifiers: ['Mod'], key: 'f' }],
+			callback: () => {
+				this.focusSearchInput();
+			}
+		});
+
+		// Add command to select all for import
+		this.addCommand({
+			id: 'select-all-joplin-import',
+			name: 'Select All Notes for Import',
+			hotkeys: [{ modifiers: ['Mod'], key: 'a' }],
+			callback: () => {
+				this.selectAllForImport();
+			}
+		});
+
+		// Add command to import selected notes
+		this.addCommand({
+			id: 'import-selected-joplin-notes',
+			name: 'Import Selected Joplin Notes',
+			hotkeys: [{ modifiers: ['Mod'], key: 'Enter' }],
+			callback: () => {
+				this.importSelectedNotes();
+			}
+		});
+
 		// Add settings tab
 		this.addSettingTab(new JoplinPortalSettingTab(this.app, this));
 
@@ -312,5 +342,41 @@ export default class JoplinPortalPlugin extends Plugin {
 			hasApiToken: !!apiToken,
 			serviceConfigured: !!(this.joplinService && this.joplinService.isConfigured())
 		};
+	}
+
+	/**
+	 * Focus search input in the active Joplin Portal view
+	 */
+	private focusSearchInput(): void {
+		const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL)[0];
+		if (leaf && leaf.view instanceof JoplinPortalView) {
+			leaf.view.focusSearchInput();
+		} else {
+			new Notice('Joplin Portal view is not open');
+		}
+	}
+
+	/**
+	 * Select all notes for import in the active Joplin Portal view
+	 */
+	private selectAllForImport(): void {
+		const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL)[0];
+		if (leaf && leaf.view instanceof JoplinPortalView) {
+			leaf.view.selectAllForImport();
+		} else {
+			new Notice('Joplin Portal view is not open');
+		}
+	}
+
+	/**
+	 * Import selected notes in the active Joplin Portal view
+	 */
+	private importSelectedNotes(): void {
+		const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL)[0];
+		if (leaf && leaf.view instanceof JoplinPortalView) {
+			leaf.view.showImportConfirmationDialog();
+		} else {
+			new Notice('Joplin Portal view is not open');
+		}
 	}
 }

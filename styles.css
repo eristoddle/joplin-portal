@@ -1,68 +1,118 @@
 /* Joplin Portal View Styles */
 
 .joplin-portal-view {
-  padding: 10px;
+  padding: var(--size-4-3);
   height: 100%;
   display: flex;
   flex-direction: column;
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+  line-height: var(--line-height-normal);
+  color: var(--text-normal);
+  background: var(--background-primary);
+  overflow: hidden;
+}
+
+/* Container for better responsive behavior */
+.joplin-portal-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0; /* Allow flex items to shrink */
+  gap: var(--size-4-2);
 }
 
 /* Search Interface */
 .joplin-search-container {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--size-4-1);
+  padding: var(--size-4-2);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  flex-shrink: 0;
 }
 
 .joplin-search-type-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--size-4-1);
+  flex-wrap: wrap;
 }
 
 .joplin-search-type-container label {
-  font-size: 12px;
+  font-size: var(--font-ui-smaller);
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
 }
 
 .joplin-search-type-select {
-  padding: 4px 8px;
+  padding: var(--size-2-1) var(--size-4-1);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   background: var(--background-primary);
   color: var(--text-normal);
-  font-size: 12px;
+  font-size: var(--font-ui-smaller);
+  min-width: 120px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.joplin-search-type-select:hover {
+  border-color: var(--background-modifier-border-hover);
+}
+
+.joplin-search-type-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
 }
 
 .joplin-search-inputs {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  gap: var(--size-4-1);
+  align-items: stretch;
+  flex-wrap: wrap;
 }
 
 .joplin-search-input,
 .joplin-tag-search-input {
   flex: 1;
-  padding: 8px 12px;
+  min-width: 200px;
+  padding: var(--size-4-1) var(--size-4-2);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   background: var(--background-primary);
   color: var(--text-normal);
-  font-size: 14px;
-  margin-bottom: 4px;
+  font-size: var(--font-ui-small);
+  font-family: var(--font-interface);
+  transition: all 0.15s ease;
 }
 
 .joplin-tag-search-input {
-  border-color: var(--color-accent);
+  border-color: var(--interactive-accent);
   border-style: dashed;
+  border-width: 1px;
 }
 
 .joplin-search-input:focus,
 .joplin-tag-search-input:focus {
   outline: none;
   border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.joplin-search-input:hover,
+.joplin-tag-search-input:hover {
+  border-color: var(--background-modifier-border-hover);
+}
+
+.joplin-search-input::placeholder,
+.joplin-tag-search-input::placeholder {
+  color: var(--text-faint);
+  font-style: italic;
 }
 
 .joplin-cache-status {
@@ -73,11 +123,56 @@
 }
 
 .joplin-search-button {
-  padding: 8px 16px;
+  padding: var(--size-4-1) var(--size-4-3);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  min-width: 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.joplin-search-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-s);
+}
+
+.joplin-search-button:active {
+  transform: translateY(0);
+}
+
+.joplin-search-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.joplin-search-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+/* Loading state for search button */
+.joplin-search-button.loading {
+  color: transparent;
+}
+
+.joplin-search-button.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 /* Results Section */
@@ -273,45 +368,283 @@
 .joplin-loading,
 .joplin-no-results,
 .joplin-no-preview {
-  padding: 20px;
+  padding: var(--size-4-4);
   text-align: center;
   color: var(--text-muted);
   font-style: italic;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.joplin-loading {
+  position: relative;
+}
+
+.joplin-loading::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--background-modifier-border);
+  border-top: 3px solid var(--interactive-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--size-4-2);
+}
+
+/* Progress bar for operations */
+.joplin-progress-container {
+  width: 100%;
+  max-width: 300px;
+  margin: var(--size-4-2) auto;
+}
+
+.joplin-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  position: relative;
+}
+
+.joplin-progress-fill {
+  height: 100%;
+  background: var(--interactive-accent);
+  border-radius: var(--radius-s);
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.joplin-progress-fill.indeterminate {
+  width: 30%;
+  animation: progress-indeterminate 2s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.joplin-progress-text {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin-top: var(--size-2-1);
+  text-align: center;
+}
+
+/* Enhanced loading states */
+.joplin-loading-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--background-secondary) 25%,
+    var(--background-modifier-hover) 50%,
+    var(--background-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: var(--radius-s);
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.joplin-skeleton-title {
+  height: 16px;
+  width: 70%;
+  margin-bottom: var(--size-2-1);
+}
+
+.joplin-skeleton-text {
+  height: 12px;
+  width: 100%;
+  margin-bottom: var(--size-2-1);
+}
+
+.joplin-skeleton-text:last-child {
+  width: 60%;
 }
 
 /* Responsive adjustments */
-@media (max-width: 400px) {
-  .joplin-search-container {
+@container (max-width: 400px) {
+  .joplin-search-inputs {
     flex-direction: column;
-    align-items: stretch;
+  }
+
+  .joplin-search-input,
+  .joplin-tag-search-input {
+    min-width: unset;
+  }
+
+  .joplin-search-type-container {
+    justify-content: space-between;
+  }
+
+  .joplin-search-type-select {
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 500px) {
+  .joplin-portal-view {
+    padding: var(--size-4-2);
+  }
+
+  .joplin-search-container {
+    padding: var(--size-4-1);
+  }
+
+  .joplin-search-inputs {
+    flex-direction: column;
+    gap: var(--size-2-3);
+  }
+
+  .joplin-search-input,
+  .joplin-tag-search-input {
+    min-width: unset;
   }
 
   .joplin-search-button {
-    margin-top: 8px;
+    margin-top: var(--size-2-1);
+    width: 100%;
   }
 
   .joplin-result-content {
-    padding: 10px 12px;
+    padding: var(--size-4-1) var(--size-4-2);
   }
 
   .joplin-result-title {
-    font-size: 13px;
+    font-size: var(--font-ui-smaller);
   }
 
   .joplin-result-snippet {
-    font-size: 12px;
-    -webkit-line-clamp: 3; /* Show more lines on small screens */
+    font-size: var(--font-ui-smaller);
+    -webkit-line-clamp: 3;
   }
 
   .joplin-result-tags {
-    margin-top: 6px;
+    margin-top: var(--size-2-2);
   }
 
   .joplin-result-tag,
   .joplin-result-tag-more {
-    font-size: 9px;
-    padding: 1px 4px;
+    font-size: var(--font-ui-smallest);
+    padding: var(--size-2-1) var(--size-2-2);
   }
+
+  .joplin-preview-container {
+    padding: var(--size-4-1);
+  }
+}
+
+@media (max-width: 300px) {
+  .joplin-search-type-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--size-2-1);
+  }
+
+  .joplin-search-type-select {
+    min-width: unset;
+  }
+
+  .joplin-result-metadata {
+    font-size: var(--font-ui-smallest);
+  }
+
+  .joplin-metadata-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--size-2-1);
+  }
+}
+
+/* Container queries for better responsive behavior */
+@supports (container-type: inline-size) {
+  .joplin-portal-view {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 350px) {
+    .joplin-search-inputs {
+      flex-direction: column;
+    }
+
+    .joplin-result-item {
+      flex-direction: column;
+    }
+
+    .joplin-result-checkbox {
+      align-self: flex-start;
+      margin-bottom: var(--size-2-1);
+    }
+  }
+}
+
+/* Flexible layout for different panel sizes */
+.joplin-portal-view[data-layout="compact"] .joplin-result-snippet {
+  -webkit-line-clamp: 1;
+}
+
+.joplin-portal-view[data-layout="comfortable"] .joplin-result-snippet {
+  -webkit-line-clamp: 3;
+}
+
+/* Adaptive font sizes based on container width */
+@container (max-width: 250px) {
+  .joplin-portal-view {
+    font-size: var(--font-ui-smaller);
+  }
+
+  .joplin-result-title {
+    font-size: var(--font-ui-smaller);
+  }
+
+  .joplin-result-snippet {
+    font-size: var(--font-ui-smallest);
+  }
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus indicators for accessibility */
+.joplin-search-input:focus,
+.joplin-tag-search-input:focus,
+.joplin-search-type-select:focus,
+.joplin-search-button:focus,
+.joplin-result-item:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
 }
 
 /* High contrast mode support */
@@ -326,6 +659,14 @@
 
   .joplin-result-tag {
     border: 1px solid var(--text-muted);
+  }
+
+  .joplin-search-input:focus,
+  .joplin-tag-search-input:focus,
+  .joplin-search-type-select:focus,
+  .joplin-search-button:focus,
+  .joplin-result-item:focus {
+    outline-width: 3px;
   }
 }
 
@@ -629,17 +970,186 @@
   }
 }
 
+/* Import Options Panel Styles */
+.joplin-import-section {
+  flex-shrink: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  padding: var(--size-4-2);
+  margin-top: var(--size-4-2);
+}
+
+.joplin-import-header h3 {
+  margin: 0 0 var(--size-4-2) 0;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+
+.joplin-import-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+}
+
+.joplin-selected-count {
+  padding: var(--size-2-3) var(--size-4-2);
+  background: var(--background-secondary);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.joplin-selected-count-text {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-normal);
+}
+
+.joplin-import-folder,
+.joplin-import-template,
+.joplin-import-conflict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-1);
+}
+
+.joplin-import-folder label,
+.joplin-import-template label,
+.joplin-import-conflict label {
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-normal);
+}
+
+.joplin-import-folder-input,
+.joplin-template-path-input {
+  padding: var(--size-2-3) var(--size-4-1);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+
+.joplin-import-folder-input:focus,
+.joplin-template-path-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.joplin-conflict-resolution-select {
+  padding: var(--size-2-3) var(--size-4-1);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+
+.joplin-conflict-resolution-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.joplin-template-checkbox-div {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-1);
+}
+
+.joplin-apply-template-checkbox {
+  cursor: pointer;
+}
+
+.joplin-import-buttons {
+  display: flex;
+  gap: var(--size-2-3);
+  flex-wrap: wrap;
+  margin-top: var(--size-4-1);
+}
+
+.joplin-select-all-btn,
+.joplin-clear-selection-btn,
+.joplin-import-btn {
+  padding: var(--size-2-3) var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-weight-medium);
+  transition: all 0.15s ease;
+}
+
+.joplin-select-all-btn:hover,
+.joplin-clear-selection-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+}
+
+.joplin-import-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.joplin-import-btn:hover {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
+}
+
+.joplin-import-btn:focus,
+.joplin-select-all-btn:focus,
+.joplin-clear-selection-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+/* Result checkbox styling */
+.joplin-result-checkbox {
+  display: flex;
+  align-items: center;
+  padding: var(--size-4-2);
+  flex-shrink: 0;
+}
+
+.joplin-import-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--interactive-accent);
+}
+
+.joplin-import-checkbox:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .joplin-result-item {
+  .joplin-result-item,
+  .joplin-result-selection-indicator,
+  .joplin-search-button,
+  .joplin-import-btn,
+  .joplin-select-all-btn,
+  .joplin-clear-selection-btn {
     transition: none;
   }
 
-  .joplin-result-selection-indicator {
-    transition: none;
+  .joplin-search-button.loading::after {
+    animation: none;
   }
 
-  .validation-item {
+  .joplin-loading::before {
+    animation: none;
+  }
+
+  .joplin-progress-fill.indeterminate {
+    animation: none;
+  }
+
+  .joplin-loading-skeleton {
     animation: none;
   }
 }
