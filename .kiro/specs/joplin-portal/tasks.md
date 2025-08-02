@@ -111,7 +111,7 @@
   - Add keyboard shortcuts and accessibility features
   - _Requirements: 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 17. Create release automation scripts
+- [x] 17. Create release automation scripts
   - Create version bump script to update manifest.json and package.json versions
   - Add build script for production release (minification, optimization)
   - Create release preparation script to generate required plugin files

@@ -1,7 +1,7 @@
 {
 	"id": "joplin-portal",
 	"name": "Joplin Portal",
-	"version": "1.0.1",
+	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Access and import notes from Joplin server within Obsidian",
 	"author": "Your Name",
