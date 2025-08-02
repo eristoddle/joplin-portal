@@ -90,7 +90,7 @@
   - Integrate settings loading and saving in plugin lifecycle
   - _Requirements: 1.4, 5.1, 5.5_
 
-- [ ] 14. Add connection validation to settings
+- [x] 14. Add connection validation to settings
   - Implement connection test button in settings tab
   - Add real-time validation feedback for server URL and token
   - Create troubleshooting guidance for connection failures

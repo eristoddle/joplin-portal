@@ -104,6 +104,15 @@ export default class JoplinPortalPlugin extends Plugin {
 	}
 
 	async activateView() {
+		// Check if plugin is properly configured before activating view
+		if (!this.isPluginConfigured()) {
+			new Notice('⚠️ Joplin Portal is not configured. Please check your settings first.', 5000);
+			// Open settings tab - use the correct Obsidian API
+			(this.app as any).setting.open();
+			(this.app as any).setting.openTabById(this.manifest.id);
+			return;
+		}
+
 		const { workspace } = this.app;
 
 		let leaf = workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL)[0];
@@ -265,5 +274,43 @@ export default class JoplinPortalPlugin extends Plugin {
 			`🗑️ Evictions: ${stats.evictions}`,
 			8000
 		);
+	}
+
+	/**
+	 * Check if plugin is properly configured
+	 */
+	private isPluginConfigured(): boolean {
+		const { serverUrl, apiToken } = this.settings;
+
+		// Basic configuration check
+		if (!serverUrl || !apiToken) {
+			return false;
+		}
+
+		// Check if Joplin service is configured
+		if (!this.joplinService || !this.joplinService.isConfigured()) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Get configuration validation status
+	 */
+	getConfigurationStatus(): {
+		isConfigured: boolean;
+		hasServerUrl: boolean;
+		hasApiToken: boolean;
+		serviceConfigured: boolean;
+	} {
+		const { serverUrl, apiToken } = this.settings;
+
+		return {
+			isConfigured: this.isPluginConfigured(),
+			hasServerUrl: !!serverUrl,
+			hasApiToken: !!apiToken,
+			serviceConfigured: !!(this.joplinService && this.joplinService.isConfigured())
+		};
 	}
 }

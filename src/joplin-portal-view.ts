@@ -346,9 +346,19 @@ export class JoplinPortalView extends ItemView {
 		this.lastSearchQuery = currentSearchKey;
 		this.isSearching = true;
 
-		// Check if API service is available and configured
-		if (!this.plugin.joplinService.isConfigured()) {
-			this.displayNoResults('Please configure your Joplin server connection in settings');
+		// Check if plugin is properly configured
+		const configStatus = this.plugin.getConfigurationStatus();
+		if (!configStatus.isConfigured) {
+			let message = 'Plugin configuration incomplete. ';
+			if (!configStatus.hasServerUrl) {
+				message += 'Missing server URL. ';
+			}
+			if (!configStatus.hasApiToken) {
+				message += 'Missing API token. ';
+			}
+			message += 'Please check your settings.';
+
+			this.displayNoResults(message);
 			this.isSearching = false;
 			return;
 		}
