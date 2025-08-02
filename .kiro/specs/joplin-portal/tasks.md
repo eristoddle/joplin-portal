@@ -41,7 +41,7 @@
   - Style results list to match Obsidian's UI patterns
   - _Requirements: 2.3, 5.3, 5.4_
 
-- [ ] 7. Implement note preview functionality
+- [x] 7. Implement note preview functionality
   - Add preview pane to the sidebar view
   - Create getNote method in JoplinApiService for full note retrieval
   - Implement note content rendering in preview pane

@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 import JoplinPortalPlugin from '../main';
-import { SearchResult } from './types';
+import { SearchResult, JoplinNote } from './types';
 
 export const VIEW_TYPE_JOPLIN_PORTAL = 'joplin-portal-view';
 
@@ -121,7 +121,7 @@ export class JoplinPortalView extends ItemView {
 		}
 
 		// Check if API service is available and configured
-		if (!this.plugin.settings.apiToken || !this.plugin.settings.serverUrl) {
+		if (!this.plugin.joplinService.isConfigured()) {
 			this.displayNoResults('Please configure your Joplin server connection in settings');
 			return;
 		}
@@ -130,62 +130,19 @@ export class JoplinPortalView extends ItemView {
 		this.displayLoading();
 
 		try {
-			// For now, show mock results to demonstrate the search results display
-			// This will be replaced with actual API integration in the next task
-			const mockResults = this.createMockSearchResults(query);
+			// Use actual API service to search notes
+			const results = await this.plugin.joplinService.searchNotes(query, {
+				limit: this.plugin.settings.searchLimit || 50
+			});
 
-			// Simulate API delay
-			setTimeout(() => {
-				this.displayResults(mockResults);
-			}, 500);
+			this.displayResults(results);
 		} catch (error) {
 			console.error('Search error:', error);
 			this.displayNoResults('Search failed. Please check your connection settings.');
 		}
 	}
 
-	/**
-	 * Create mock search results for testing the display functionality
-	 * This will be removed when actual API integration is implemented
-	 */
-	private createMockSearchResults(query: string): SearchResult[] {
-		const mockNotes: JoplinNote[] = [
-			{
-				id: '1',
-				title: `Meeting Notes - ${query} Discussion`,
-				body: `This is a detailed note about ${query} that contains important information and insights from our recent meeting. The discussion covered various aspects and considerations.`,
-				created_time: Date.now() - 86400000, // 1 day ago
-				updated_time: Date.now() - 3600000, // 1 hour ago
-				parent_id: 'folder1',
-				tags: ['meeting', 'important', 'project']
-			},
-			{
-				id: '2',
-				title: `Research on ${query}`,
-				body: `Comprehensive research findings about ${query}. This document includes various sources, references, and detailed analysis of the topic.`,
-				created_time: Date.now() - 172800000, // 2 days ago
-				updated_time: Date.now() - 172800000, // Same as created
-				parent_id: 'folder2',
-				tags: ['research', 'analysis']
-			},
-			{
-				id: '3',
-				title: 'Quick Note',
-				body: `A brief note mentioning ${query} in passing. Not much detail here, just a quick reminder.`,
-				created_time: Date.now() - 3600000, // 1 hour ago
-				updated_time: Date.now() - 1800000, // 30 minutes ago
-				parent_id: 'folder1',
-				tags: ['quick', 'reminder', 'todo', 'urgent', 'followup']
-			}
-		];
 
-		return mockNotes.map((note, index) => ({
-			note,
-			snippet: note.body.substring(0, 150) + (note.body.length > 150 ? '...' : ''),
-			relevance: 1 - (index * 0.1),
-			selected: false
-		}));
-	}
 
 	private displayLoading(): void {
 		this.resultsContainer.empty();
@@ -306,25 +263,210 @@ export class JoplinPortalView extends ItemView {
 		}
 	}
 
-	private showPreview(result: SearchResult): void {
+	private async showPreview(result: SearchResult): Promise<void> {
 		this.previewContainer.empty();
 
 		// Preview header with note title
 		const previewHeader = this.previewContainer.createDiv('joplin-preview-note-header');
-		previewHeader.createEl('h4', { text: result.note.title });
+		const titleEl = previewHeader.createEl('h4', { text: result.note.title });
+		titleEl.setAttribute('title', result.note.title); // Tooltip for long titles
 
-		// Preview content (placeholder)
-		const previewContent = this.previewContainer.createDiv('joplin-preview-content');
-		previewContent.setText('Note preview will be implemented when API service is integrated');
+		// Show loading state
+		const loadingDiv = this.previewContainer.createDiv('joplin-preview-loading');
+		loadingDiv.setText('Loading note content...');
 
-		// Note metadata
-		const previewMeta = this.previewContainer.createDiv('joplin-preview-metadata');
-		const createdDate = new Date(result.note.created_time).toLocaleDateString();
-		const updatedDate = new Date(result.note.updated_time).toLocaleDateString();
-		previewMeta.innerHTML = `
-			<div>Created: ${createdDate}</div>
-			<div>Updated: ${updatedDate}</div>
-		`;
+		try {
+			// Get full note content from API
+			const fullNote = await this.plugin.joplinService.getNote(result.note.id);
+
+			// Remove loading indicator
+			loadingDiv.remove();
+
+			if (!fullNote) {
+				this.showPreviewError('Note not found or could not be loaded');
+				return;
+			}
+
+			// Preview content with rendered markdown
+			const previewContent = this.previewContainer.createDiv('joplin-preview-content');
+			await this.renderNoteContent(previewContent, fullNote);
+
+			// Note metadata
+			const previewMeta = this.previewContainer.createDiv('joplin-preview-metadata');
+			this.renderNoteMetadata(previewMeta, fullNote);
+
+		} catch (error) {
+			// Remove loading indicator
+			loadingDiv.remove();
+
+			console.error('Failed to load note preview:', error);
+			this.showPreviewError('Failed to load note content. Please check your connection.');
+		}
+	}
+
+	private showPreviewError(message: string): void {
+		const errorDiv = this.previewContainer.createDiv('joplin-preview-error');
+		errorDiv.setText(message);
+	}
+
+	private async renderNoteContent(container: HTMLElement, note: JoplinNote): Promise<void> {
+		// Create content wrapper
+		const contentWrapper = container.createDiv('joplin-preview-content-wrapper');
+
+		if (!note.body || note.body.trim() === '') {
+			contentWrapper.createDiv('joplin-preview-empty').setText('This note is empty');
+			return;
+		}
+
+		// Convert Joplin markdown to HTML for preview
+		const htmlContent = await this.convertMarkdownToHtml(note.body);
+
+		// Create scrollable content area
+		const scrollableContent = contentWrapper.createDiv('joplin-preview-scrollable');
+		scrollableContent.innerHTML = htmlContent;
+
+		// Add click handlers for internal links (future enhancement)
+		this.addLinkHandlers(scrollableContent);
+	}
+
+	private async convertMarkdownToHtml(markdown: string): Promise<string> {
+		// Basic markdown to HTML conversion
+		// This is a simplified implementation - in a real plugin you might want to use
+		// Obsidian's markdown renderer or a more robust markdown parser
+
+		let html = markdown;
+
+		// Convert headers
+		html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+		html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+		html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+		// Convert bold and italic
+		html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+		html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+		html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+		// Convert code blocks
+		html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+		html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+
+		// Convert links
+		html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+		// Convert line breaks
+		html = html.replace(/\n\n/g, '</p><p>');
+		html = html.replace(/\n/g, '<br>');
+
+		// Wrap in paragraphs
+		html = '<p>' + html + '</p>';
+
+		// Clean up empty paragraphs
+		html = html.replace(/<p><\/p>/g, '');
+		html = html.replace(/<p><br><\/p>/g, '');
+
+		// Convert lists (basic implementation)
+		html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
+		html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+		// Convert numbered lists
+		html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+		html = html.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
+
+		return html;
+	}
+
+	private addLinkHandlers(container: HTMLElement): void {
+		// Add handlers for external links to open in browser
+		const links = container.querySelectorAll('a[href]');
+		links.forEach(link => {
+			const href = link.getAttribute('href');
+			if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+				link.addEventListener('click', (e) => {
+					e.preventDefault();
+					// In a real Obsidian plugin, you would use:
+					// window.open(href, '_blank');
+					console.log('Would open external link:', href);
+				});
+			}
+		});
+	}
+
+	private renderNoteMetadata(container: HTMLElement, note: JoplinNote): void {
+		// Clear existing content
+		container.empty();
+
+		// Create metadata grid
+		const metadataGrid = container.createDiv('joplin-preview-metadata-grid');
+
+		// Created date
+		const createdDiv = metadataGrid.createDiv('joplin-metadata-item');
+		createdDiv.createSpan('joplin-metadata-label').setText('Created:');
+		const createdDate = new Date(note.created_time);
+		createdDiv.createSpan('joplin-metadata-value').setText(
+			createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString()
+		);
+
+		// Updated date (only show if different from created)
+		const updatedDate = new Date(note.updated_time);
+		if (Math.abs(updatedDate.getTime() - createdDate.getTime()) > 60000) { // More than 1 minute difference
+			const updatedDiv = metadataGrid.createDiv('joplin-metadata-item');
+			updatedDiv.createSpan('joplin-metadata-label').setText('Updated:');
+			updatedDiv.createSpan('joplin-metadata-value').setText(
+				updatedDate.toLocaleDateString() + ' ' + updatedDate.toLocaleTimeString()
+			);
+		}
+
+		// Note ID (for debugging/reference)
+		const idDiv = metadataGrid.createDiv('joplin-metadata-item');
+		idDiv.createSpan('joplin-metadata-label').setText('ID:');
+		const idValue = idDiv.createSpan('joplin-metadata-value');
+		idValue.setText(note.id);
+		idValue.addClass('joplin-metadata-id');
+
+		// Source URL if available
+		if (note.source_url) {
+			const sourceDiv = metadataGrid.createDiv('joplin-metadata-item');
+			sourceDiv.createSpan('joplin-metadata-label').setText('Source:');
+			const sourceLink = sourceDiv.createEl('a', {
+				href: note.source_url,
+				text: 'View Source',
+				cls: 'joplin-metadata-link'
+			});
+			sourceLink.setAttribute('target', '_blank');
+			sourceLink.setAttribute('rel', 'noopener');
+		}
+
+		// Tags if available
+		if (note.tags && note.tags.length > 0) {
+			const tagsDiv = metadataGrid.createDiv('joplin-metadata-item joplin-metadata-tags');
+			tagsDiv.createSpan('joplin-metadata-label').setText('Tags:');
+			const tagsContainer = tagsDiv.createDiv('joplin-metadata-tags-container');
+
+			note.tags.forEach(tag => {
+				const tagEl = tagsContainer.createSpan('joplin-metadata-tag');
+				tagEl.setText(`#${tag}`);
+			});
+		}
+
+		// Word count
+		const wordCount = this.calculateWordCount(note.body);
+		if (wordCount > 0) {
+			const wordCountDiv = metadataGrid.createDiv('joplin-metadata-item');
+			wordCountDiv.createSpan('joplin-metadata-label').setText('Words:');
+			wordCountDiv.createSpan('joplin-metadata-value').setText(wordCount.toString());
+		}
+	}
+
+	private calculateWordCount(text: string): number {
+		if (!text || text.trim() === '') return 0;
+
+		// Remove markdown formatting and count words
+		const cleanText = text
+			.replace(/[#*_`~\[\]()]/g, '') // Remove markdown characters
+			.replace(/\s+/g, ' ') // Normalize whitespace
+			.trim();
+
+		return cleanText ? cleanText.split(' ').length : 0;
 	}
 
 	/**
