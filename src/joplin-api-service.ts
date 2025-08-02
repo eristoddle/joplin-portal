@@ -91,7 +91,8 @@ export class JoplinApiService {
 			note,
 			snippet: this.generateSnippet(note.body, query),
 			relevance: this.calculateRelevance(note, query, index),
-			selected: false
+			selected: false,
+			markedForImport: false
 		}));
 	}
 

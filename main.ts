@@ -3,16 +3,19 @@ import { JoplinPortalSettings, DEFAULT_SETTINGS } from './src/types';
 import { JoplinPortalSettingTab } from './src/settings';
 import { JoplinPortalView, VIEW_TYPE_JOPLIN_PORTAL } from './src/joplin-portal-view';
 import { JoplinApiService } from './src/joplin-api-service';
+import { ImportService } from './src/import-service';
 
 export default class JoplinPortalPlugin extends Plugin {
 	settings: JoplinPortalSettings;
 	joplinService: JoplinApiService;
+	importService: ImportService;
 
 	async onload() {
 		await this.loadSettings();
 
-		// Initialize Joplin API service
+		// Initialize services
 		this.joplinService = new JoplinApiService(this.settings);
+		this.importService = new ImportService(this.app);
 
 		// Register the Joplin Portal view
 		this.registerView(

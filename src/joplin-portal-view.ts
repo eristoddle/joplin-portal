@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
 import JoplinPortalPlugin from '../main';
 import { SearchResult, JoplinNote, ImportOptions } from './types';
 
@@ -898,46 +898,50 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
-	 * Perform the actual import (placeholder for now)
+	 * Perform the actual import using ImportService
 	 */
 	private async performImport(selectedResults: SearchResult[], importOptions: ImportOptions): Promise<void> {
-		// This is a placeholder implementation
-		// The actual import functionality will be implemented in a later task
-		console.log('Import would be performed with:', {
-			notes: selectedResults.map(r => r.note.title),
-			options: importOptions
-		});
+		const notesToImport = selectedResults.map(result => result.note);
 
-		this.showNotice(`Import initiated for ${selectedResults.length} note${selectedResults.length !== 1 ? 's' : ''}. (Implementation pending)`);
+		// Show loading notice
+		this.showNotice('Starting import...');
+
+		try {
+			// Use the import service to import notes
+			const result = await this.plugin.importService.importNotes(notesToImport, importOptions);
+
+			// Show results
+			const successCount = result.successful.length;
+			const failureCount = result.failed.length;
+
+			if (failureCount === 0) {
+				// All imports successful
+				this.showNotice(`Successfully imported ${successCount} note${successCount !== 1 ? 's' : ''} to "${importOptions.targetFolder}"`);
+			} else if (successCount === 0) {
+				// All imports failed
+				this.showNotice(`Failed to import ${failureCount} note${failureCount !== 1 ? 's' : ''}. Check console for details.`);
+				console.error('Import failures:', result.failed);
+			} else {
+				// Mixed results
+				this.showNotice(`Imported ${successCount} note${successCount !== 1 ? 's' : ''}, ${failureCount} failed. Check console for details.`);
+				console.error('Import failures:', result.failed);
+			}
+
+			// Clear import selections after successful import
+			if (successCount > 0) {
+				this.clearImportSelection();
+			}
+
+		} catch (error) {
+			console.error('Import error:', error);
+			this.showNotice('Import failed. Please check your settings and try again.');
+		}
 	}
 
 	/**
 	 * Show a notice to the user
 	 */
 	private showNotice(message: string): void {
-		// Create a simple notice element
-		const notice = document.createElement('div');
-		notice.className = 'joplin-notice';
-		notice.textContent = message;
-		notice.style.cssText = `
-			position: fixed;
-			top: 20px;
-			right: 20px;
-			background: var(--background-primary);
-			border: 1px solid var(--background-modifier-border);
-			border-radius: 4px;
-			padding: 10px 15px;
-			z-index: 1001;
-			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-		`;
-
-		document.body.appendChild(notice);
-
-		// Remove after 3 seconds
-		setTimeout(() => {
-			if (document.body.contains(notice)) {
-				document.body.removeChild(notice);
-			}
-		}, 3000);
+		new Notice(message);
 	}
 }

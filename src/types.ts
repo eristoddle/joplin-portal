@@ -36,6 +36,11 @@ export interface ImportOptions {
 	conflictResolution: 'skip' | 'overwrite' | 'rename';
 }
 
+export interface ImportResult {
+	successful: string[];
+	failed: { noteTitle: string; error: string }[];
+}
+
 export interface JoplinApiResponse<T> {
 	items: T[];
 	has_more: boolean;
