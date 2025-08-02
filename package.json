@@ -1,12 +1,18 @@
 {
   "name": "joplin-portal",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Access and import notes from Joplin server within Obsidian",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "build:release": "node scripts/build-release.mjs",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
+    "version:bump": "node scripts/version-bump.mjs",
+    "prepare:release": "node scripts/prepare-release.mjs",
+    "changelog": "node scripts/generate-changelog.mjs",
+    "release": "npm run build:release && npm run prepare:release",
+    "release:complete": "node scripts/release-complete.mjs",
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
