@@ -26,6 +26,7 @@ export interface SearchResult {
 	snippet: string;
 	relevance: number;
 	selected: boolean;
+	markedForImport: boolean;
 }
 
 export interface ImportOptions {

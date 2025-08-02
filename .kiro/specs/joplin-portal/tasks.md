@@ -48,7 +48,7 @@
   - Add loading states and error handling for preview
   - _Requirements: 2.4, 4.1_
 
-- [ ] 8. Add import selection interface
+- [x] 8. Add import selection interface
   - Create checkboxes for each search result to mark for import
   - Implement multi-select functionality for batch imports
   - Add import options panel with folder selection and template options

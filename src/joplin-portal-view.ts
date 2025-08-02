@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 import JoplinPortalPlugin from '../main';
-import { SearchResult, JoplinNote } from './types';
+import { SearchResult, JoplinNote, ImportOptions } from './types';
 
 export const VIEW_TYPE_JOPLIN_PORTAL = 'joplin-portal-view';
 
@@ -10,7 +10,12 @@ export class JoplinPortalView extends ItemView {
 	searchButton: HTMLButtonElement;
 	resultsContainer: HTMLElement;
 	previewContainer: HTMLElement;
+	importOptionsPanel: HTMLElement;
 	currentResults: SearchResult[] = [];
+	importFolderInput: HTMLInputElement;
+	applyTemplateCheckbox: HTMLInputElement;
+	templatePathInput: HTMLInputElement;
+	conflictResolutionSelect: HTMLSelectElement;
 
 	constructor(leaf: WorkspaceLeaf, plugin: JoplinPortalPlugin) {
 		super(leaf);
@@ -37,6 +42,7 @@ export class JoplinPortalView extends ItemView {
 		// Create main layout
 		this.createSearchInterface(container);
 		this.createResultsContainer(container);
+		this.createImportOptionsPanel(container);
 		this.createPreviewContainer(container);
 	}
 
@@ -100,6 +106,93 @@ export class JoplinPortalView extends ItemView {
 		this.resultsContainer.createDiv('joplin-no-results').setText('Enter a search query to find notes');
 	}
 
+	private createImportOptionsPanel(container: Element): void {
+		const importSection = container.createDiv('joplin-import-section');
+		importSection.style.display = 'none'; // Initially hidden
+
+		// Import header
+		const importHeader = importSection.createDiv('joplin-import-header');
+		importHeader.createEl('h3', { text: 'Import Options' });
+
+		// Import options container
+		this.importOptionsPanel = importSection.createDiv('joplin-import-options');
+
+		// Selected notes count
+		const selectedCountDiv = this.importOptionsPanel.createDiv('joplin-selected-count');
+		selectedCountDiv.createSpan('joplin-selected-count-text').setText('0 notes selected for import');
+
+		// Import folder selection
+		const folderDiv = this.importOptionsPanel.createDiv('joplin-import-folder');
+		folderDiv.createEl('label', { text: 'Import to folder:' });
+		this.importFolderInput = folderDiv.createEl('input', {
+			type: 'text',
+			placeholder: 'Enter folder path (e.g., "Imported from Joplin")',
+			cls: 'joplin-import-folder-input'
+		});
+		this.importFolderInput.value = this.plugin.settings.defaultImportFolder || 'Imported from Joplin';
+
+		// Template options
+		const templateDiv = this.importOptionsPanel.createDiv('joplin-import-template');
+		const templateCheckboxDiv = templateDiv.createDiv('joplin-template-checkbox-div');
+		this.applyTemplateCheckbox = templateCheckboxDiv.createEl('input', {
+			type: 'checkbox',
+			cls: 'joplin-apply-template-checkbox'
+		});
+		templateCheckboxDiv.createEl('label', { text: 'Apply template' });
+
+		const templatePathDiv = templateDiv.createDiv('joplin-template-path-div');
+		templatePathDiv.style.display = 'none'; // Initially hidden
+		templatePathDiv.createEl('label', { text: 'Template path:' });
+		this.templatePathInput = templatePathDiv.createEl('input', {
+			type: 'text',
+			placeholder: 'Path to template file (optional)',
+			cls: 'joplin-template-path-input'
+		});
+
+		// Conflict resolution
+		const conflictDiv = this.importOptionsPanel.createDiv('joplin-import-conflict');
+		conflictDiv.createEl('label', { text: 'If file exists:' });
+		this.conflictResolutionSelect = conflictDiv.createEl('select', {
+			cls: 'joplin-conflict-resolution-select'
+		});
+		this.conflictResolutionSelect.createEl('option', { value: 'skip', text: 'Skip' });
+		this.conflictResolutionSelect.createEl('option', { value: 'overwrite', text: 'Overwrite' });
+		this.conflictResolutionSelect.createEl('option', { value: 'rename', text: 'Rename' });
+		this.conflictResolutionSelect.value = 'skip';
+
+		// Import buttons
+		const buttonsDiv = this.importOptionsPanel.createDiv('joplin-import-buttons');
+		const selectAllBtn = buttonsDiv.createEl('button', {
+			text: 'Select All',
+			cls: 'joplin-select-all-btn'
+		});
+		const clearSelectionBtn = buttonsDiv.createEl('button', {
+			text: 'Clear Selection',
+			cls: 'joplin-clear-selection-btn'
+		});
+		const importBtn = buttonsDiv.createEl('button', {
+			text: 'Import Selected',
+			cls: 'joplin-import-btn mod-cta'
+		});
+
+		// Event listeners
+		this.applyTemplateCheckbox.addEventListener('change', () => {
+			templatePathDiv.style.display = this.applyTemplateCheckbox.checked ? 'block' : 'none';
+		});
+
+		selectAllBtn.addEventListener('click', () => {
+			this.selectAllForImport();
+		});
+
+		clearSelectionBtn.addEventListener('click', () => {
+			this.clearImportSelection();
+		});
+
+		importBtn.addEventListener('click', () => {
+			this.showImportConfirmationDialog();
+		});
+	}
+
 	private createPreviewContainer(container: Element): void {
 		const previewSection = container.createDiv('joplin-preview-section');
 
@@ -157,20 +250,36 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	private displayResults(results: SearchResult[]): void {
-		this.currentResults = results;
+		this.currentResults = results.map(result => ({
+			...result,
+			markedForImport: false // Initialize import selection
+		}));
 		this.resultsContainer.empty();
 
 		if (results.length === 0) {
 			this.displayNoResults('No notes found');
+			this.hideImportOptionsPanel();
 			return;
 		}
 
 		// Create results list container
 		const resultsList = this.resultsContainer.createDiv('joplin-results-list');
 
-		results.forEach((result, index) => {
+		this.currentResults.forEach((result, index) => {
 			const resultItem = resultsList.createDiv('joplin-result-item');
 			resultItem.setAttribute('data-index', index.toString());
+
+			// Import checkbox
+			const checkboxDiv = resultItem.createDiv('joplin-result-checkbox');
+			const checkbox = checkboxDiv.createEl('input', {
+				type: 'checkbox',
+				cls: 'joplin-import-checkbox'
+			});
+			checkbox.checked = result.markedForImport;
+			checkbox.addEventListener('change', (e) => {
+				e.stopPropagation(); // Prevent triggering result selection
+				this.toggleImportSelection(index, checkbox.checked);
+			});
 
 			// Create result content wrapper
 			const resultContent = resultItem.createDiv('joplin-result-content');
@@ -207,8 +316,8 @@ export class JoplinPortalView extends ItemView {
 			// Add selection indicator
 			const selectionIndicator = resultItem.createDiv('joplin-result-selection-indicator');
 
-			// Click handler for result selection
-			resultItem.addEventListener('click', (e) => {
+			// Click handler for result selection (clicking on content, not checkbox)
+			resultContent.addEventListener('click', (e) => {
 				e.preventDefault();
 				this.selectResult(index);
 			});
@@ -231,6 +340,10 @@ export class JoplinPortalView extends ItemView {
 		// Add results count indicator
 		const resultsCount = this.resultsContainer.createDiv('joplin-results-count');
 		resultsCount.setText(`${results.length} result${results.length !== 1 ? 's' : ''} found`);
+
+		// Show import options panel
+		this.showImportOptionsPanel();
+		this.updateImportSelectionCount();
 	}
 
 	private selectResult(index: number): void {
@@ -570,5 +683,261 @@ export class JoplinPortalView extends ItemView {
 				year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
 			});
 		}
+	}
+
+	/**
+	 * Toggle import selection for a specific result
+	 */
+	private toggleImportSelection(index: number, selected: boolean): void {
+		if (index >= 0 && index < this.currentResults.length) {
+			this.currentResults[index].markedForImport = selected;
+			this.updateImportSelectionCount();
+		}
+	}
+
+	/**
+	 * Select all results for import
+	 */
+	private selectAllForImport(): void {
+		this.currentResults.forEach(result => {
+			result.markedForImport = true;
+		});
+
+		// Update checkboxes in UI
+		const checkboxes = this.resultsContainer.querySelectorAll('.joplin-import-checkbox') as NodeListOf<HTMLInputElement>;
+		checkboxes.forEach(checkbox => {
+			checkbox.checked = true;
+		});
+
+		this.updateImportSelectionCount();
+	}
+
+	/**
+	 * Clear all import selections
+	 */
+	private clearImportSelection(): void {
+		this.currentResults.forEach(result => {
+			result.markedForImport = false;
+		});
+
+		// Update checkboxes in UI
+		const checkboxes = this.resultsContainer.querySelectorAll('.joplin-import-checkbox') as NodeListOf<HTMLInputElement>;
+		checkboxes.forEach(checkbox => {
+			checkbox.checked = false;
+		});
+
+		this.updateImportSelectionCount();
+	}
+
+	/**
+	 * Update the count of selected notes for import
+	 */
+	private updateImportSelectionCount(): void {
+		const selectedCount = this.currentResults.filter(result => result.markedForImport).length;
+		const countElement = this.importOptionsPanel.querySelector('.joplin-selected-count-text');
+		if (countElement) {
+			countElement.textContent = `${selectedCount} note${selectedCount !== 1 ? 's' : ''} selected for import`;
+		}
+
+		// Enable/disable import button based on selection
+		const importBtn = this.importOptionsPanel.querySelector('.joplin-import-btn') as HTMLButtonElement;
+		if (importBtn) {
+			importBtn.disabled = selectedCount === 0;
+		}
+	}
+
+	/**
+	 * Show the import options panel
+	 */
+	private showImportOptionsPanel(): void {
+		const importSection = this.containerEl.querySelector('.joplin-import-section') as HTMLElement;
+		if (importSection) {
+			importSection.style.display = 'block';
+		}
+	}
+
+	/**
+	 * Hide the import options panel
+	 */
+	private hideImportOptionsPanel(): void {
+		const importSection = this.containerEl.querySelector('.joplin-import-section') as HTMLElement;
+		if (importSection) {
+			importSection.style.display = 'none';
+		}
+	}
+
+	/**
+	 * Show import confirmation dialog
+	 */
+	private showImportConfirmationDialog(): void {
+		const selectedResults = this.currentResults.filter(result => result.markedForImport);
+
+		if (selectedResults.length === 0) {
+			// Show notice that no notes are selected
+			this.showNotice('Please select at least one note to import');
+			return;
+		}
+
+		// Get import options
+		const importOptions: ImportOptions = {
+			targetFolder: this.importFolderInput.value.trim() || 'Imported from Joplin',
+			applyTemplate: this.applyTemplateCheckbox.checked,
+			templatePath: this.applyTemplateCheckbox.checked ? this.templatePathInput.value.trim() : undefined,
+			conflictResolution: this.conflictResolutionSelect.value as 'skip' | 'overwrite' | 'rename'
+		};
+
+		// Create confirmation dialog
+		const modal = document.createElement('div');
+		modal.className = 'joplin-import-confirmation-modal';
+		modal.style.cssText = `
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.5);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			z-index: 1000;
+		`;
+
+		const dialog = document.createElement('div');
+		dialog.className = 'joplin-import-confirmation-dialog';
+		dialog.style.cssText = `
+			background: var(--background-primary);
+			border: 1px solid var(--background-modifier-border);
+			border-radius: 8px;
+			padding: 20px;
+			max-width: 500px;
+			max-height: 80vh;
+			overflow-y: auto;
+		`;
+
+		// Dialog title
+		const title = dialog.createEl('h2', { text: 'Confirm Import' });
+		title.style.marginTop = '0';
+
+		// Import summary
+		const summary = dialog.createDiv('joplin-import-summary');
+		summary.createEl('p', { text: `You are about to import ${selectedResults.length} note${selectedResults.length !== 1 ? 's' : ''}:` });
+
+		// List of notes to import
+		const notesList = summary.createEl('ul', { cls: 'joplin-import-notes-list' });
+		notesList.style.cssText = `
+			max-height: 200px;
+			overflow-y: auto;
+			margin: 10px 0;
+			padding-left: 20px;
+		`;
+
+		selectedResults.forEach(result => {
+			const listItem = notesList.createEl('li');
+			listItem.textContent = result.note.title || 'Untitled Note';
+		});
+
+		// Import options summary
+		const optionsSummary = summary.createDiv('joplin-import-options-summary');
+		optionsSummary.style.cssText = `
+			background: var(--background-secondary);
+			padding: 10px;
+			border-radius: 4px;
+			margin: 15px 0;
+		`;
+
+		optionsSummary.createEl('p', { text: `Target folder: ${importOptions.targetFolder}` });
+		optionsSummary.createEl('p', { text: `Apply template: ${importOptions.applyTemplate ? 'Yes' : 'No'}` });
+		if (importOptions.applyTemplate && importOptions.templatePath) {
+			optionsSummary.createEl('p', { text: `Template path: ${importOptions.templatePath}` });
+		}
+		optionsSummary.createEl('p', { text: `If file exists: ${importOptions.conflictResolution}` });
+
+		// Dialog buttons
+		const buttonsDiv = dialog.createDiv('joplin-import-dialog-buttons');
+		buttonsDiv.style.cssText = `
+			display: flex;
+			gap: 10px;
+			justify-content: flex-end;
+			margin-top: 20px;
+		`;
+
+		const cancelBtn = buttonsDiv.createEl('button', { text: 'Cancel' });
+		const confirmBtn = buttonsDiv.createEl('button', { text: 'Import', cls: 'mod-cta' });
+
+		// Event listeners
+		cancelBtn.addEventListener('click', () => {
+			document.body.removeChild(modal);
+		});
+
+		confirmBtn.addEventListener('click', () => {
+			document.body.removeChild(modal);
+			this.performImport(selectedResults, importOptions);
+		});
+
+		// Close on escape key
+		const handleEscape = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				document.body.removeChild(modal);
+				document.removeEventListener('keydown', handleEscape);
+			}
+		};
+		document.addEventListener('keydown', handleEscape);
+
+		// Close on backdrop click
+		modal.addEventListener('click', (e) => {
+			if (e.target === modal) {
+				document.body.removeChild(modal);
+			}
+		});
+
+		modal.appendChild(dialog);
+		document.body.appendChild(modal);
+
+		// Focus the confirm button
+		confirmBtn.focus();
+	}
+
+	/**
+	 * Perform the actual import (placeholder for now)
+	 */
+	private async performImport(selectedResults: SearchResult[], importOptions: ImportOptions): Promise<void> {
+		// This is a placeholder implementation
+		// The actual import functionality will be implemented in a later task
+		console.log('Import would be performed with:', {
+			notes: selectedResults.map(r => r.note.title),
+			options: importOptions
+		});
+
+		this.showNotice(`Import initiated for ${selectedResults.length} note${selectedResults.length !== 1 ? 's' : ''}. (Implementation pending)`);
+	}
+
+	/**
+	 * Show a notice to the user
+	 */
+	private showNotice(message: string): void {
+		// Create a simple notice element
+		const notice = document.createElement('div');
+		notice.className = 'joplin-notice';
+		notice.textContent = message;
+		notice.style.cssText = `
+			position: fixed;
+			top: 20px;
+			right: 20px;
+			background: var(--background-primary);
+			border: 1px solid var(--background-modifier-border);
+			border-radius: 4px;
+			padding: 10px 15px;
+			z-index: 1001;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+		`;
+
+		document.body.appendChild(notice);
+
+		// Remove after 3 seconds
+		setTimeout(() => {
+			if (document.body.contains(notice)) {
+				document.body.removeChild(notice);
+			}
+		}, 3000);
 	}
 }
