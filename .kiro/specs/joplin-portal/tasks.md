@@ -62,7 +62,7 @@
   - Preserve note metadata (title, creation date) during import
   - _Requirements: 3.3, 3.4, 3.5_
 
-- [ ] 10. Add import conflict resolution
+- [x] 10. Add import conflict resolution
   - Detect existing files with same names during import
   - Implement conflict resolution dialog with skip/overwrite/rename options
   - Add automatic file renaming logic for conflicts

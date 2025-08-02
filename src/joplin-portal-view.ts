@@ -769,7 +769,7 @@ export class JoplinPortalView extends ItemView {
 	/**
 	 * Show import confirmation dialog
 	 */
-	private showImportConfirmationDialog(): void {
+	private async showImportConfirmationDialog(): Promise<void> {
 		const selectedResults = this.currentResults.filter(result => result.markedForImport);
 
 		if (selectedResults.length === 0) {
@@ -785,6 +785,21 @@ export class JoplinPortalView extends ItemView {
 			templatePath: this.applyTemplateCheckbox.checked ? this.templatePathInput.value.trim() : undefined,
 			conflictResolution: this.conflictResolutionSelect.value as 'skip' | 'overwrite' | 'rename'
 		};
+
+		// Check for conflicts before showing confirmation
+		const notesToImport = selectedResults.map(result => result.note);
+		const conflictCheck = this.plugin.importService.checkForConflicts(notesToImport, importOptions.targetFolder);
+
+		if (conflictCheck.conflicts.length > 0) {
+			// Show conflict resolution dialog first
+			const resolvedOptions = await this.showConflictResolutionDialog(conflictCheck.conflicts, importOptions);
+			if (!resolvedOptions) {
+				// User cancelled conflict resolution
+				return;
+			}
+			// Update import options with resolved conflicts
+			Object.assign(importOptions, resolvedOptions);
+		}
 
 		// Create confirmation dialog
 		const modal = document.createElement('div');
@@ -835,6 +850,22 @@ export class JoplinPortalView extends ItemView {
 			const listItem = notesList.createEl('li');
 			listItem.textContent = result.note.title || 'Untitled Note';
 		});
+
+		// Show conflict resolution summary if there were conflicts
+		if (conflictCheck.conflicts.length > 0) {
+			const conflictSummary = summary.createDiv('joplin-conflict-summary');
+			conflictSummary.style.cssText = `
+				background: var(--background-modifier-error);
+				padding: 10px;
+				border-radius: 4px;
+				margin: 15px 0;
+				border-left: 4px solid var(--text-error);
+			`;
+			conflictSummary.createEl('p', {
+				text: `⚠️ ${conflictCheck.conflicts.length} file conflict${conflictCheck.conflicts.length !== 1 ? 's' : ''} detected and resolved`,
+				cls: 'joplin-conflict-warning'
+			});
+		}
 
 		// Import options summary
 		const optionsSummary = summary.createDiv('joplin-import-options-summary');
@@ -898,6 +929,314 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
+	 * Show conflict resolution dialog for file conflicts
+	 */
+	private async showConflictResolutionDialog(
+		conflicts: { note: JoplinNote; conflictPath: string; existingFile: any }[],
+		importOptions: ImportOptions
+	): Promise<ImportOptions | null> {
+		return new Promise((resolve) => {
+			// Create modal
+			const modal = document.createElement('div');
+			modal.className = 'joplin-conflict-resolution-modal';
+			modal.style.cssText = `
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.5);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				z-index: 1001;
+			`;
+
+			const dialog = document.createElement('div');
+			dialog.className = 'joplin-conflict-resolution-dialog';
+			dialog.style.cssText = `
+				background: var(--background-primary);
+				border: 1px solid var(--background-modifier-border);
+				border-radius: 8px;
+				padding: 20px;
+				max-width: 600px;
+				max-height: 80vh;
+				overflow-y: auto;
+				min-width: 500px;
+			`;
+
+			// Dialog title
+			const title = dialog.createEl('h2', { text: 'Resolve File Conflicts' });
+			title.style.marginTop = '0';
+
+			// Conflict description
+			const description = dialog.createDiv('joplin-conflict-description');
+			description.createEl('p', {
+				text: `${conflicts.length} file${conflicts.length !== 1 ? 's' : ''} already exist${conflicts.length === 1 ? 's' : ''} in the target folder. Choose how to handle each conflict:`
+			});
+
+			// Conflicts list
+			const conflictsList = dialog.createDiv('joplin-conflicts-list');
+			conflictsList.style.cssText = `
+				max-height: 300px;
+				overflow-y: auto;
+				margin: 15px 0;
+				border: 1px solid var(--background-modifier-border);
+				border-radius: 4px;
+			`;
+
+			const conflictResolutions: { [noteId: string]: 'skip' | 'overwrite' | 'rename' } = {};
+
+			conflicts.forEach((conflict, index) => {
+				const conflictItem = conflictsList.createDiv('joplin-conflict-item');
+				conflictItem.style.cssText = `
+					padding: 15px;
+					border-bottom: 1px solid var(--background-modifier-border);
+				`;
+				if (index === conflicts.length - 1) {
+					conflictItem.style.borderBottom = 'none';
+				}
+
+				// Note title and path
+				const conflictHeader = conflictItem.createDiv('joplin-conflict-header');
+				conflictHeader.style.cssText = `
+					margin-bottom: 10px;
+				`;
+
+				const noteTitle = conflictHeader.createEl('div', {
+					text: conflict.note.title || 'Untitled Note',
+					cls: 'joplin-conflict-note-title'
+				});
+				noteTitle.style.cssText = `
+					font-weight: bold;
+					margin-bottom: 5px;
+				`;
+
+				const conflictPath = conflictHeader.createEl('div', {
+					text: `Conflicts with: ${conflict.conflictPath}`,
+					cls: 'joplin-conflict-path'
+				});
+				conflictPath.style.cssText = `
+					font-size: 0.9em;
+					color: var(--text-muted);
+					font-family: var(--font-monospace);
+				`;
+
+				// Resolution options
+				const resolutionOptions = conflictItem.createDiv('joplin-conflict-resolution-options');
+				resolutionOptions.style.cssText = `
+					display: flex;
+					gap: 15px;
+					margin-top: 10px;
+				`;
+
+				// Create radio buttons for each option
+				const options = [
+					{ value: 'skip', label: 'Skip this note', description: 'Do not import this note' },
+					{ value: 'overwrite', label: 'Overwrite existing file', description: 'Replace the existing file' },
+					{ value: 'rename', label: 'Rename new file', description: 'Import with a new name (e.g., "Note 1")' }
+				];
+
+				options.forEach(option => {
+					const optionDiv = resolutionOptions.createDiv('joplin-conflict-option');
+					optionDiv.style.cssText = `
+						flex: 1;
+						padding: 10px;
+						border: 1px solid var(--background-modifier-border);
+						border-radius: 4px;
+						cursor: pointer;
+						transition: background-color 0.2s;
+					`;
+
+					const radio = optionDiv.createEl('input', {
+						type: 'radio',
+						attr: {
+							name: `conflict-${conflict.note.id}`,
+							value: option.value
+						}
+					});
+					radio.style.marginRight = '8px';
+
+					const label = optionDiv.createEl('label', { text: option.label });
+					label.style.cssText = `
+						cursor: pointer;
+						font-weight: 500;
+						display: block;
+						margin-bottom: 4px;
+					`;
+
+					const desc = optionDiv.createEl('div', {
+						text: option.description,
+						cls: 'joplin-option-description'
+					});
+					desc.style.cssText = `
+						font-size: 0.85em;
+						color: var(--text-muted);
+					`;
+
+					// Set default selection (skip)
+					if (option.value === 'skip') {
+						radio.checked = true;
+						conflictResolutions[conflict.note.id] = 'skip';
+						optionDiv.style.backgroundColor = 'var(--background-modifier-hover)';
+					}
+
+					// Event listeners
+					optionDiv.addEventListener('click', () => {
+						radio.checked = true;
+						conflictResolutions[conflict.note.id] = option.value as 'skip' | 'overwrite' | 'rename';
+
+						// Update visual selection
+						resolutionOptions.querySelectorAll('.joplin-conflict-option').forEach(opt => {
+							(opt as HTMLElement).style.backgroundColor = '';
+						});
+						optionDiv.style.backgroundColor = 'var(--background-modifier-hover)';
+					});
+
+					radio.addEventListener('change', () => {
+						if (radio.checked) {
+							conflictResolutions[conflict.note.id] = option.value as 'skip' | 'overwrite' | 'rename';
+
+							// Update visual selection
+							resolutionOptions.querySelectorAll('.joplin-conflict-option').forEach(opt => {
+								(opt as HTMLElement).style.backgroundColor = '';
+							});
+							optionDiv.style.backgroundColor = 'var(--background-modifier-hover)';
+						}
+					});
+				});
+			});
+
+			// Apply to all section
+			const applyToAllSection = dialog.createDiv('joplin-apply-to-all-section');
+			applyToAllSection.style.cssText = `
+				margin: 20px 0;
+				padding: 15px;
+				background: var(--background-secondary);
+				border-radius: 4px;
+			`;
+
+			const applyToAllLabel = applyToAllSection.createEl('label', { text: 'Apply to all conflicts:' });
+			applyToAllLabel.style.cssText = `
+				display: block;
+				margin-bottom: 10px;
+				font-weight: 500;
+			`;
+
+			const applyToAllOptions = applyToAllSection.createDiv('joplin-apply-to-all-options');
+			applyToAllOptions.style.cssText = `
+				display: flex;
+				gap: 10px;
+			`;
+
+			const applyAllButtons = [
+				{ value: 'skip', label: 'Skip All', class: 'mod-warning' },
+				{ value: 'overwrite', label: 'Overwrite All', class: 'mod-destructive' },
+				{ value: 'rename', label: 'Rename All', class: 'mod-cta' }
+			];
+
+			applyAllButtons.forEach(btn => {
+				const button = applyToAllOptions.createEl('button', {
+					text: btn.label,
+					cls: btn.class
+				});
+				button.style.cssText = `
+					flex: 1;
+					padding: 8px 12px;
+				`;
+
+				button.addEventListener('click', () => {
+					// Apply the selected resolution to all conflicts
+					conflicts.forEach(conflict => {
+						conflictResolutions[conflict.note.id] = btn.value as 'skip' | 'overwrite' | 'rename';
+
+						// Update radio buttons
+						const radio = dialog.querySelector(`input[name="conflict-${conflict.note.id}"][value="${btn.value}"]`) as HTMLInputElement;
+						if (radio) {
+							radio.checked = true;
+
+							// Update visual selection
+							const conflictItem = radio.closest('.joplin-conflict-item');
+							if (conflictItem) {
+								conflictItem.querySelectorAll('.joplin-conflict-option').forEach(opt => {
+									(opt as HTMLElement).style.backgroundColor = '';
+								});
+								const selectedOption = radio.closest('.joplin-conflict-option') as HTMLElement;
+								if (selectedOption) {
+									selectedOption.style.backgroundColor = 'var(--background-modifier-hover)';
+								}
+							}
+						}
+					});
+				});
+			});
+
+			// Dialog buttons
+			const buttonsDiv = dialog.createDiv('joplin-conflict-dialog-buttons');
+			buttonsDiv.style.cssText = `
+				display: flex;
+				gap: 10px;
+				justify-content: flex-end;
+				margin-top: 20px;
+			`;
+
+			const cancelBtn = buttonsDiv.createEl('button', { text: 'Cancel' });
+			const proceedBtn = buttonsDiv.createEl('button', { text: 'Proceed with Import', cls: 'mod-cta' });
+
+			// Event listeners
+			cancelBtn.addEventListener('click', () => {
+				document.body.removeChild(modal);
+				resolve(null);
+			});
+
+			proceedBtn.addEventListener('click', () => {
+				document.body.removeChild(modal);
+
+				// Create new import options with individual conflict resolutions
+				// For now, we'll use the most common resolution as the default
+				const resolutionCounts = { skip: 0, overwrite: 0, rename: 0 };
+				Object.values(conflictResolutions).forEach(resolution => {
+					resolutionCounts[resolution]++;
+				});
+
+				const mostCommonResolution = Object.entries(resolutionCounts)
+					.reduce((a, b) => resolutionCounts[a[0] as keyof typeof resolutionCounts] > resolutionCounts[b[0] as keyof typeof resolutionCounts] ? a : b)[0] as 'skip' | 'overwrite' | 'rename';
+
+				const resolvedOptions: ImportOptions = {
+					...importOptions,
+					conflictResolution: mostCommonResolution
+				};
+
+				resolve(resolvedOptions);
+			});
+
+			// Close on escape key
+			const handleEscape = (e: KeyboardEvent) => {
+				if (e.key === 'Escape') {
+					document.body.removeChild(modal);
+					document.removeEventListener('keydown', handleEscape);
+					resolve(null);
+				}
+			};
+			document.addEventListener('keydown', handleEscape);
+
+			// Close on backdrop click
+			modal.addEventListener('click', (e) => {
+				if (e.target === modal) {
+					document.body.removeChild(modal);
+					resolve(null);
+				}
+			});
+
+			modal.appendChild(dialog);
+			document.body.appendChild(modal);
+
+			// Focus the proceed button
+			proceedBtn.focus();
+		});
+	}
+
+	/**
 	 * Perform the actual import using ImportService
 	 */
 	private async performImport(selectedResults: SearchResult[], importOptions: ImportOptions): Promise<void> {
@@ -910,25 +1249,11 @@ export class JoplinPortalView extends ItemView {
 			// Use the import service to import notes
 			const result = await this.plugin.importService.importNotes(notesToImport, importOptions);
 
-			// Show results
-			const successCount = result.successful.length;
-			const failureCount = result.failed.length;
-
-			if (failureCount === 0) {
-				// All imports successful
-				this.showNotice(`Successfully imported ${successCount} note${successCount !== 1 ? 's' : ''} to "${importOptions.targetFolder}"`);
-			} else if (successCount === 0) {
-				// All imports failed
-				this.showNotice(`Failed to import ${failureCount} note${failureCount !== 1 ? 's' : ''}. Check console for details.`);
-				console.error('Import failures:', result.failed);
-			} else {
-				// Mixed results
-				this.showNotice(`Imported ${successCount} note${successCount !== 1 ? 's' : ''}, ${failureCount} failed. Check console for details.`);
-				console.error('Import failures:', result.failed);
-			}
+			// Show detailed results
+			this.showImportResults(result, importOptions);
 
 			// Clear import selections after successful import
-			if (successCount > 0) {
+			if (result.successful.length > 0) {
 				this.clearImportSelection();
 			}
 
@@ -936,6 +1261,312 @@ export class JoplinPortalView extends ItemView {
 			console.error('Import error:', error);
 			this.showNotice('Import failed. Please check your settings and try again.');
 		}
+	}
+
+	/**
+	 * Show detailed import results with conflict resolution feedback
+	 */
+	private showImportResults(
+		result: {
+			successful: {
+				file: any;
+				note: JoplinNote;
+				action: 'created' | 'overwritten' | 'renamed';
+				originalFilename: string;
+				finalFilename: string;
+			}[];
+			failed: { note: JoplinNote; error: string }[];
+		},
+		importOptions: ImportOptions
+	): void {
+		const successCount = result.successful.length;
+		const failureCount = result.failed.length;
+		const totalCount = successCount + failureCount;
+
+		if (failureCount === 0) {
+			// All imports successful - show detailed success message
+			const actionCounts = {
+				created: result.successful.filter(s => s.action === 'created').length,
+				overwritten: result.successful.filter(s => s.action === 'overwritten').length,
+				renamed: result.successful.filter(s => s.action === 'renamed').length
+			};
+
+			let message = `Successfully imported ${successCount} note${successCount !== 1 ? 's' : ''} to "${importOptions.targetFolder}"`;
+
+			const actionDetails: string[] = [];
+			if (actionCounts.created > 0) {
+				actionDetails.push(`${actionCounts.created} created`);
+			}
+			if (actionCounts.overwritten > 0) {
+				actionDetails.push(`${actionCounts.overwritten} overwritten`);
+			}
+			if (actionCounts.renamed > 0) {
+				actionDetails.push(`${actionCounts.renamed} renamed`);
+			}
+
+			if (actionDetails.length > 0) {
+				message += ` (${actionDetails.join(', ')})`;
+			}
+
+			this.showNotice(message);
+
+			// Log detailed results for user reference
+			if (actionCounts.renamed > 0 || actionCounts.overwritten > 0) {
+				console.log('Import details:', result.successful.map(s => ({
+					title: s.note.title,
+					action: s.action,
+					originalFilename: s.originalFilename,
+					finalFilename: s.finalFilename,
+					path: s.file.path
+				})));
+			}
+
+		} else if (successCount === 0) {
+			// All imports failed
+			this.showNotice(`Failed to import ${failureCount} note${failureCount !== 1 ? 's' : ''}. Check console for details.`);
+			console.error('Import failures:', result.failed);
+		} else {
+			// Mixed results
+			this.showNotice(`Imported ${successCount} of ${totalCount} notes. ${failureCount} failed. Check console for details.`);
+			console.error('Import failures:', result.failed);
+
+			// Also log successful imports with actions
+			console.log('Successful imports:', result.successful.map(s => ({
+				title: s.note.title,
+				action: s.action,
+				originalFilename: s.originalFilename,
+				finalFilename: s.finalFilename,
+				path: s.file.path
+			})));
+		}
+
+		// Show detailed results modal for complex imports
+		if (totalCount > 5 || (actionCounts && (actionCounts.overwritten > 0 || actionCounts.renamed > 0))) {
+			this.showDetailedImportResultsModal(result, importOptions);
+		}
+	}
+
+	/**
+	 * Show detailed import results in a modal for complex imports
+	 */
+	private showDetailedImportResultsModal(
+		result: {
+			successful: {
+				file: any;
+				note: JoplinNote;
+				action: 'created' | 'overwritten' | 'renamed';
+				originalFilename: string;
+				finalFilename: string;
+			}[];
+			failed: { note: JoplinNote; error: string }[];
+		},
+		importOptions: ImportOptions
+	): void {
+		// Create modal
+		const modal = document.createElement('div');
+		modal.className = 'joplin-import-results-modal';
+		modal.style.cssText = `
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.5);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			z-index: 1000;
+		`;
+
+		const dialog = document.createElement('div');
+		dialog.className = 'joplin-import-results-dialog';
+		dialog.style.cssText = `
+			background: var(--background-primary);
+			border: 1px solid var(--background-modifier-border);
+			border-radius: 8px;
+			padding: 20px;
+			max-width: 700px;
+			max-height: 80vh;
+			overflow-y: auto;
+			min-width: 500px;
+		`;
+
+		// Dialog title
+		const title = dialog.createEl('h2', { text: 'Import Results' });
+		title.style.marginTop = '0';
+
+		// Summary
+		const summary = dialog.createDiv('joplin-import-results-summary');
+		summary.style.cssText = `
+			background: var(--background-secondary);
+			padding: 15px;
+			border-radius: 4px;
+			margin-bottom: 20px;
+		`;
+
+		const successCount = result.successful.length;
+		const failureCount = result.failed.length;
+
+		summary.createEl('p', { text: `Import completed: ${successCount} successful, ${failureCount} failed` });
+		summary.createEl('p', { text: `Target folder: ${importOptions.targetFolder}` });
+
+		// Successful imports
+		if (result.successful.length > 0) {
+			const successSection = dialog.createDiv('joplin-import-success-section');
+			successSection.createEl('h3', { text: `✅ Successfully Imported (${result.successful.length})` });
+
+			const successList = successSection.createDiv('joplin-import-success-list');
+			successList.style.cssText = `
+				max-height: 200px;
+				overflow-y: auto;
+				border: 1px solid var(--background-modifier-border);
+				border-radius: 4px;
+				margin-bottom: 15px;
+			`;
+
+			result.successful.forEach((item, index) => {
+				const itemDiv = successList.createDiv('joplin-import-result-item');
+				itemDiv.style.cssText = `
+					padding: 10px;
+					border-bottom: 1px solid var(--background-modifier-border);
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+				`;
+				if (index === result.successful.length - 1) {
+					itemDiv.style.borderBottom = 'none';
+				}
+
+				const noteInfo = itemDiv.createDiv('joplin-import-note-info');
+				noteInfo.createEl('div', {
+					text: item.note.title || 'Untitled Note',
+					cls: 'joplin-import-note-title'
+				}).style.fontWeight = 'bold';
+
+				if (item.action !== 'created' || item.originalFilename !== item.finalFilename) {
+					const actionInfo = noteInfo.createEl('div', { cls: 'joplin-import-action-info' });
+					actionInfo.style.cssText = `
+						font-size: 0.85em;
+						color: var(--text-muted);
+						margin-top: 2px;
+					`;
+
+					if (item.action === 'overwritten') {
+						actionInfo.textContent = `Overwritten existing file: ${item.finalFilename}.md`;
+					} else if (item.action === 'renamed') {
+						actionInfo.textContent = `Renamed from "${item.originalFilename}.md" to "${item.finalFilename}.md"`;
+					} else {
+						actionInfo.textContent = `Created: ${item.finalFilename}.md`;
+					}
+				}
+
+				const actionBadge = itemDiv.createDiv('joplin-import-action-badge');
+				actionBadge.style.cssText = `
+					padding: 4px 8px;
+					border-radius: 12px;
+					font-size: 0.75em;
+					font-weight: bold;
+					text-transform: uppercase;
+				`;
+
+				switch (item.action) {
+					case 'created':
+						actionBadge.textContent = 'Created';
+						actionBadge.style.backgroundColor = 'var(--color-green)';
+						actionBadge.style.color = 'white';
+						break;
+					case 'overwritten':
+						actionBadge.textContent = 'Overwritten';
+						actionBadge.style.backgroundColor = 'var(--color-orange)';
+						actionBadge.style.color = 'white';
+						break;
+					case 'renamed':
+						actionBadge.textContent = 'Renamed';
+						actionBadge.style.backgroundColor = 'var(--color-blue)';
+						actionBadge.style.color = 'white';
+						break;
+				}
+			});
+		}
+
+		// Failed imports
+		if (result.failed.length > 0) {
+			const failureSection = dialog.createDiv('joplin-import-failure-section');
+			failureSection.createEl('h3', { text: `❌ Failed Imports (${result.failed.length})` });
+
+			const failureList = failureSection.createDiv('joplin-import-failure-list');
+			failureList.style.cssText = `
+				max-height: 200px;
+				overflow-y: auto;
+				border: 1px solid var(--background-modifier-border);
+				border-radius: 4px;
+				margin-bottom: 15px;
+			`;
+
+			result.failed.forEach((item, index) => {
+				const itemDiv = failureList.createDiv('joplin-import-result-item');
+				itemDiv.style.cssText = `
+					padding: 10px;
+					border-bottom: 1px solid var(--background-modifier-border);
+				`;
+				if (index === result.failed.length - 1) {
+					itemDiv.style.borderBottom = 'none';
+				}
+
+				itemDiv.createEl('div', {
+					text: item.note.title || 'Untitled Note',
+					cls: 'joplin-import-note-title'
+				}).style.fontWeight = 'bold';
+
+				const errorInfo = itemDiv.createEl('div', {
+					text: item.error,
+					cls: 'joplin-import-error-info'
+				});
+				errorInfo.style.cssText = `
+					font-size: 0.85em;
+					color: var(--text-error);
+					margin-top: 2px;
+				`;
+			});
+		}
+
+		// Dialog buttons
+		const buttonsDiv = dialog.createDiv('joplin-import-results-buttons');
+		buttonsDiv.style.cssText = `
+			display: flex;
+			gap: 10px;
+			justify-content: flex-end;
+			margin-top: 20px;
+		`;
+
+		const closeBtn = buttonsDiv.createEl('button', { text: 'Close', cls: 'mod-cta' });
+
+		// Event listeners
+		closeBtn.addEventListener('click', () => {
+			document.body.removeChild(modal);
+		});
+
+		// Close on escape key
+		const handleEscape = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				document.body.removeChild(modal);
+				document.removeEventListener('keydown', handleEscape);
+			}
+		};
+		document.addEventListener('keydown', handleEscape);
+
+		// Close on backdrop click
+		modal.addEventListener('click', (e) => {
+			if (e.target === modal) {
+				document.body.removeChild(modal);
+			}
+		});
+
+		modal.appendChild(dialog);
+		document.body.appendChild(modal);
+
+		// Focus the close button
+		closeBtn.focus();
 	}
 
 	/**

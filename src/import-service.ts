@@ -134,15 +134,44 @@ export class ImportService {
 	}
 
 	/**
+	 * Check if a file would conflict during import
+	 */
+	checkForConflict(joplinNote: JoplinNote, targetFolder: string): {
+		hasConflict: boolean;
+		conflictPath?: string;
+		existingFile?: TFile;
+	} {
+		const baseFilename = this.sanitizeFilename(joplinNote.title);
+		const fullPath = normalizePath(`${targetFolder}/${baseFilename}.md`);
+		const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
+
+		if (existingFile instanceof TFile) {
+			return {
+				hasConflict: true,
+				conflictPath: fullPath,
+				existingFile
+			};
+		}
+
+		return { hasConflict: false };
+	}
+
+	/**
 	 * Import a single Joplin note to Obsidian
 	 */
-	async importNote(joplinNote: JoplinNote, options: ImportOptions): Promise<TFile> {
+	async importNote(joplinNote: JoplinNote, options: ImportOptions): Promise<{
+		file: TFile;
+		action: 'created' | 'overwritten' | 'renamed';
+		originalFilename: string;
+		finalFilename: string;
+	}> {
 		// Ensure target folder exists
 		await this.ensureFolderExists(options.targetFolder);
 
 		// Sanitize and prepare filename
 		const baseFilename = this.sanitizeFilename(joplinNote.title);
 		let filename = baseFilename;
+		let action: 'created' | 'overwritten' | 'renamed' = 'created';
 
 		// Handle filename conflicts
 		const fullPath = normalizePath(`${options.targetFolder}/${filename}.md`);
@@ -154,9 +183,10 @@ export class ImportService {
 					throw new Error(`File already exists: ${filename}.md`);
 				case 'rename':
 					filename = await this.generateUniqueFilename(options.targetFolder, baseFilename);
+					action = 'renamed';
 					break;
 				case 'overwrite':
-					// Will overwrite existing file
+					action = 'overwritten';
 					break;
 			}
 		}
@@ -187,23 +217,77 @@ export class ImportService {
 		// Note: Obsidian doesn't directly support setting file creation time,
 		// but we preserve it in frontmatter for reference
 
-		return file;
+		return {
+			file,
+			action,
+			originalFilename: baseFilename,
+			finalFilename: filename
+		};
+	}
+
+	/**
+	 * Check for conflicts across multiple notes before import
+	 */
+	checkForConflicts(joplinNotes: JoplinNote[], targetFolder: string): {
+		conflicts: {
+			note: JoplinNote;
+			conflictPath: string;
+			existingFile: TFile;
+		}[];
+		noConflicts: JoplinNote[];
+	} {
+		const conflicts: {
+			note: JoplinNote;
+			conflictPath: string;
+			existingFile: TFile;
+		}[] = [];
+		const noConflicts: JoplinNote[] = [];
+
+		for (const note of joplinNotes) {
+			const conflictCheck = this.checkForConflict(note, targetFolder);
+			if (conflictCheck.hasConflict) {
+				conflicts.push({
+					note,
+					conflictPath: conflictCheck.conflictPath!,
+					existingFile: conflictCheck.existingFile!
+				});
+			} else {
+				noConflicts.push(note);
+			}
+		}
+
+		return { conflicts, noConflicts };
 	}
 
 	/**
 	 * Import multiple Joplin notes
 	 */
 	async importNotes(joplinNotes: JoplinNote[], options: ImportOptions): Promise<{
-		successful: TFile[];
+		successful: {
+			file: TFile;
+			note: JoplinNote;
+			action: 'created' | 'overwritten' | 'renamed';
+			originalFilename: string;
+			finalFilename: string;
+		}[];
 		failed: { note: JoplinNote; error: string }[];
 	}> {
-		const successful: TFile[] = [];
+		const successful: {
+			file: TFile;
+			note: JoplinNote;
+			action: 'created' | 'overwritten' | 'renamed';
+			originalFilename: string;
+			finalFilename: string;
+		}[] = [];
 		const failed: { note: JoplinNote; error: string }[] = [];
 
 		for (const note of joplinNotes) {
 			try {
-				const file = await this.importNote(note, options);
-				successful.push(file);
+				const result = await this.importNote(note, options);
+				successful.push({
+					...result,
+					note
+				});
 			} catch (error) {
 				failed.push({
 					note,

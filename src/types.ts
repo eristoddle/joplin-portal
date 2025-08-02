@@ -36,6 +36,17 @@ export interface ImportOptions {
 	conflictResolution: 'skip' | 'overwrite' | 'rename';
 }
 
+export interface ConflictInfo {
+	note: JoplinNote;
+	conflictPath: string;
+	existingFile: any; // TFile from Obsidian
+}
+
+export interface ConflictResolution {
+	action: 'skip' | 'overwrite' | 'rename';
+	applyToAll?: boolean;
+}
+
 export interface ImportResult {
 	successful: string[];
 	failed: { noteTitle: string; error: string }[];
