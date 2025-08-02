@@ -13,7 +13,7 @@
   - Implement settings persistence using Obsidian's data storage
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 3. Create Joplin API service foundation
+- [x] 3. Create Joplin API service foundation
   - Implement JoplinApiService class with HTTP client setup
   - Add authentication handling with API token
   - Create connection testing method with ping endpoint
