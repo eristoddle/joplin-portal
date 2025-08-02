@@ -3,6 +3,7 @@ import {
 	JoplinNote,
 	JoplinSearchResponse,
 	SearchOptions,
+	SearchResult,
 	JoplinApiError,
 	JoplinPortalSettings
 } from './types';
@@ -46,9 +47,9 @@ export class JoplinApiService {
 	 * Search notes using Joplin API
 	 * @param query - Search query string
 	 * @param options - Search options (fields, limit, etc.)
-	 * @returns Promise<JoplinNote[]> - Array of matching notes
+	 * @returns Promise<SearchResult[]> - Array of search results with snippets and relevance
 	 */
-	async searchNotes(query: string, options?: SearchOptions): Promise<JoplinNote[]> {
+	async searchNotes(query: string, options?: SearchOptions): Promise<SearchResult[]> {
 		if (!query.trim()) {
 			return [];
 		}
@@ -71,10 +72,166 @@ export class JoplinApiService {
 			const response = await this.makeRequest(`/search?${params.toString()}`);
 			const data: JoplinSearchResponse = await response.json;
 
-			return data.items || [];
+			// Transform JoplinNote[] to SearchResult[]
+			return this.transformToSearchResults(data.items || [], query);
 		} catch (error) {
 			this.handleError(error, 'Failed to search notes');
 			return [];
+		}
+	}
+
+	/**
+	 * Transform JoplinNote array to SearchResult array
+	 * @param notes - Array of JoplinNote objects from API
+	 * @param query - Original search query for snippet generation
+	 * @returns SearchResult[] - Transformed search results
+	 */
+	private transformToSearchResults(notes: JoplinNote[], query: string): SearchResult[] {
+		return notes.map((note, index) => ({
+			note,
+			snippet: this.generateSnippet(note.body, query),
+			relevance: this.calculateRelevance(note, query, index),
+			selected: false
+		}));
+	}
+
+	/**
+	 * Generate a snippet from note body highlighting search terms
+	 * @param body - Full note body text
+	 * @param query - Search query to highlight
+	 * @returns string - Generated snippet with context around search terms
+	 */
+	private generateSnippet(body: string, query: string): string {
+		if (!body || !query) {
+			return body ? body.substring(0, 150) + (body.length > 150 ? '...' : '') : '';
+		}
+
+		// Clean the body text (remove markdown formatting for snippet)
+		const cleanBody = body.replace(/[#*_`~]/g, '').replace(/\n+/g, ' ').trim();
+
+		if (cleanBody.length <= 150) {
+			return cleanBody;
+		}
+
+		// Find the first occurrence of any search term
+		const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 2);
+		const lowerBody = cleanBody.toLowerCase();
+
+		let bestMatch = -1;
+		let bestTerm = '';
+
+		for (const term of searchTerms) {
+			const index = lowerBody.indexOf(term);
+			if (index !== -1 && (bestMatch === -1 || index < bestMatch)) {
+				bestMatch = index;
+				bestTerm = term;
+			}
+		}
+
+		if (bestMatch === -1) {
+			// No search terms found, return beginning of text
+			return cleanBody.substring(0, 150) + '...';
+		}
+
+		// Create snippet centered around the match
+		const snippetLength = 150;
+		const termLength = bestTerm.length;
+		const contextBefore = Math.floor((snippetLength - termLength) / 2);
+
+		let start = Math.max(0, bestMatch - contextBefore);
+		let end = Math.min(cleanBody.length, start + snippetLength);
+
+		// Adjust start if we're near the end
+		if (end - start < snippetLength && start > 0) {
+			start = Math.max(0, end - snippetLength);
+		}
+
+		let snippet = cleanBody.substring(start, end);
+
+		// Add ellipsis if we're not at the beginning/end
+		if (start > 0) snippet = '...' + snippet;
+		if (end < cleanBody.length) snippet = snippet + '...';
+
+		return snippet;
+	}
+
+	/**
+	 * Calculate relevance score for search result
+	 * @param note - The note to score
+	 * @param query - Search query
+	 * @param index - Position in search results (for tie-breaking)
+	 * @returns number - Relevance score (higher is more relevant)
+	 */
+	private calculateRelevance(note: JoplinNote, query: string, index: number): number {
+		const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
+		let score = 0;
+
+		const title = note.title.toLowerCase();
+		const body = note.body.toLowerCase();
+
+		// Title matches are worth more
+		for (const term of searchTerms) {
+			if (title.includes(term)) {
+				score += 10;
+				// Exact title match gets bonus
+				if (title === term) {
+					score += 20;
+				}
+			}
+			if (body.includes(term)) {
+				score += 1;
+			}
+		}
+
+		// Newer notes get slight boost (within last 30 days)
+		const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+		if (note.updated_time > thirtyDaysAgo) {
+			score += 2;
+		}
+
+		// Use negative index for tie-breaking (earlier results preferred)
+		return score - (index * 0.01);
+	}
+
+	/**
+	 * Search notes with pagination support
+	 * @param query - Search query string
+	 * @param options - Search options including pagination
+	 * @returns Promise<{results: SearchResult[], hasMore: boolean}> - Paginated search results
+	 */
+	async searchNotesWithPagination(
+		query: string,
+		options?: SearchOptions
+	): Promise<{results: SearchResult[], hasMore: boolean}> {
+		if (!query.trim()) {
+			return { results: [], hasMore: false };
+		}
+
+		try {
+			const params = new URLSearchParams({
+				query: query.trim(),
+				fields: options?.fields?.join(',') || 'id,title,body,created_time,updated_time,parent_id',
+				limit: (options?.limit || 50).toString(),
+				page: (options?.page || 1).toString()
+			});
+
+			if (options?.order_by) {
+				params.append('order_by', options.order_by);
+			}
+			if (options?.order_dir) {
+				params.append('order_dir', options.order_dir);
+			}
+
+			const response = await this.makeRequest(`/search?${params.toString()}`);
+			const data: JoplinSearchResponse = await response.json;
+
+			return {
+				results: this.transformToSearchResults(data.items || [], query),
+				hasMore: data.has_more || false
+			};
+		} catch (error) {
+			this.handleError(error, 'Failed to search notes with pagination');
+			return { results: [], hasMore: false };
 		}
 	}
 
