@@ -300,7 +300,7 @@ export class JoplinApiService {
 	private async searchNotesInternal(query: string, options?: SearchOptions): Promise<SearchResult[]> {
 		const params = new URLSearchParams({
 			query: query.trim(),
-			fields: options?.fields?.join(',') || 'id,title,body,created_time,updated_time,parent_id,tags',
+			fields: options?.fields?.join(',') || 'id,title,body,created_time,updated_time,parent_id',
 			limit: (options?.limit || 50).toString(),
 			page: (options?.page || 1).toString()
 		});
