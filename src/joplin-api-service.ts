@@ -8,8 +8,11 @@ import {
 	JoplinPortalSettings,
 	RetryConfig,
 	RateLimitConfig,
-	RequestQueueItem
+	RequestQueueItem,
+	SearchValidationResult,
+	TagSearchOptions
 } from './types';
+import { SearchCache } from './search-cache';
 import { ErrorHandler } from './error-handler';
 import { RetryUtility } from './retry-utility';
 
@@ -26,6 +29,7 @@ export class JoplinApiService {
 	private activeRequests = 0;
 	private requestTimestamps: number[] = [];
 	private isProcessingQueue = false;
+	private searchCache: SearchCache;
 	private connectionTestWithRetry: (...args: any[]) => Promise<boolean>;
 	private searchNotesWithRetry: (...args: any[]) => Promise<SearchResult[]>;
 	private getNoteWithRetry: (...args: any[]) => Promise<JoplinNote | null>;
@@ -33,6 +37,9 @@ export class JoplinApiService {
 	constructor(settings: JoplinPortalSettings) {
 		this.baseUrl = settings.serverUrl.replace(/\/$/, ''); // Remove trailing slash
 		this.token = settings.apiToken;
+
+		// Initialize search cache
+		this.searchCache = new SearchCache(50, 10); // 50 entries, 10 minutes TTL
 
 		// Configure retry behavior
 		this.retryConfig = {
@@ -78,9 +85,10 @@ export class JoplinApiService {
 		this.baseUrl = settings.serverUrl.replace(/\/$/, '');
 		this.token = settings.apiToken;
 
-		// Clear request history when settings change
+		// Clear request history and cache when settings change
 		this.requestTimestamps = [];
 		this.requestQueue = [];
+		this.searchCache.clear();
 	}
 
 	/**
@@ -115,13 +123,121 @@ export class JoplinApiService {
 	}
 
 	/**
-	 * Search notes using Joplin API with retry logic and error handling
+	 * Validate search query and options
+	 * @param query - Search query string
+	 * @param options - Search options
+	 * @returns SearchValidationResult - Validation result with errors and warnings
+	 */
+	validateSearchQuery(query: string, options?: SearchOptions): SearchValidationResult {
+		const errors: string[] = [];
+		const warnings: string[] = [];
+		let normalizedQuery = query.trim();
+
+		// Check if query is empty
+		if (!normalizedQuery) {
+			errors.push('Search query cannot be empty');
+			return { isValid: false, errors, warnings };
+		}
+
+		// Check query length limits
+		if (normalizedQuery.length > 1000) {
+			errors.push('Search query is too long (maximum 1000 characters)');
+		}
+
+		// Check for potentially problematic characters
+		const problematicChars = /[<>{}[\]\\]/g;
+		if (problematicChars.test(normalizedQuery)) {
+			warnings.push('Query contains special characters that might affect search results');
+		}
+
+		// Validate search options
+		if (options) {
+			if (options.limit && (options.limit < 1 || options.limit > 100)) {
+				warnings.push('Search limit should be between 1 and 100 for optimal performance');
+			}
+
+			if (options.page && options.page < 1) {
+				errors.push('Page number must be greater than 0');
+			}
+
+			if (options.tags && options.tags.length > 10) {
+				warnings.push('Searching with many tags may slow down results');
+			}
+		}
+
+		// Normalize query for better search results
+		normalizedQuery = normalizedQuery
+			.replace(/\s+/g, ' ') // Replace multiple spaces with single space
+			.toLowerCase(); // Convert to lowercase for consistent caching
+
+		return {
+			isValid: errors.length === 0,
+			errors,
+			warnings,
+			normalizedQuery
+		};
+	}
+
+	/**
+	 * Search notes using Joplin API with retry logic, caching, and error handling
 	 * @param query - Search query string
 	 * @param options - Search options (fields, limit, etc.)
 	 * @returns Promise<SearchResult[]> - Array of search results with snippets and relevance
 	 */
 	async searchNotes(query: string, options?: SearchOptions): Promise<SearchResult[]> {
-		if (!query.trim()) {
+		// Validate query first
+		const validation = this.validateSearchQuery(query, options);
+		if (!validation.isValid) {
+			console.warn('Joplin Portal: Invalid search query:', validation.errors);
+			return [];
+		}
+
+		// Show warnings if any
+		if (validation.warnings.length > 0) {
+			console.warn('Joplin Portal: Search warnings:', validation.warnings);
+		}
+
+		const normalizedQuery = validation.normalizedQuery || query.trim();
+
+		// Check cache first
+		const cachedResults = this.searchCache.get(normalizedQuery, options);
+		if (cachedResults) {
+			console.log('Joplin Portal: Using cached search results');
+			return cachedResults;
+		}
+
+		try {
+			// Check if offline first
+			if (!ErrorHandler.isOnline()) {
+				const offlineError = ErrorHandler.createOfflineError();
+				ErrorHandler.showErrorNotice(offlineError);
+				return [];
+			}
+
+			const results = await this.searchNotesWithRetry(normalizedQuery, options);
+
+			// Cache the results
+			this.searchCache.set(normalizedQuery, results, options);
+
+			return results;
+		} catch (error) {
+			const userError = ErrorHandler.handleApiError(error, 'Search notes');
+			ErrorHandler.showErrorNotice(userError);
+			ErrorHandler.logDetailedError(error, 'Search notes failed', {
+				query: normalizedQuery,
+				options
+			});
+			return [];
+		}
+	}
+
+	/**
+	 * Search notes by tags using Joplin API
+	 * @param tagOptions - Tag search options
+	 * @returns Promise<SearchResult[]> - Array of search results
+	 */
+	async searchNotesByTags(tagOptions: TagSearchOptions): Promise<SearchResult[]> {
+		if (!tagOptions.tags || tagOptions.tags.length === 0) {
 			return [];
 		}
 
@@ -133,14 +249,47 @@ export class JoplinApiService {
 				return [];
 			}
 
-			return await this.searchNotesWithRetry(query, options);
-		} catch (error) {
-			const userError = ErrorHandler.handleApiError(error, 'Search notes');
-			ErrorHandler.showErrorNotice(userError);
-			ErrorHandler.logDetailedError(error, 'Search notes failed', {
-				query,
-				options
+			// Build tag query - Joplin supports tag: prefix for tag searches
+			const tagQueries = tagOptions.tags.map(tag => `tag:${tag.replace(/\s+/g, '_')}`);
+			let searchQuery: string;
+
+			if (tagOptions.operator === 'AND') {
+				// For AND operation, combine all tag queries
+				searchQuery = tagQueries.join(' ');
+			} else {
+				// For OR operation, use parentheses and OR
+				searchQuery = `(${tagQueries.join(' OR ')})`;
+			}
+
+			// Add text query if provided
+			if (tagOptions.includeText && tagOptions.textQuery) {
+				const textQuery = tagOptions.textQuery.trim();
+				if (textQuery) {
+					searchQuery = `${searchQuery} ${textQuery}`;
+				}
+			}
+
+			// Check cache first
+			const cacheKey = `tags:${JSON.stringify(tagOptions)}`;
+			const cachedResults = this.searchCache.get(cacheKey);
+			if (cachedResults) {
+				console.log('Joplin Portal: Using cached tag search results');
+				return cachedResults;
+			}
+
+			const results = await this.searchNotesWithRetry(searchQuery, {
+				searchType: 'tag',
+				tags: tagOptions.tags
 			});
+
+			// Cache the results
+			this.searchCache.set(cacheKey, results);
+
+			return results;
+		} catch (error) {
+			const userError = ErrorHandler.handleApiError(error, 'Search notes by tags');
+			ErrorHandler.showErrorNotice(userError);
+			ErrorHandler.logDetailedError(error, 'Tag search failed', { tagOptions });
 			return [];
 		}
 	}
@@ -151,7 +300,7 @@ export class JoplinApiService {
 	private async searchNotesInternal(query: string, options?: SearchOptions): Promise<SearchResult[]> {
 		const params = new URLSearchParams({
 			query: query.trim(),
-			fields: options?.fields?.join(',') || 'id,title,body,created_time,updated_time,parent_id',
+			fields: options?.fields?.join(',') || 'id,title,body,created_time,updated_time,parent_id,tags',
 			limit: (options?.limit || 50).toString(),
 			page: (options?.page || 1).toString()
 		});
@@ -646,5 +795,38 @@ export class JoplinApiService {
 			hasToken: !!this.token,
 			baseUrl: this.baseUrl || undefined
 		};
+	}
+
+	/**
+	 * Get search cache statistics for debugging
+	 */
+	getCacheStats(): any {
+		return this.searchCache.getStats();
+	}
+
+	/**
+	 * Clear search cache
+	 */
+	clearSearchCache(): void {
+		this.searchCache.clear();
+	}
+
+	/**
+	 * Invalidate cache entries related to specific keywords
+	 * Useful when notes are imported or modified
+	 */
+	invalidateSearchCache(keywords: string[]): void {
+		this.searchCache.invalidateRelated(keywords);
+	}
+
+	/**
+	 * Get available tags from recent search results (if supported by API)
+	 * This is a helper method to suggest tags for tag-based searches
+	 */
+	getAvailableTags(): string[] {
+		// This would ideally call a Joplin API endpoint to get all tags
+		// For now, we'll return an empty array as this depends on Joplin API support
+		// In a real implementation, you might cache tags from search results
+		return [];
 	}
 }

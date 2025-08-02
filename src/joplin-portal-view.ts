@@ -9,6 +9,8 @@ export class JoplinPortalView extends ItemView {
 	plugin: JoplinPortalPlugin;
 	searchInput: HTMLInputElement;
 	searchButton: HTMLButtonElement;
+	tagSearchInput: HTMLInputElement;
+	searchTypeSelect: HTMLSelectElement;
 	resultsContainer: HTMLElement;
 	previewContainer: HTMLElement;
 	importOptionsPanel: HTMLElement;
@@ -17,6 +19,9 @@ export class JoplinPortalView extends ItemView {
 	applyTemplateCheckbox: HTMLInputElement;
 	templatePathInput: HTMLInputElement;
 	conflictResolutionSelect: HTMLSelectElement;
+	private searchDebounceTimer: NodeJS.Timeout | null = null;
+	private lastSearchQuery = '';
+	private isSearching = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: JoplinPortalPlugin) {
 		super(leaf);
@@ -48,27 +53,68 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
-		// Cleanup if needed
+		// Cleanup debounce timer
+		if (this.searchDebounceTimer) {
+			clearTimeout(this.searchDebounceTimer);
+			this.searchDebounceTimer = null;
+		}
 	}
 
 	private createSearchInterface(container: Element): void {
 		const searchContainer = container.createDiv('joplin-search-container');
 
-		// Search input
-		this.searchInput = searchContainer.createEl('input', {
+		// Search type selector
+		const searchTypeContainer = searchContainer.createDiv('joplin-search-type-container');
+		searchTypeContainer.createEl('label', { text: 'Search type:' });
+		this.searchTypeSelect = searchTypeContainer.createEl('select', {
+			cls: 'joplin-search-type-select'
+		});
+		this.searchTypeSelect.createEl('option', { value: 'text', text: 'Text Search' });
+		this.searchTypeSelect.createEl('option', { value: 'tag', text: 'Tag Search' });
+		this.searchTypeSelect.createEl('option', { value: 'combined', text: 'Combined' });
+
+		// Search inputs container
+		const searchInputsContainer = searchContainer.createDiv('joplin-search-inputs');
+
+		// Main search input
+		this.searchInput = searchInputsContainer.createEl('input', {
 			type: 'text',
 			placeholder: 'Search Joplin notes...',
 			cls: 'joplin-search-input'
 		});
 
+		// Tag search input (initially hidden)
+		this.tagSearchInput = searchInputsContainer.createEl('input', {
+			type: 'text',
+			placeholder: 'Enter tags separated by commas (e.g., work, project)',
+			cls: 'joplin-tag-search-input'
+		});
+		this.tagSearchInput.style.display = 'none';
+
 		// Search button
-		this.searchButton = searchContainer.createEl('button', {
+		this.searchButton = searchInputsContainer.createEl('button', {
 			text: 'Search',
 			cls: 'joplin-search-button mod-cta'
 		});
 
+		// Cache status indicator
+		const cacheStatus = searchContainer.createDiv('joplin-cache-status');
+		cacheStatus.style.fontSize = '0.8em';
+		cacheStatus.style.color = 'var(--text-muted)';
+		cacheStatus.style.marginTop = '4px';
+
 		// Add event listeners
+		this.searchTypeSelect.addEventListener('change', () => {
+			this.updateSearchInterface();
+		});
+
 		this.searchInput.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				this.performSearch();
+			}
+		});
+
+		this.tagSearchInput.addEventListener('keydown', (e) => {
 			if (e.key === 'Enter') {
 				this.performSearch();
 			}
@@ -78,9 +124,13 @@ export class JoplinPortalView extends ItemView {
 			this.performSearch();
 		});
 
-		// Add input debouncing for real-time search (future enhancement)
+		// Add debounced search on input
 		this.searchInput.addEventListener('input', () => {
-			// Placeholder for debounced search implementation
+			this.debouncedSearch();
+		});
+
+		this.tagSearchInput.addEventListener('input', () => {
+			this.debouncedSearch();
 		});
 
 		// Add keyboard navigation for results
@@ -93,6 +143,9 @@ export class JoplinPortalView extends ItemView {
 				this.navigateResults('up');
 			}
 		});
+
+		// Update interface based on initial selection
+		this.updateSearchInterface();
 	}
 
 	private createResultsContainer(container: Element): void {
@@ -206,17 +259,97 @@ export class JoplinPortalView extends ItemView {
 		this.previewContainer.createDiv('joplin-no-preview').setText('Select a note to preview');
 	}
 
-	private async performSearch(): Promise<void> {
-		const query = this.searchInput.value.trim();
+	/**
+	 * Update search interface based on selected search type
+	 */
+	private updateSearchInterface(): void {
+		const searchType = this.searchTypeSelect.value;
 
-		if (!query) {
-			this.displayNoResults('Please enter a search query');
+		switch (searchType) {
+			case 'text':
+				this.searchInput.style.display = 'block';
+				this.tagSearchInput.style.display = 'none';
+				this.searchInput.placeholder = 'Search Joplin notes...';
+				break;
+			case 'tag':
+				this.searchInput.style.display = 'none';
+				this.tagSearchInput.style.display = 'block';
+				break;
+			case 'combined':
+				this.searchInput.style.display = 'block';
+				this.tagSearchInput.style.display = 'block';
+				this.searchInput.placeholder = 'Search text in notes...';
+				break;
+		}
+	}
+
+	/**
+	 * Debounced search to prevent excessive API calls
+	 */
+	private debouncedSearch(): void {
+		// Clear existing timer
+		if (this.searchDebounceTimer) {
+			clearTimeout(this.searchDebounceTimer);
+		}
+
+		// Don't search if already searching
+		if (this.isSearching) {
 			return;
 		}
+
+		// Set new timer for 500ms delay
+		this.searchDebounceTimer = setTimeout(() => {
+			this.performSearch();
+		}, 500);
+	}
+
+	/**
+	 * Update cache status display
+	 */
+	private updateCacheStatus(): void {
+		const cacheStatus = this.containerEl.querySelector('.joplin-cache-status');
+		if (cacheStatus) {
+			const stats = this.plugin.joplinService.getCacheStats();
+			const hitRatio = stats.hits + stats.misses > 0
+				? Math.round((stats.hits / (stats.hits + stats.misses)) * 100)
+				: 0;
+
+			cacheStatus.textContent = `Cache: ${stats.size} entries, ${hitRatio}% hit rate`;
+		}
+	}
+
+	private async performSearch(): Promise<void> {
+		const searchType = this.searchTypeSelect.value;
+		let query = '';
+		let tagQuery = '';
+
+		// Get queries based on search type
+		if (searchType === 'text' || searchType === 'combined') {
+			query = this.searchInput.value.trim();
+		}
+		if (searchType === 'tag' || searchType === 'combined') {
+			tagQuery = this.tagSearchInput.value.trim();
+		}
+
+		// Validate input
+		if (!query && !tagQuery) {
+			this.displayNoResults('Please enter a search query or tags');
+			return;
+		}
+
+		// Prevent duplicate searches
+		const currentSearchKey = `${searchType}:${query}:${tagQuery}`;
+		if (currentSearchKey === this.lastSearchQuery && this.isSearching) {
+			return;
+		}
+
+		this.lastSearchQuery = currentSearchKey;
+		this.isSearching = true;
 
 		// Check if API service is available and configured
 		if (!this.plugin.joplinService.isConfigured()) {
 			this.displayNoResults('Please configure your Joplin server connection in settings');
+			this.isSearching = false;
 			return;
 		}
 
@@ -225,6 +358,7 @@ export class JoplinPortalView extends ItemView {
 			const offlineError = ErrorHandler.createOfflineError();
 			this.displayNoResults(offlineError.message);
 			ErrorHandler.showErrorNotice(offlineError);
+			this.isSearching = false;
 			return;
 		}
 
@@ -232,16 +366,53 @@ export class JoplinPortalView extends ItemView {
 		this.displayLoading();
 
 		try {
-			// Use actual API service to search notes (error handling is done in the service)
-			const results = await this.plugin.joplinService.searchNotes(query, {
-				limit: this.plugin.settings.searchLimit || 50
-			});
+			let results: SearchResult[] = [];
+
+			if (searchType === 'tag') {
+				// Tag-only search
+				const tags = tagQuery.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+				if (tags.length > 0) {
+					results = await this.plugin.joplinService.searchNotesByTags({
+						tags,
+						operator: 'OR', // Default to OR for multiple tags
+						includeText: false
+					});
+				}
+			} else if (searchType === 'combined') {
+				// Combined text and tag search
+				const tags = tagQuery.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+				if (tags.length > 0) {
+					results = await this.plugin.joplinService.searchNotesByTags({
+						tags,
+						operator: 'OR',
+						includeText: true,
+						textQuery: query
+					});
+				} else if (query) {
+					// Fall back to text search if no tags provided
+					results = await this.plugin.joplinService.searchNotes(query, {
+						limit: this.plugin.settings.searchLimit || 50
+					});
+				}
+			} else {
+				// Text-only search
+				results = await this.plugin.joplinService.searchNotes(query, {
+					limit: this.plugin.settings.searchLimit || 50
+				});
+			}
 
 			this.displayResults(results);
+			this.updateCacheStatus();
 		} catch (error) {
 			// This should rarely happen as the service handles most errors
-			ErrorHandler.logDetailedError(error, 'Search failed in view layer', { query });
+			ErrorHandler.logDetailedError(error, 'Search failed in view layer', {
+				searchType,
+				query,
+				tagQuery
+			});
 			this.displayNoResults('Search failed. Please try again.');
+		} finally {
+			this.isSearching = false;
 		}
 	}
 
@@ -1297,13 +1468,15 @@ export class JoplinPortalView extends ItemView {
 		const failureCount = result.failed.length;
 		const totalCount = successCount + failureCount;
 
+		// Calculate action counts for all cases
+		const actionCounts = {
+			created: result.successful.filter(s => s.action === 'created').length,
+			overwritten: result.successful.filter(s => s.action === 'overwritten').length,
+			renamed: result.successful.filter(s => s.action === 'renamed').length
+		};
+
 		if (failureCount === 0) {
 			// All imports successful - show detailed success message
-			const actionCounts = {
-				created: result.successful.filter(s => s.action === 'created').length,
-				overwritten: result.successful.filter(s => s.action === 'overwritten').length,
-				renamed: result.successful.filter(s => s.action === 'renamed').length
-			};
 
 			let message = `Successfully imported ${successCount} note${successCount !== 1 ? 's' : ''} to "${importOptions.targetFolder}"`;
 

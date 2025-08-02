@@ -67,6 +67,8 @@ export interface SearchOptions {
 	page?: number;
 	order_by?: string;
 	order_dir?: 'ASC' | 'DESC';
+	tags?: string[];
+	searchType?: 'text' | 'tag' | 'combined';
 }
 
 export interface JoplinApiError extends Error {
@@ -102,6 +104,20 @@ export interface RequestQueueItem {
 	reject: (error: any) => void;
 	timestamp: number;
 	retryCount: number;
+}
+
+export interface SearchValidationResult {
+	isValid: boolean;
+	errors: string[];
+	warnings: string[];
+	normalizedQuery?: string;
+}
+
+export interface TagSearchOptions {
+	tags: string[];
+	operator: 'AND' | 'OR';
+	includeText?: boolean;
+	textQuery?: string;
 }
 
 export const DEFAULT_SETTINGS: JoplinPortalSettings = {

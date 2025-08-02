@@ -18,7 +18,13 @@ export default class JoplinPortalPlugin extends Plugin {
 
 		// Initialize services
 		this.joplinService = new JoplinApiService(this.settings);
-		this.importService = new ImportService(this.app);
+		this.importService = new ImportService(this.app, (importedNotes) => {
+			// Invalidate search cache when notes are imported
+			const keywords = importedNotes.map(note => note.title).concat(
+				importedNotes.flatMap(note => note.tags || [])
+			);
+			this.joplinService.invalidateSearchCache(keywords);
+		});
 
 		// Set up offline/online detection
 		this.setupOfflineDetection();
@@ -58,6 +64,24 @@ export default class JoplinPortalPlugin extends Plugin {
 			name: 'Clear Joplin Request Queue',
 			callback: () => {
 				this.clearRequestQueue();
+			}
+		});
+
+		// Add command to clear search cache
+		this.addCommand({
+			id: 'clear-joplin-cache',
+			name: 'Clear Joplin Search Cache',
+			callback: () => {
+				this.clearSearchCache();
+			}
+		});
+
+		// Add command to show cache statistics
+		this.addCommand({
+			id: 'show-joplin-cache-stats',
+			name: 'Show Joplin Cache Statistics',
+			callback: () => {
+				this.showCacheStatistics();
 			}
 		});
 
@@ -196,5 +220,50 @@ export default class JoplinPortalPlugin extends Plugin {
 
 		this.joplinService.clearQueue();
 		new Notice(`🗑️ Cleared ${queueStatus.queueLength} pending requests from queue`, 3000);
+	}
+
+	/**
+	 * Clear the search cache
+	 */
+	private clearSearchCache(): void {
+		if (!this.joplinService) {
+			new Notice('❌ Joplin service not initialized', 3000);
+			return;
+		}
+
+		const stats = this.joplinService.getCacheStats();
+
+		if (stats.size === 0) {
+			new Notice('ℹ️ Search cache is already empty', 3000);
+			return;
+		}
+
+		this.joplinService.clearSearchCache();
+		new Notice(`🗑️ Cleared ${stats.size} entries from search cache`, 3000);
+	}
+
+	/**
+	 * Show cache statistics
+	 */
+	private showCacheStatistics(): void {
+		if (!this.joplinService) {
+			new Notice('❌ Joplin service not initialized', 3000);
+			return;
+		}
+
+		const stats = this.joplinService.getCacheStats();
+		const hitRatio = stats.hits + stats.misses > 0
+			? Math.round((stats.hits / (stats.hits + stats.misses)) * 100)
+			: 0;
+
+		new Notice(
+			`📊 Search Cache Statistics\n` +
+			`📦 Entries: ${stats.size}\n` +
+			`✅ Hits: ${stats.hits}\n` +
+			`❌ Misses: ${stats.misses}\n` +
+			`🎯 Hit Rate: ${hitRatio}%\n` +
+			`🗑️ Evictions: ${stats.evictions}`,
+			8000
+		);
 	}
 }

@@ -10,12 +10,40 @@
 /* Search Interface */
 .joplin-search-container {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.joplin-search-type-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.joplin-search-type-container label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.joplin-search-type-select {
+  padding: 4px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 12px;
+}
+
+.joplin-search-inputs {
+  display: flex;
+  gap: 8px;
   align-items: center;
 }
 
-.joplin-search-input {
+.joplin-search-input,
+.joplin-tag-search-input {
   flex: 1;
   padding: 8px 12px;
   border: 1px solid var(--background-modifier-border);
@@ -23,11 +51,25 @@
   background: var(--background-primary);
   color: var(--text-normal);
   font-size: 14px;
+  margin-bottom: 4px;
 }
 
-.joplin-search-input:focus {
+.joplin-tag-search-input {
+  border-color: var(--color-accent);
+  border-style: dashed;
+}
+
+.joplin-search-input:focus,
+.joplin-tag-search-input:focus {
   outline: none;
   border-color: var(--interactive-accent);
+}
+
+.joplin-cache-status {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 2px;
 }
 
 .joplin-search-button {

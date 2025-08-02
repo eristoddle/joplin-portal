@@ -4,9 +4,11 @@ import { ErrorHandler } from './error-handler';
 
 export class ImportService {
 	private app: App;
+	private onImportComplete?: (importedNotes: JoplinNote[]) => void;
 
-	constructor(app: App) {
+	constructor(app: App, onImportComplete?: (importedNotes: JoplinNote[]) => void) {
 		this.app = app;
+		this.onImportComplete = onImportComplete;
 	}
 
 	/**
@@ -338,6 +340,12 @@ export class ImportService {
 
 		// Log final results
 		console.log(`Joplin Portal: Import completed. ${successful.length} successful, ${failed.length} failed`);
+
+		// Invalidate search cache for imported notes
+		if (successful.length > 0 && this.onImportComplete) {
+			const importedNotes = successful.map(result => result.note);
+			this.onImportComplete(importedNotes);
+		}
 
 		// Show summary notice
 		if (successful.length > 0 && failed.length === 0) {
