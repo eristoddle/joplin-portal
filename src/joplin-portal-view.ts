@@ -75,6 +75,17 @@ export class JoplinPortalView extends ItemView {
 		this.searchInput.addEventListener('input', () => {
 			// Placeholder for debounced search implementation
 		});
+
+		// Add keyboard navigation for results
+		this.searchInput.addEventListener('keydown', (e) => {
+			if (e.key === 'ArrowDown' && this.currentResults.length > 0) {
+				e.preventDefault();
+				this.navigateResults('down');
+			} else if (e.key === 'ArrowUp' && this.currentResults.length > 0) {
+				e.preventDefault();
+				this.navigateResults('up');
+			}
+		});
 	}
 
 	private createResultsContainer(container: Element): void {
@@ -119,13 +130,61 @@ export class JoplinPortalView extends ItemView {
 		this.displayLoading();
 
 		try {
-			// This will be implemented when the API service is integrated
-			// For now, show a placeholder message
-			this.displayNoResults('Search functionality will be connected to Joplin API service in the next task');
+			// For now, show mock results to demonstrate the search results display
+			// This will be replaced with actual API integration in the next task
+			const mockResults = this.createMockSearchResults(query);
+
+			// Simulate API delay
+			setTimeout(() => {
+				this.displayResults(mockResults);
+			}, 500);
 		} catch (error) {
 			console.error('Search error:', error);
 			this.displayNoResults('Search failed. Please check your connection settings.');
 		}
+	}
+
+	/**
+	 * Create mock search results for testing the display functionality
+	 * This will be removed when actual API integration is implemented
+	 */
+	private createMockSearchResults(query: string): SearchResult[] {
+		const mockNotes: JoplinNote[] = [
+			{
+				id: '1',
+				title: `Meeting Notes - ${query} Discussion`,
+				body: `This is a detailed note about ${query} that contains important information and insights from our recent meeting. The discussion covered various aspects and considerations.`,
+				created_time: Date.now() - 86400000, // 1 day ago
+				updated_time: Date.now() - 3600000, // 1 hour ago
+				parent_id: 'folder1',
+				tags: ['meeting', 'important', 'project']
+			},
+			{
+				id: '2',
+				title: `Research on ${query}`,
+				body: `Comprehensive research findings about ${query}. This document includes various sources, references, and detailed analysis of the topic.`,
+				created_time: Date.now() - 172800000, // 2 days ago
+				updated_time: Date.now() - 172800000, // Same as created
+				parent_id: 'folder2',
+				tags: ['research', 'analysis']
+			},
+			{
+				id: '3',
+				title: 'Quick Note',
+				body: `A brief note mentioning ${query} in passing. Not much detail here, just a quick reminder.`,
+				created_time: Date.now() - 3600000, // 1 hour ago
+				updated_time: Date.now() - 1800000, // 30 minutes ago
+				parent_id: 'folder1',
+				tags: ['quick', 'reminder', 'todo', 'urgent', 'followup']
+			}
+		];
+
+		return mockNotes.map((note, index) => ({
+			note,
+			snippet: note.body.substring(0, 150) + (note.body.length > 150 ? '...' : ''),
+			relevance: 1 - (index * 0.1),
+			selected: false
+		}));
 	}
 
 	private displayLoading(): void {
@@ -149,30 +208,72 @@ export class JoplinPortalView extends ItemView {
 			return;
 		}
 
+		// Create results list container
+		const resultsList = this.resultsContainer.createDiv('joplin-results-list');
+
 		results.forEach((result, index) => {
-			const resultItem = this.resultsContainer.createDiv('joplin-result-item');
+			const resultItem = resultsList.createDiv('joplin-result-item');
+			resultItem.setAttribute('data-index', index.toString());
 
-			// Note title
-			const titleEl = resultItem.createDiv('joplin-result-title');
-			titleEl.setText(result.note.title);
+			// Create result content wrapper
+			const resultContent = resultItem.createDiv('joplin-result-content');
 
-			// Note snippet
-			const snippetEl = resultItem.createDiv('joplin-result-snippet');
-			snippetEl.setText(result.snippet);
+			// Note title with proper truncation
+			const titleEl = resultContent.createDiv('joplin-result-title');
+			titleEl.setText(result.note.title || 'Untitled Note');
+			titleEl.setAttribute('title', result.note.title || 'Untitled Note'); // Tooltip for full title
 
-			// Note metadata
-			const metadataEl = resultItem.createDiv('joplin-result-metadata');
-			const createdDate = new Date(result.note.created_time).toLocaleDateString();
-			metadataEl.setText(`Created: ${createdDate}`);
+			// Note snippet with proper formatting
+			const snippetEl = resultContent.createDiv('joplin-result-snippet');
+			const cleanSnippet = this.formatSnippet(result.snippet);
+			snippetEl.setText(cleanSnippet);
+			snippetEl.setAttribute('title', cleanSnippet); // Tooltip for full snippet
+
+			// Note metadata with enhanced information
+			const metadataEl = resultContent.createDiv('joplin-result-metadata');
+			const metadataContent = this.createMetadataContent(result.note);
+			metadataEl.appendChild(metadataContent);
+
+			// Add tags if available
+			if (result.note.tags && result.note.tags.length > 0) {
+				const tagsEl = resultContent.createDiv('joplin-result-tags');
+				result.note.tags.slice(0, 3).forEach(tag => { // Show max 3 tags
+					const tagEl = tagsEl.createSpan('joplin-result-tag');
+					tagEl.setText(`#${tag}`);
+				});
+				if (result.note.tags.length > 3) {
+					const moreTagsEl = tagsEl.createSpan('joplin-result-tag-more');
+					moreTagsEl.setText(`+${result.note.tags.length - 3} more`);
+				}
+			}
+
+			// Add selection indicator
+			const selectionIndicator = resultItem.createDiv('joplin-result-selection-indicator');
 
 			// Click handler for result selection
-			resultItem.addEventListener('click', () => {
+			resultItem.addEventListener('click', (e) => {
+				e.preventDefault();
 				this.selectResult(index);
 			});
 
-			// Add selection styling
+			// Keyboard navigation support
+			resultItem.setAttribute('tabindex', '0');
+			resultItem.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					this.selectResult(index);
+				}
+			});
+
+			// Add hover effects and accessibility
 			resultItem.addClass('joplin-result-clickable');
+			resultItem.setAttribute('role', 'button');
+			resultItem.setAttribute('aria-label', `Select note: ${result.note.title}`);
 		});
+
+		// Add results count indicator
+		const resultsCount = this.resultsContainer.createDiv('joplin-results-count');
+		resultsCount.setText(`${results.length} result${results.length !== 1 ? 's' : ''} found`);
 	}
 
 	private selectResult(index: number): void {
@@ -185,9 +286,20 @@ export class JoplinPortalView extends ItemView {
 		const resultItems = this.resultsContainer.querySelectorAll('.joplin-result-item');
 		if (resultItems[index]) {
 			resultItems[index].addClass('joplin-result-selected');
+
+			// Update selection state in data
+			this.currentResults.forEach((result, i) => {
+				result.selected = i === index;
+			});
+
+			// Ensure selected item is visible
+			resultItems[index].scrollIntoView({
+				behavior: 'smooth',
+				block: 'nearest'
+			});
 		}
 
-		// Show preview (placeholder for now)
+		// Show preview
 		const selectedResult = this.currentResults[index];
 		if (selectedResult) {
 			this.showPreview(selectedResult);
@@ -213,5 +325,108 @@ export class JoplinPortalView extends ItemView {
 			<div>Created: ${createdDate}</div>
 			<div>Updated: ${updatedDate}</div>
 		`;
+	}
+
+	/**
+	 * Format snippet text for display, removing excessive whitespace and ensuring proper length
+	 */
+	private formatSnippet(snippet: string): string {
+		if (!snippet) return 'No preview available';
+
+		// Remove excessive whitespace and normalize line breaks
+		const cleaned = snippet
+			.replace(/\s+/g, ' ') // Replace multiple whitespace with single space
+			.replace(/\n+/g, ' ') // Replace line breaks with spaces
+			.trim();
+
+		// Truncate if too long (approximately 2 lines worth of text)
+		const maxLength = 120;
+		if (cleaned.length > maxLength) {
+			return cleaned.substring(0, maxLength).trim() + '...';
+		}
+
+		return cleaned;
+	}
+
+	/**
+	 * Handle keyboard navigation through search results
+	 */
+	private navigateResults(direction: 'up' | 'down'): void {
+		if (this.currentResults.length === 0) return;
+
+		const currentIndex = this.currentResults.findIndex(result => result.selected);
+		let newIndex: number;
+
+		if (currentIndex === -1) {
+			// No selection, select first item
+			newIndex = 0;
+		} else {
+			// Move selection up or down
+			if (direction === 'down') {
+				newIndex = Math.min(currentIndex + 1, this.currentResults.length - 1);
+			} else {
+				newIndex = Math.max(currentIndex - 1, 0);
+			}
+		}
+
+		this.selectResult(newIndex);
+	}
+
+	/**
+	 * Create metadata content element with formatted date and additional info
+	 */
+	private createMetadataContent(note: JoplinNote): DocumentFragment {
+		const fragment = document.createDocumentFragment();
+
+		// Format dates
+		const createdDate = new Date(note.created_time);
+		const updatedDate = new Date(note.updated_time);
+		const now = new Date();
+
+		// Create date elements
+		const createdEl = document.createElement('span');
+		createdEl.className = 'joplin-metadata-created';
+		createdEl.textContent = `Created: ${this.formatRelativeDate(createdDate, now)}`;
+
+		// Only show updated date if it's different from created date
+		if (Math.abs(updatedDate.getTime() - createdDate.getTime()) > 60000) { // More than 1 minute difference
+			const updatedEl = document.createElement('span');
+			updatedEl.className = 'joplin-metadata-updated';
+			updatedEl.textContent = ` • Updated: ${this.formatRelativeDate(updatedDate, now)}`;
+
+			fragment.appendChild(createdEl);
+			fragment.appendChild(updatedEl);
+		} else {
+			fragment.appendChild(createdEl);
+		}
+
+		return fragment;
+	}
+
+	/**
+	 * Format date as relative time (e.g., "2 days ago") or absolute date for older items
+	 */
+	private formatRelativeDate(date: Date, now: Date): string {
+		const diffMs = now.getTime() - date.getTime();
+		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+		const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+		const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+		if (diffMinutes < 1) {
+			return 'Just now';
+		} else if (diffMinutes < 60) {
+			return `${diffMinutes}m ago`;
+		} else if (diffHours < 24) {
+			return `${diffHours}h ago`;
+		} else if (diffDays < 7) {
+			return `${diffDays}d ago`;
+		} else {
+			// For older items, show the actual date
+			return date.toLocaleDateString(undefined, {
+				month: 'short',
+				day: 'numeric',
+				year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+			});
+		}
 	}
 }
