@@ -1,0 +1,173 @@
+/* Joplin Portal View Styles */
+
+.joplin-portal-view {
+  padding: 10px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Search Interface */
+.joplin-search-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.joplin-search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+}
+
+.joplin-search-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.joplin-search-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Results Section */
+.joplin-results-section {
+  flex: 1;
+  margin-bottom: 16px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.joplin-results-header h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: var(--text-normal);
+}
+
+.joplin-results-container {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+}
+
+.joplin-result-item {
+  padding: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.joplin-result-item:last-child {
+  border-bottom: none;
+}
+
+.joplin-result-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.joplin-result-item.joplin-result-selected {
+  background: var(--background-modifier-active-hover);
+}
+
+.joplin-result-title {
+  font-weight: 600;
+  color: var(--text-normal);
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.joplin-result-snippet {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.joplin-result-metadata {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+/* Preview Section */
+.joplin-preview-section {
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.joplin-preview-header h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: var(--text-normal);
+}
+
+.joplin-preview-container {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  padding: 12px;
+}
+
+.joplin-preview-note-header h4 {
+  margin: 0 0 12px 0;
+  color: var(--text-normal);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.joplin-preview-content {
+  color: var(--text-normal);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.joplin-preview-metadata {
+  color: var(--text-muted);
+  font-size: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 8px;
+}
+
+.joplin-preview-metadata div {
+  margin-bottom: 4px;
+}
+
+/* Loading and No Results States */
+.joplin-loading,
+.joplin-no-results,
+.joplin-no-preview {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Responsive adjustments */
+@media (max-width: 400px) {
+  .joplin-search-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .joplin-search-button {
+    margin-top: 8px;
+  }
+}
