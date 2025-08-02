@@ -1,5 +1,6 @@
 import { App, TFile, TFolder, normalizePath, Notice } from 'obsidian';
 import { JoplinNote, ImportOptions } from './types';
+import { ErrorHandler } from './error-handler';
 
 export class ImportService {
 	private app: App;
@@ -157,7 +158,7 @@ export class ImportService {
 	}
 
 	/**
-	 * Import a single Joplin note to Obsidian
+	 * Import a single Joplin note to Obsidian with comprehensive error handling
 	 */
 	async importNote(joplinNote: JoplinNote, options: ImportOptions): Promise<{
 		file: TFile;
@@ -165,64 +166,82 @@ export class ImportService {
 		originalFilename: string;
 		finalFilename: string;
 	}> {
-		// Ensure target folder exists
-		await this.ensureFolderExists(options.targetFolder);
+		try {
+			// Ensure target folder exists
+			await this.ensureFolderExists(options.targetFolder);
 
-		// Sanitize and prepare filename
-		const baseFilename = this.sanitizeFilename(joplinNote.title);
-		let filename = baseFilename;
-		let action: 'created' | 'overwritten' | 'renamed' = 'created';
+			// Sanitize and prepare filename
+			const baseFilename = this.sanitizeFilename(joplinNote.title);
+			let filename = baseFilename;
+			let action: 'created' | 'overwritten' | 'renamed' = 'created';
 
-		// Handle filename conflicts
-		const fullPath = normalizePath(`${options.targetFolder}/${filename}.md`);
-		const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
+			// Handle filename conflicts
+			const fullPath = normalizePath(`${options.targetFolder}/${filename}.md`);
+			const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
 
-		if (existingFile) {
-			switch (options.conflictResolution) {
-				case 'skip':
-					throw new Error(`File already exists: ${filename}.md`);
-				case 'rename':
-					filename = await this.generateUniqueFilename(options.targetFolder, baseFilename);
-					action = 'renamed';
-					break;
-				case 'overwrite':
-					action = 'overwritten';
-					break;
+			if (existingFile) {
+				switch (options.conflictResolution) {
+					case 'skip':
+						throw new Error(`File already exists: ${filename}.md`);
+					case 'rename':
+						filename = await this.generateUniqueFilename(options.targetFolder, baseFilename);
+						action = 'renamed';
+						break;
+					case 'overwrite':
+						action = 'overwritten';
+						break;
+				}
+			}
+
+			// Convert markdown content
+			const convertedMarkdown = this.convertJoplinToObsidianMarkdown(joplinNote);
+
+			// Generate frontmatter
+			const frontmatter = this.generateFrontmatter(joplinNote);
+
+			// Combine frontmatter and content
+			const finalContent = frontmatter + convertedMarkdown;
+
+			// Validate content length (prevent extremely large files)
+			if (finalContent.length > 10 * 1024 * 1024) { // 10MB limit
+				throw new Error('Note content is too large to import (>10MB)');
+			}
+
+			// Create the file
+			const finalPath = normalizePath(`${options.targetFolder}/${filename}.md`);
+
+			let file: TFile;
+			if (existingFile instanceof TFile && options.conflictResolution === 'overwrite') {
+				// Overwrite existing file
+				await this.app.vault.modify(existingFile, finalContent);
+				file = existingFile;
+			} else {
+				// Create new file
+				file = await this.app.vault.create(finalPath, finalContent);
+			}
+
+			return {
+				file,
+				action,
+				originalFilename: baseFilename,
+				finalFilename: filename
+			};
+		} catch (error) {
+			// Enhanced error handling with context
+			ErrorHandler.logDetailedError(error, 'Import note failed', {
+				noteId: joplinNote.id,
+				noteTitle: joplinNote.title,
+				targetFolder: options.targetFolder,
+				conflictResolution: options.conflictResolution
+			});
+
+			// Re-throw with enhanced error information
+			if (error instanceof Error) {
+				throw error;
+			} else {
+				throw new Error(`Failed to import note "${joplinNote.title}": ${String(error)}`);
 			}
 		}
-
-		// Convert markdown content
-		const convertedMarkdown = this.convertJoplinToObsidianMarkdown(joplinNote);
-
-		// Generate frontmatter
-		const frontmatter = this.generateFrontmatter(joplinNote);
-
-		// Combine frontmatter and content
-		const finalContent = frontmatter + convertedMarkdown;
-
-		// Create the file
-		const finalPath = normalizePath(`${options.targetFolder}/${filename}.md`);
-
-		let file: TFile;
-		if (existingFile instanceof TFile && options.conflictResolution === 'overwrite') {
-			// Overwrite existing file
-			await this.app.vault.modify(existingFile, finalContent);
-			file = existingFile;
-		} else {
-			// Create new file
-			file = await this.app.vault.create(finalPath, finalContent);
-		}
-
-		// Preserve creation time by updating file stats if possible
-		// Note: Obsidian doesn't directly support setting file creation time,
-		// but we preserve it in frontmatter for reference
-
-		return {
-			file,
-			action,
-			originalFilename: baseFilename,
-			finalFilename: filename
-		};
 	}
 
 	/**
@@ -260,7 +279,7 @@ export class ImportService {
 	}
 
 	/**
-	 * Import multiple Joplin notes
+	 * Import multiple Joplin notes with enhanced error handling and progress tracking
 	 */
 	async importNotes(joplinNotes: JoplinNote[], options: ImportOptions): Promise<{
 		successful: {
@@ -281,19 +300,52 @@ export class ImportService {
 		}[] = [];
 		const failed: { note: JoplinNote; error: string }[] = [];
 
-		for (const note of joplinNotes) {
+		console.log(`Joplin Portal: Starting import of ${joplinNotes.length} notes`);
+
+		for (let i = 0; i < joplinNotes.length; i++) {
+			const note = joplinNotes[i];
+
 			try {
+				console.log(`Joplin Portal: Importing note ${i + 1}/${joplinNotes.length}: ${note.title}`);
+
 				const result = await this.importNote(note, options);
 				successful.push({
 					...result,
 					note
 				});
+
+				// Small delay between imports to prevent overwhelming the system
+				if (i < joplinNotes.length - 1) {
+					await new Promise(resolve => setTimeout(resolve, 100));
+				}
 			} catch (error) {
+				const userError = ErrorHandler.handleImportError(error, note.title);
+
 				failed.push({
 					note,
-					error: error instanceof Error ? error.message : 'Unknown error'
+					error: userError.message
+				});
+
+				// Log detailed error for debugging
+				ErrorHandler.logDetailedError(error, `Import failed for note ${i + 1}/${joplinNotes.length}`, {
+					noteId: note.id,
+					noteTitle: note.title,
+					importIndex: i + 1,
+					totalNotes: joplinNotes.length
 				});
 			}
+		}
+
+		// Log final results
+		console.log(`Joplin Portal: Import completed. ${successful.length} successful, ${failed.length} failed`);
+
+		// Show summary notice
+		if (successful.length > 0 && failed.length === 0) {
+			new Notice(`✅ Successfully imported ${successful.length} note${successful.length !== 1 ? 's' : ''}`);
+		} else if (successful.length > 0 && failed.length > 0) {
+			new Notice(`⚠️ Imported ${successful.length} note${successful.length !== 1 ? 's' : ''}, ${failed.length} failed`);
+		} else if (failed.length > 0) {
+			new Notice(`❌ Failed to import ${failed.length} note${failed.length !== 1 ? 's' : ''}`);
 		}
 
 		return { successful, failed };

@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
 import JoplinPortalPlugin from '../main';
 import { SearchResult, JoplinNote, ImportOptions } from './types';
+import { ErrorHandler } from './error-handler';
 
 export const VIEW_TYPE_JOPLIN_PORTAL = 'joplin-portal-view';
 
@@ -219,19 +220,28 @@ export class JoplinPortalView extends ItemView {
 			return;
 		}
 
+		// Check if system is online
+		if (!ErrorHandler.isOnline()) {
+			const offlineError = ErrorHandler.createOfflineError();
+			this.displayNoResults(offlineError.message);
+			ErrorHandler.showErrorNotice(offlineError);
+			return;
+		}
+
 		// Show loading state
 		this.displayLoading();
 
 		try {
-			// Use actual API service to search notes
+			// Use actual API service to search notes (error handling is done in the service)
 			const results = await this.plugin.joplinService.searchNotes(query, {
 				limit: this.plugin.settings.searchLimit || 50
 			});
 
 			this.displayResults(results);
 		} catch (error) {
-			console.error('Search error:', error);
-			this.displayNoResults('Search failed. Please check your connection settings.');
+			// This should rarely happen as the service handles most errors
+			ErrorHandler.logDetailedError(error, 'Search failed in view layer', { query });
+			this.displayNoResults('Search failed. Please try again.');
 		}
 	}
 
@@ -389,7 +399,7 @@ export class JoplinPortalView extends ItemView {
 		loadingDiv.setText('Loading note content...');
 
 		try {
-			// Get full note content from API
+			// Get full note content from API (error handling is done in the service)
 			const fullNote = await this.plugin.joplinService.getNote(result.note.id);
 
 			// Remove loading indicator
@@ -412,8 +422,12 @@ export class JoplinPortalView extends ItemView {
 			// Remove loading indicator
 			loadingDiv.remove();
 
-			console.error('Failed to load note preview:', error);
-			this.showPreviewError('Failed to load note content. Please check your connection.');
+			// This should rarely happen as the service handles most errors
+			ErrorHandler.logDetailedError(error, 'Preview failed in view layer', {
+				noteId: result.note.id,
+				noteTitle: result.note.title
+			});
+			this.showPreviewError('Failed to load note content. Please try again.');
 		}
 	}
 

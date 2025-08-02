@@ -5,20 +5,70 @@ import {
 	SearchOptions,
 	SearchResult,
 	JoplinApiError,
-	JoplinPortalSettings
+	JoplinPortalSettings,
+	RetryConfig,
+	RateLimitConfig,
+	RequestQueueItem
 } from './types';
+import { ErrorHandler } from './error-handler';
+import { RetryUtility } from './retry-utility';
 
 /**
  * Service class for communicating with Joplin API
- * Handles authentication, HTTP requests, and error handling
+ * Handles authentication, HTTP requests, error handling, retry logic, and rate limiting
  */
 export class JoplinApiService {
 	private baseUrl: string;
 	private token: string;
+	private retryConfig: RetryConfig;
+	private rateLimitConfig: RateLimitConfig;
+	private requestQueue: RequestQueueItem[] = [];
+	private activeRequests = 0;
+	private requestTimestamps: number[] = [];
+	private isProcessingQueue = false;
+	private connectionTestWithRetry: (...args: any[]) => Promise<boolean>;
+	private searchNotesWithRetry: (...args: any[]) => Promise<SearchResult[]>;
+	private getNoteWithRetry: (...args: any[]) => Promise<JoplinNote | null>;
 
 	constructor(settings: JoplinPortalSettings) {
 		this.baseUrl = settings.serverUrl.replace(/\/$/, ''); // Remove trailing slash
 		this.token = settings.apiToken;
+
+		// Configure retry behavior
+		this.retryConfig = {
+			maxRetries: 3,
+			baseDelay: 1000,
+			maxDelay: 30000,
+			backoffMultiplier: 2
+		};
+
+		// Configure rate limiting
+		this.rateLimitConfig = {
+			maxRequestsPerMinute: 60,
+			maxConcurrentRequests: 5
+		};
+
+		// Create retry wrappers for key methods
+		this.connectionTestWithRetry = RetryUtility.createRetryWrapper(
+			this.testConnectionInternal.bind(this),
+			this.retryConfig,
+			'Connection test'
+		);
+
+		this.searchNotesWithRetry = RetryUtility.createRetryWrapper(
+			this.searchNotesInternal.bind(this),
+			this.retryConfig,
+			'Search notes'
+		);
+
+		this.getNoteWithRetry = RetryUtility.createRetryWrapper(
+			this.getNoteInternal.bind(this),
+			this.retryConfig,
+			'Get note'
+		);
+
+		// Start processing request queue
+		this.startQueueProcessor();
 	}
 
 	/**
@@ -27,24 +77,45 @@ export class JoplinApiService {
 	updateSettings(settings: JoplinPortalSettings): void {
 		this.baseUrl = settings.serverUrl.replace(/\/$/, '');
 		this.token = settings.apiToken;
+
+		// Clear request history when settings change
+		this.requestTimestamps = [];
+		this.requestQueue = [];
 	}
 
 	/**
-	 * Test connection to Joplin server using ping endpoint
+	 * Test connection to Joplin server using ping endpoint with retry logic
 	 * @returns Promise<boolean> - true if connection successful
 	 */
 	async testConnection(): Promise<boolean> {
 		try {
-			const response = await this.makeRequest('/ping');
-			return response.status === 200;
+			// Check if offline first
+			if (!ErrorHandler.isOnline()) {
+				console.log('Joplin Portal: System is offline, skipping connection test');
+				return false;
+			}
+
+			return await this.connectionTestWithRetry();
 		} catch (error) {
-			console.error('Joplin Portal: Connection test failed', error);
+			const userError = ErrorHandler.handleApiError(error, 'Connection test');
+			ErrorHandler.logDetailedError(error, 'Connection test failed', {
+				baseUrl: this.baseUrl,
+				hasToken: !!this.token
+			});
 			return false;
 		}
 	}
 
 	/**
-	 * Search notes using Joplin API
+	 * Internal connection test method (without retry wrapper)
+	 */
+	private async testConnectionInternal(): Promise<boolean> {
+		const response = await this.makeRequestQueued('/ping');
+		return response.status === 200;
+	}
+
+	/**
+	 * Search notes using Joplin API with retry logic and error handling
 	 * @param query - Search query string
 	 * @param options - Search options (fields, limit, etc.)
 	 * @returns Promise<SearchResult[]> - Array of search results with snippets and relevance
@@ -55,29 +126,48 @@ export class JoplinApiService {
 		}
 
 		try {
-			const params = new URLSearchParams({
-				query: query.trim(),
-				fields: options?.fields?.join(',') || 'id,title,body,created_time,updated_time,parent_id',
-				limit: (options?.limit || 50).toString(),
-				page: (options?.page || 1).toString()
-			});
-
-			if (options?.order_by) {
-				params.append('order_by', options.order_by);
-			}
-			if (options?.order_dir) {
-				params.append('order_dir', options.order_dir);
+			// Check if offline first
+			if (!ErrorHandler.isOnline()) {
+				const offlineError = ErrorHandler.createOfflineError();
+				ErrorHandler.showErrorNotice(offlineError);
+				return [];
 			}
 
-			const response = await this.makeRequest(`/search?${params.toString()}`);
-			const data: JoplinSearchResponse = await response.json;
-
-			// Transform JoplinNote[] to SearchResult[]
-			return this.transformToSearchResults(data.items || [], query);
+			return await this.searchNotesWithRetry(query, options);
 		} catch (error) {
-			this.handleError(error, 'Failed to search notes');
+			const userError = ErrorHandler.handleApiError(error, 'Search notes');
+			ErrorHandler.showErrorNotice(userError);
+			ErrorHandler.logDetailedError(error, 'Search notes failed', {
+				query,
+				options
+			});
 			return [];
 		}
+	}
+
+	/**
+	 * Internal search notes method (without retry wrapper)
+	 */
+	private async searchNotesInternal(query: string, options?: SearchOptions): Promise<SearchResult[]> {
+		const params = new URLSearchParams({
+			query: query.trim(),
+			fields: options?.fields?.join(',') || 'id,title,body,created_time,updated_time,parent_id',
+			limit: (options?.limit || 50).toString(),
+			page: (options?.page || 1).toString()
+		});
+
+		if (options?.order_by) {
+			params.append('order_by', options.order_by);
+		}
+		if (options?.order_dir) {
+			params.append('order_dir', options.order_dir);
+		}
+
+		const response = await this.makeRequestQueued(`/search?${params.toString()}`);
+		const data: JoplinSearchResponse = await response.json;
+
+		// Transform JoplinNote[] to SearchResult[]
+		return this.transformToSearchResults(data.items || [], query);
 	}
 
 	/**
@@ -195,7 +285,7 @@ export class JoplinApiService {
 	}
 
 	/**
-	 * Search notes with pagination support
+	 * Search notes with pagination support and retry logic
 	 * @param query - Search query string
 	 * @param options - Search options including pagination
 	 * @returns Promise<{results: SearchResult[], hasMore: boolean}> - Paginated search results
@@ -209,69 +299,135 @@ export class JoplinApiService {
 		}
 
 		try {
-			const params = new URLSearchParams({
-				query: query.trim(),
-				fields: options?.fields?.join(',') || 'id,title,body,created_time,updated_time,parent_id',
-				limit: (options?.limit || 50).toString(),
-				page: (options?.page || 1).toString()
-			});
-
-			if (options?.order_by) {
-				params.append('order_by', options.order_by);
-			}
-			if (options?.order_dir) {
-				params.append('order_dir', options.order_dir);
+			// Check if offline first
+			if (!ErrorHandler.isOnline()) {
+				const offlineError = ErrorHandler.createOfflineError();
+				ErrorHandler.showErrorNotice(offlineError);
+				return { results: [], hasMore: false };
 			}
 
-			const response = await this.makeRequest(`/search?${params.toString()}`);
-			const data: JoplinSearchResponse = await response.json;
+			const results = await RetryUtility.executeWithRetry(
+				async () => {
+					const params = new URLSearchParams({
+						query: query.trim(),
+						fields: options?.fields?.join(',') || 'id,title,body,created_time,updated_time,parent_id',
+						limit: (options?.limit || 50).toString(),
+						page: (options?.page || 1).toString()
+					});
 
-			return {
-				results: this.transformToSearchResults(data.items || [], query),
-				hasMore: data.has_more || false
-			};
+					if (options?.order_by) {
+						params.append('order_by', options.order_by);
+					}
+					if (options?.order_dir) {
+						params.append('order_dir', options.order_dir);
+					}
+
+					const response = await this.makeRequestQueued(`/search?${params.toString()}`);
+					const data: JoplinSearchResponse = await response.json;
+
+					return {
+						results: this.transformToSearchResults(data.items || [], query),
+						hasMore: data.has_more || false
+					};
+				},
+				this.retryConfig,
+				'Search notes with pagination'
+			);
+
+			return results;
 		} catch (error) {
-			this.handleError(error, 'Failed to search notes with pagination');
+			const userError = ErrorHandler.handleApiError(error, 'Search notes with pagination');
+			ErrorHandler.showErrorNotice(userError);
+			ErrorHandler.logDetailedError(error, 'Search notes with pagination failed', {
+				query,
+				options
+			});
 			return { results: [], hasMore: false };
 		}
 	}
 
 	/**
-	 * Get a specific note by ID
+	 * Get a specific note by ID with retry logic
 	 * @param id - Note ID
 	 * @returns Promise<JoplinNote | null> - Note data or null if not found
 	 */
 	async getNote(id: string): Promise<JoplinNote | null> {
 		try {
-			const params = new URLSearchParams({
-				fields: 'id,title,body,created_time,updated_time,parent_id,source_url'
-			});
-
-			const response = await this.makeRequest(`/notes/${id}?${params.toString()}`);
-
-			if (response.status === 404) {
+			// Check if offline first
+			if (!ErrorHandler.isOnline()) {
+				const offlineError = ErrorHandler.createOfflineError();
+				ErrorHandler.showErrorNotice(offlineError);
 				return null;
 			}
 
-			return await response.json as JoplinNote;
+			return await this.getNoteWithRetry(id);
 		} catch (error) {
-			this.handleError(error, `Failed to get note with ID: ${id}`);
+			// Handle 404 errors gracefully (note not found)
+			if (error instanceof Error && 'status' in error && (error as JoplinApiError).status === 404) {
+				console.log(`Joplin Portal: Note not found: ${id}`);
+				return null;
+			}
+
+			const userError = ErrorHandler.handleApiError(error, `Get note ${id}`);
+			ErrorHandler.showErrorNotice(userError);
+			ErrorHandler.logDetailedError(error, 'Get note failed', { noteId: id });
 			return null;
 		}
 	}
 
 	/**
-	 * Make HTTP request to Joplin API with authentication
+	 * Internal get note method (without retry wrapper)
+	 */
+	private async getNoteInternal(id: string): Promise<JoplinNote | null> {
+		const params = new URLSearchParams({
+			fields: 'id,title,body,created_time,updated_time,parent_id,source_url'
+		});
+
+		const response = await this.makeRequestQueued(`/notes/${id}?${params.toString()}`);
+
+		if (response.status === 404) {
+			return null;
+		}
+
+		return await response.json as JoplinNote;
+	}
+
+	/**
+	 * Make HTTP request to Joplin API with authentication and rate limiting
 	 * @param endpoint - API endpoint (without base URL)
 	 * @param options - Additional request options
 	 * @returns Promise<RequestUrlResponse> - HTTP response
 	 */
-	private async makeRequest(
+	private async makeRequestQueued(
+		endpoint: string,
+		options: Partial<RequestUrlParam> = {}
+	): Promise<RequestUrlResponse> {
+		return new Promise((resolve, reject) => {
+			const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+			const queueItem: RequestQueueItem = {
+				id: requestId,
+				request: () => this.makeRequestDirect(endpoint, options),
+				resolve,
+				reject,
+				timestamp: Date.now(),
+				retryCount: 0
+			};
+
+			this.requestQueue.push(queueItem);
+			this.processQueue();
+		});
+	}
+
+	/**
+	 * Make direct HTTP request to Joplin API (bypassing queue)
+	 */
+	private async makeRequestDirect(
 		endpoint: string,
 		options: Partial<RequestUrlParam> = {}
 	): Promise<RequestUrlResponse> {
 		if (!this.token) {
-			throw this.createApiError('API token is required', 401, 'MISSING_TOKEN');
+			throw ErrorHandler.createApiError('API token is required', 401, 'MISSING_TOKEN');
 		}
 
 		const url = `${this.baseUrl}${endpoint}`;
@@ -292,12 +448,17 @@ export class JoplinApiService {
 		try {
 			const response = await requestUrl(requestOptions);
 
-			// Check for API errors
+			// Check for API errors and determine if retryable
 			if (response.status >= 400) {
-				throw this.createApiError(
+				const isRetryable = response.status === 429 || response.status >= 500;
+				const retryAfter = response.status === 429 ? this.parseRetryAfter(response.headers) : undefined;
+
+				throw ErrorHandler.createApiError(
 					`HTTP ${response.status}: ${response.text || 'Unknown error'}`,
 					response.status,
-					'HTTP_ERROR'
+					'HTTP_ERROR',
+					isRetryable,
+					retryAfter
 				);
 			}
 
@@ -308,39 +469,165 @@ export class JoplinApiService {
 				throw error;
 			}
 
-			// Handle network/connection errors
-			throw this.createApiError(
-				`Network error: ${error.message || 'Connection failed'}`,
+			// Handle network/connection errors (these are retryable)
+			throw ErrorHandler.createApiError(
+				`Network error: ${error instanceof Error ? error.message : 'Connection failed'}`,
 				0,
-				'NETWORK_ERROR'
+				'NETWORK_ERROR',
+				true // Network errors are retryable
 			);
 		}
 	}
 
 	/**
-	 * Create standardized API error
+	 * Process the request queue with rate limiting
 	 */
-	private createApiError(message: string, status?: number, code?: string): JoplinApiError {
-		const error = new Error(message) as JoplinApiError;
-		error.name = 'JoplinApiError';
-		error.status = status;
-		error.code = code;
-		return error;
+	private async processQueue(): Promise<void> {
+		if (this.isProcessingQueue || this.requestQueue.length === 0) {
+			return;
+		}
+
+		this.isProcessingQueue = true;
+
+		while (this.requestQueue.length > 0) {
+			// Check rate limits
+			if (!this.canMakeRequest()) {
+				// Wait before checking again
+				await this.sleep(1000);
+				continue;
+			}
+
+			const queueItem = this.requestQueue.shift();
+			if (!queueItem) {
+				continue;
+			}
+
+			// Check if request has expired (older than 5 minutes)
+			if (Date.now() - queueItem.timestamp > 300000) {
+				queueItem.reject(ErrorHandler.createApiError(
+					'Request expired in queue',
+					408,
+					'REQUEST_EXPIRED'
+				));
+				continue;
+			}
+
+			this.activeRequests++;
+			this.recordRequest();
+
+			try {
+				const result = await queueItem.request();
+				queueItem.resolve(result);
+			} catch (error) {
+				queueItem.reject(error);
+			} finally {
+				this.activeRequests--;
+			}
+
+			// Small delay between requests to be respectful
+			await this.sleep(100);
+		}
+
+		this.isProcessingQueue = false;
 	}
 
 	/**
-	 * Handle and log errors with context
+	 * Start the queue processor
 	 */
-	private handleError(error: unknown, context: string): void {
-		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-		const logMessage = `Joplin Portal: ${context} - ${errorMessage}`;
+	private startQueueProcessor(): void {
+		// Process queue every second
+		setInterval(() => {
+			if (!this.isProcessingQueue && this.requestQueue.length > 0) {
+				this.processQueue();
+			}
+		}, 1000);
+	}
 
-		console.error(logMessage, error);
+	/**
+	 * Check if we can make a request based on rate limits
+	 */
+	private canMakeRequest(): boolean {
+		const now = Date.now();
+		const oneMinuteAgo = now - 60000;
 
-		// Additional logging for debugging
-		if (error instanceof Error && 'status' in error) {
-			console.error(`Joplin Portal: HTTP Status: ${(error as JoplinApiError).status}`);
+		// Clean old timestamps
+		this.requestTimestamps = this.requestTimestamps.filter(timestamp => timestamp > oneMinuteAgo);
+
+		// Check concurrent request limit
+		if (this.activeRequests >= this.rateLimitConfig.maxConcurrentRequests) {
+			return false;
 		}
+
+		// Check requests per minute limit
+		if (this.requestTimestamps.length >= this.rateLimitConfig.maxRequestsPerMinute) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Record a request timestamp for rate limiting
+	 */
+	private recordRequest(): void {
+		this.requestTimestamps.push(Date.now());
+	}
+
+	/**
+	 * Parse Retry-After header from rate limit responses
+	 */
+	private parseRetryAfter(headers: Record<string, string>): number | undefined {
+		const retryAfter = headers['retry-after'] || headers['Retry-After'];
+		if (retryAfter) {
+			const seconds = parseInt(retryAfter, 10);
+			return isNaN(seconds) ? undefined : seconds;
+		}
+		return undefined;
+	}
+
+	/**
+	 * Sleep for specified milliseconds
+	 */
+	private sleep(ms: number): Promise<void> {
+		return new Promise(resolve => setTimeout(resolve, ms));
+	}
+
+	/**
+	 * Get current queue status for debugging
+	 */
+	getQueueStatus(): {
+		queueLength: number;
+		activeRequests: number;
+		requestsInLastMinute: number;
+		isProcessing: boolean;
+	} {
+		const now = Date.now();
+		const oneMinuteAgo = now - 60000;
+		const recentRequests = this.requestTimestamps.filter(timestamp => timestamp > oneMinuteAgo);
+
+		return {
+			queueLength: this.requestQueue.length,
+			activeRequests: this.activeRequests,
+			requestsInLastMinute: recentRequests.length,
+			isProcessing: this.isProcessingQueue
+		};
+	}
+
+	/**
+	 * Clear the request queue (useful for cleanup or reset)
+	 */
+	clearQueue(): void {
+		// Reject all pending requests
+		this.requestQueue.forEach(item => {
+			item.reject(ErrorHandler.createApiError(
+				'Request cancelled due to queue clear',
+				499,
+				'REQUEST_CANCELLED'
+			));
+		});
+
+		this.requestQueue = [];
+		this.requestTimestamps = [];
 	}
 
 	/**

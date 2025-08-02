@@ -72,12 +72,36 @@ export interface SearchOptions {
 export interface JoplinApiError extends Error {
 	status?: number;
 	code?: string;
+	retryable?: boolean;
+	retryAfter?: number;
 }
 
 export interface UserFriendlyError {
 	message: string;
 	details?: string;
 	action?: string;
+	severity?: 'info' | 'warning' | 'error' | 'critical';
+}
+
+export interface RetryConfig {
+	maxRetries: number;
+	baseDelay: number;
+	maxDelay: number;
+	backoffMultiplier: number;
+}
+
+export interface RateLimitConfig {
+	maxRequestsPerMinute: number;
+	maxConcurrentRequests: number;
+}
+
+export interface RequestQueueItem {
+	id: string;
+	request: () => Promise<any>;
+	resolve: (value: any) => void;
+	reject: (error: any) => void;
+	timestamp: number;
+	retryCount: number;
 }
 
 export const DEFAULT_SETTINGS: JoplinPortalSettings = {
