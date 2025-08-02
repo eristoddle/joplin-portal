@@ -1,0 +1,98 @@
+name: Maintenance
+
+on:
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Check for outdated dependencies
+      run: |
+        echo "Checking for outdated dependencies..."
+        npm outdated || true
+
+        echo "Checking for security vulnerabilities..."
+        npm audit || true
+
+    - name: Create issue for outdated dependencies
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { execSync } = require('child_process');
+
+          try {
+            const outdated = execSync('npm outdated --json', { encoding: 'utf8' });
+            const outdatedPackages = JSON.parse(outdated);
+
+            if (Object.keys(outdatedPackages).length > 0) {
+              const issueBody = `## Outdated Dependencies Found
+
+              The following dependencies are outdated:
+
+              ${Object.entries(outdatedPackages).map(([pkg, info]) =>
+                `- **${pkg}**: ${info.current} → ${info.latest}`
+              ).join('\n')}
+
+              Please review and update these dependencies as appropriate.
+
+              _This issue was automatically created by the maintenance workflow._`;
+
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Outdated Dependencies Detected',
+                body: issueBody,
+                labels: ['maintenance', 'dependencies']
+              });
+            }
+          } catch (error) {
+            console.log('No outdated dependencies found or error occurred:', error.message);
+          }
+
+  test-compatibility:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        obsidian-version: ['0.15.0', 'latest']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install specific Obsidian version
+      if: matrix.obsidian-version != 'latest'
+      run: npm install obsidian@${{ matrix.obsidian-version }}
+
+    - name: Run compatibility tests
+      run: |
+        echo "Testing compatibility with Obsidian ${{ matrix.obsidian-version }}"
+        npm run build
+        npm test

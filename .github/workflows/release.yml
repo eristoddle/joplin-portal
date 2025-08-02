@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm test
+
+    - name: Build release
+      run: npm run build:release
+
+    - name: Validate release files
+      run: |
+        # Check that all required files exist
+        required_files=("main.js" "manifest.json" "styles.css")
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "Error: Required file $file not found"
+            exit 1
+          fi
+        done
+
+        # Validate manifest version matches tag
+        tag_version=${GITHUB_REF#refs/tags/v}
+        manifest_version=$(node -p "require('./manifest.json').version")
+
+        if [ "$tag_version" != "$manifest_version" ]; then
+          echo "Error: Tag version ($tag_version) doesn't match manifest version ($manifest_version)"
+          exit 1
+        fi
+
+        echo "Release validation passed"
+
+    - name: Create release archive
+      run: |
+        mkdir -p release
+        cp main.js manifest.json styles.css release/
+        cd release
+        zip -r ../joplin-portal-${{ github.ref_name }}.zip .
+        cd ..
+
+        # Create checksums
+        sha256sum joplin-portal-${{ github.ref_name }}.zip > checksums.txt
+        sha256sum main.js >> checksums.txt
+        sha256sum manifest.json >> checksums.txt
+        sha256sum styles.css >> checksums.txt
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Generate changelog from git commits since last tag
+        previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+        if [ -n "$previous_tag" ]; then
+          echo "## Changes since $previous_tag" > CHANGELOG.md
+          git log --pretty=format:"- %s (%h)" $previous_tag..HEAD >> CHANGELOG.md
+        else
+          echo "## Initial Release" > CHANGELOG.md
+          echo "First release of Joplin Portal plugin" >> CHANGELOG.md
+        fi
+
+        # Set output for use in release notes
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat CHANGELOG.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Joplin Portal ${{ github.ref_name }}
+        body: |
+          ${{ steps.changelog.outputs.changelog }}
+
+          ## Installation
+
+          ### Automatic Installation (Recommended)
+          1. Open Obsidian Settings
+          2. Go to Community Plugins
+          3. Search for "Joplin Portal"
+          4. Install and enable the plugin
+
+          ### Manual Installation
+          1. Download the `joplin-portal-${{ github.ref_name }}.zip` file
+          2. Extract the contents to your Obsidian plugins folder: `<vault>/.obsidian/plugins/joplin-portal/`
+          3. Reload Obsidian and enable the plugin in settings
+
+          ## Configuration
+
+          After installation:
+          1. Open plugin settings
+          2. Enter your Joplin server URL (e.g., `http://localhost:41184`)
+          3. Enter your Joplin API token
+          4. Test the connection
+
+          ## Files Included
+
+          - `main.js` - Plugin code
+          - `manifest.json` - Plugin manifest
+          - `styles.css` - Plugin styles
+
+          ## Verification
+
+          Use the provided checksums to verify file integrity.
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
+        files: |
+          joplin-portal-${{ github.ref_name }}.zip
+          checksums.txt
+          main.js
+          manifest.json
+          styles.css
+        generate_release_notes: true
