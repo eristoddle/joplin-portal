@@ -733,6 +733,7 @@ export class JoplinPortalView extends ItemView {
 
 		// Pre-process markdown to handle Joplin resource links
 		const processedMarkdown = this.preprocessMarkdown(note.body);
+		console.log('Processed Markdown:', processedMarkdown); // FOR DEBUGGING
 
 		// Create scrollable content area
 		const scrollableContent = contentWrapper.createDiv('joplin-preview-scrollable');
