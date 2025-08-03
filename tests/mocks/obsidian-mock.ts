@@ -1,5 +1,10 @@
 import { vi } from 'vitest';
 
+export type App = any;
+export type RequestUrlParam = any;
+export type RequestUrlResponse = any;
+export type WorkspaceLeaf = any;
+
 // Mock Obsidian API classes and functions
 export class Plugin {
   app: any;
@@ -14,6 +19,11 @@ export class Plugin {
   async onunload() {}
   async loadData() { return {}; }
   async saveData(data: any) {}
+
+  registerView = vi.fn();
+  addRibbonIcon = vi.fn();
+  addCommand = vi.fn();
+  addSettingTab = vi.fn();
 }
 
 export class ItemView {
