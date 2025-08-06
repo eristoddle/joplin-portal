@@ -12,9 +12,13 @@ import {
 	SearchValidationResult,
 	TagSearchOptions,
 	JoplinResource,
-	ImageProcessingResult
+	ImageProcessingResult,
+	ImageProcessingOptions,
+	ImageProcessingProgress
 } from './types';
 import { SearchCache } from './search-cache';
+import { ImageCache } from './image-cache';
+import { ImageCompression, CompressionOptions } from './image-compression';
 import { ErrorHandler } from './error-handler';
 import { RetryUtility } from './retry-utility';
 
@@ -32,6 +36,7 @@ export class JoplinApiService {
 	private requestTimestamps: number[] = [];
 	private isProcessingQueue = false;
 	private searchCache: SearchCache;
+	private imageCache: ImageCache;
 	private connectionTestWithRetry: (...args: any[]) => Promise<boolean>;
 	private searchNotesWithRetry: (...args: any[]) => Promise<SearchResult[]>;
 	private getNoteWithRetry: (...args: any[]) => Promise<JoplinNote | null>;
@@ -42,6 +47,9 @@ export class JoplinApiService {
 
 		// Initialize search cache
 		this.searchCache = new SearchCache(50, 10); // 50 entries, 10 minutes TTL
+
+		// Initialize image cache
+		this.imageCache = new ImageCache(100, 50, 30); // 100 images, 50MB, 30 minutes TTL
 
 		// Configure retry behavior
 		this.retryConfig = {
@@ -91,6 +99,7 @@ export class JoplinApiService {
 		this.requestTimestamps = [];
 		this.requestQueue = [];
 		this.searchCache.clear();
+		this.imageCache.clear();
 	}
 
 	/**
@@ -819,10 +828,32 @@ export class JoplinApiService {
 	}
 
 	/**
+	 * Get image cache statistics for debugging
+	 */
+	getImageCacheStats(): any {
+		return this.imageCache.getStats();
+	}
+
+	/**
 	 * Clear search cache
 	 */
 	clearSearchCache(): void {
 		this.searchCache.clear();
+	}
+
+	/**
+	 * Clear image cache
+	 */
+	clearImageCache(): void {
+		this.imageCache.clear();
+	}
+
+	/**
+	 * Clear all caches
+	 */
+	clearAllCaches(): void {
+		this.searchCache.clear();
+		this.imageCache.clear();
 	}
 
 	/**
@@ -963,14 +994,26 @@ export class JoplinApiService {
 	}
 
 	/**
-	 * Process note body to convert Joplin resource links to base64 data URIs
+	 * Process note body to convert Joplin resource links to base64 data URIs with optimizations
 	 * @param noteBody - The original note body with Joplin resource links
+	 * @param options - Processing options including progress callback and concurrency settings
 	 * @returns Promise<string> - Processed note body with base64 data URIs
 	 */
-	async processNoteBodyForImages(noteBody: string): Promise<string> {
+	async processNoteBodyForImages(
+		noteBody: string,
+		options: ImageProcessingOptions = {}
+	): Promise<string> {
 		if (!noteBody) {
 			return noteBody;
 		}
+
+		const {
+			maxConcurrency = 3,
+			maxImageSize = 10 * 1024 * 1024, // 10MB
+			enableCompression = true,
+			compressionQuality = 0.8,
+			onProgress
+		} = options;
 
 		// Regex to find Joplin image resource links: ![alt](:/resource_id)
 		const resourceLinkRegex = /!\[(.*?)\]\(:\/([a-f0-9]{32})\)/g;
@@ -980,23 +1023,32 @@ export class JoplinApiService {
 			return noteBody;
 		}
 
-		console.log(`Joplin Portal: Processing ${matches.length} image resources in note`);
+		console.log(`Joplin Portal: Processing ${matches.length} image resources in note with concurrency ${maxConcurrency}`);
 
-		// Process all images concurrently for better performance
-		const imageProcessingPromises = matches.map(async (match): Promise<ImageProcessingResult> => {
-			const [originalLink, altText, resourceId] = match;
+		// Initialize progress tracking
+		const progress: ImageProcessingProgress = {
+			total: matches.length,
+			processed: 0,
+			failed: 0
+		};
 
-			return await this.processImageResourceWithRetry(originalLink, altText, resourceId);
-		});
-
-		// Wait for all image processing to complete
-		const results = await Promise.all(imageProcessingPromises);
+		// Process images with controlled concurrency
+		const results = await this.processImagesWithConcurrency(
+			matches,
+			maxConcurrency,
+			maxImageSize,
+			enableCompression,
+			compressionQuality,
+			progress,
+			onProgress
+		);
 
 		// Replace the original links with processed ones
 		let processedBody = noteBody;
 		let successCount = 0;
 		let failureCount = 0;
 		let placeholderCount = 0;
+		let cacheHits = 0;
 
 		for (const result of results) {
 			if (result.success) {
@@ -1005,6 +1057,9 @@ export class JoplinApiService {
 					placeholderCount++;
 				} else {
 					successCount++;
+					if (result.fromCache) {
+						cacheHits++;
+					}
 				}
 			} else {
 				failureCount++;
@@ -1026,9 +1081,283 @@ export class JoplinApiService {
 			}
 		}
 
-		console.log(`Joplin Portal: Image processing complete. Success: ${successCount}, Placeholders: ${placeholderCount}, Failed: ${failureCount}`);
+		console.log(`Joplin Portal: Image processing complete. Success: ${successCount} (${cacheHits} from cache), Placeholders: ${placeholderCount}, Failed: ${failureCount}`);
+
+		// Perform cache maintenance periodically
+		if (Math.random() < 0.1) { // 10% chance
+			this.imageCache.performMaintenance();
+		}
 
 		return processedBody;
+	}
+
+	/**
+	 * Process multiple images with controlled concurrency
+	 * @param matches - Array of regex matches for image links
+	 * @param maxConcurrency - Maximum number of concurrent image processing operations
+	 * @param maxImageSize - Maximum image size in bytes
+	 * @param enableCompression - Whether to enable image compression
+	 * @param compressionQuality - Compression quality (0.1 to 1.0)
+	 * @param progress - Progress tracking object
+	 * @param onProgress - Progress callback function
+	 * @returns Promise<ImageProcessingResult[]> - Array of processing results
+	 */
+	private async processImagesWithConcurrency(
+		matches: RegExpMatchArray[],
+		maxConcurrency: number,
+		maxImageSize: number,
+		enableCompression: boolean,
+		compressionQuality: number,
+		progress: ImageProcessingProgress,
+		onProgress?: (progress: ImageProcessingProgress) => void
+	): Promise<ImageProcessingResult[]> {
+		const results: ImageProcessingResult[] = [];
+		const semaphore = new Array(maxConcurrency).fill(null);
+		let currentIndex = 0;
+
+		// Process images in batches with controlled concurrency
+		const processNextBatch = async (): Promise<void> => {
+			const batch: Promise<void>[] = [];
+
+			for (let i = 0; i < maxConcurrency && currentIndex < matches.length; i++) {
+				const matchIndex = currentIndex++;
+				const match = matches[matchIndex];
+				const [originalLink, altText, resourceId] = match;
+
+				progress.current = `Processing image ${matchIndex + 1}/${matches.length}`;
+				onProgress?.(progress);
+
+				const processPromise = this.processImageResourceOptimized(
+					originalLink,
+					altText,
+					resourceId,
+					maxImageSize,
+					enableCompression,
+					compressionQuality
+				).then(result => {
+					results[matchIndex] = result;
+					progress.processed++;
+					if (!result.success) {
+						progress.failed++;
+					}
+					onProgress?.(progress);
+				}).catch(error => {
+					// Handle unexpected errors
+					const errorResult: ImageProcessingResult = {
+						originalLink,
+						processedLink: this.createImagePlaceholder(originalLink, error.message),
+						success: true, // Mark as success since we have a placeholder
+						error: error.message,
+						resourceId,
+						isPlaceholder: true
+					};
+					results[matchIndex] = errorResult;
+					progress.processed++;
+					progress.failed++;
+					onProgress?.(progress);
+				});
+
+				batch.push(processPromise);
+			}
+
+			if (batch.length > 0) {
+				await Promise.all(batch);
+			}
+		};
+
+		// Process all images in batches
+		while (currentIndex < matches.length) {
+			await processNextBatch();
+		}
+
+		// Ensure results array is complete (fill any gaps with placeholders)
+		for (let i = 0; i < matches.length; i++) {
+			if (!results[i]) {
+				const [originalLink] = matches[i];
+				results[i] = {
+					originalLink,
+					processedLink: this.createImagePlaceholder(originalLink, 'Processing failed'),
+					success: true,
+					error: 'Processing failed',
+					isPlaceholder: true
+				};
+			}
+		}
+
+		return results;
+	}
+
+	/**
+	 * Process a single image resource with caching, compression, and optimization
+	 * @param originalLink - The original markdown link
+	 * @param altText - Alt text for the image
+	 * @param resourceId - Joplin resource ID
+	 * @param maxImageSize - Maximum image size in bytes
+	 * @param enableCompression - Whether to enable compression
+	 * @param compressionQuality - Compression quality
+	 * @returns Promise<ImageProcessingResult> - Processing result
+	 */
+	private async processImageResourceOptimized(
+		originalLink: string,
+		altText: string,
+		resourceId: string,
+		maxImageSize: number,
+		enableCompression: boolean,
+		compressionQuality: number
+	): Promise<ImageProcessingResult> {
+		// Check cache first
+		const cachedDataUri = this.imageCache.get(resourceId);
+		if (cachedDataUri) {
+			console.log(`Joplin Portal: Using cached image for resource ${resourceId}`);
+			return {
+				originalLink,
+				processedLink: `![${altText}](${cachedDataUri})`,
+				success: true,
+				resourceId,
+				fromCache: true
+			};
+		}
+
+		// Process with retry logic
+		const retryConfig = {
+			maxRetries: 2,
+			baseDelay: 500,
+			maxDelay: 5000,
+			backoffMultiplier: 2
+		};
+
+		try {
+			return await RetryUtility.executeWithRetry(
+				async () => {
+					return await this.processImageResourceInternalOptimized(
+						originalLink,
+						altText,
+						resourceId,
+						maxImageSize,
+						enableCompression,
+						compressionQuality
+					);
+				},
+				retryConfig,
+				`Process optimized image resource ${resourceId}`
+			);
+		} catch (error) {
+			// If all retries failed, create a placeholder result
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+			console.warn(`Joplin Portal: Failed to process image resource ${resourceId} after retries: ${errorMessage}`);
+
+			return {
+				originalLink,
+				processedLink: this.createImagePlaceholder(originalLink, errorMessage),
+				success: true, // Mark as success since we have a placeholder
+				error: errorMessage,
+				resourceId,
+				retryCount: retryConfig.maxRetries,
+				isPlaceholder: true
+			};
+		}
+	}
+
+	/**
+	 * Internal optimized image processing method
+	 * @param originalLink - The original markdown link
+	 * @param altText - Alt text for the image
+	 * @param resourceId - Joplin resource ID
+	 * @param maxImageSize - Maximum image size in bytes
+	 * @param enableCompression - Whether to enable compression
+	 * @param compressionQuality - Compression quality
+	 * @returns Promise<ImageProcessingResult> - Processing result
+	 */
+	private async processImageResourceInternalOptimized(
+		originalLink: string,
+		altText: string,
+		resourceId: string,
+		maxImageSize: number,
+		enableCompression: boolean,
+		compressionQuality: number
+	): Promise<ImageProcessingResult> {
+		// Get resource metadata to check if it's an image and get MIME type
+		const metadata = await this.getResourceMetadata(resourceId);
+
+		if (!metadata) {
+			throw new Error('Resource metadata not found - resource may have been deleted');
+		}
+
+		// Check if the resource is an image
+		if (!metadata.mime.startsWith('image/')) {
+			console.log(`Joplin Portal: Resource ${resourceId} is not an image (${metadata.mime}), preserving original link`);
+			return {
+				originalLink,
+				processedLink: originalLink,
+				success: true,
+				resourceId,
+				mimeType: metadata.mime,
+				retryCount: 0
+			};
+		}
+
+		// Check image size before downloading
+		if (metadata.size > maxImageSize) {
+			console.warn(`Joplin Portal: Image ${resourceId} is too large (${Math.round(metadata.size / 1024 / 1024)}MB), creating placeholder`);
+			return {
+				originalLink,
+				processedLink: this.createImagePlaceholder(originalLink, `Image too large (${Math.round(metadata.size / 1024 / 1024)}MB)`),
+				success: true,
+				resourceId,
+				mimeType: metadata.mime,
+				retryCount: 0,
+				isPlaceholder: true
+			};
+		}
+
+		// Get the raw image data
+		const imageData = await this.getResourceFile(resourceId);
+
+		if (!imageData) {
+			throw new Error('Resource file data not found - file may be corrupted or inaccessible');
+		}
+
+		try {
+			// Convert ArrayBuffer to base64
+			const base64String = this.arrayBufferToBase64(imageData);
+			let dataUri = `data:${metadata.mime};base64,${base64String}`;
+
+			// Apply compression if enabled and image is large
+			if (enableCompression && ImageCompression.shouldCompress(dataUri)) {
+				console.log(`Joplin Portal: Compressing large image ${resourceId}`);
+
+				const compressionOptions: CompressionOptions = {
+					quality: compressionQuality,
+					maxWidth: 1920,
+					maxHeight: 1080,
+					format: metadata.mime.includes('png') ? 'png' : 'jpeg'
+				};
+
+				const compressionResult = await ImageCompression.compressImage(dataUri, compressionOptions);
+
+				if (compressionResult.wasCompressed) {
+					dataUri = compressionResult.compressedDataUri;
+					console.log(`Joplin Portal: Compressed image ${resourceId} by ${Math.round((1 - compressionResult.compressionRatio) * 100)}%`);
+				}
+			}
+
+			// Cache the processed image
+			this.imageCache.set(resourceId, dataUri, metadata.mime);
+
+			const processedLink = `![${altText}](${dataUri})`;
+
+			return {
+				originalLink,
+				processedLink,
+				success: true,
+				resourceId,
+				mimeType: metadata.mime,
+				retryCount: 0
+			};
+		} catch (error) {
+			throw new Error(`Failed to convert image to base64: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
 	}
 
 	/**

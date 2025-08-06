@@ -145,6 +145,30 @@ export interface ImageProcessingResult {
 	mimeType?: string;
 	retryCount?: number;
 	isPlaceholder?: boolean;
+	fromCache?: boolean;
+}
+
+export interface ImageCacheEntry {
+	dataUri: string;
+	mimeType: string;
+	size: number;
+	timestamp: number;
+	resourceId: string;
+}
+
+export interface ImageProcessingProgress {
+	total: number;
+	processed: number;
+	failed: number;
+	current?: string;
+}
+
+export interface ImageProcessingOptions {
+	maxConcurrency?: number;
+	maxImageSize?: number;
+	enableCompression?: boolean;
+	compressionQuality?: number;
+	onProgress?: (progress: ImageProcessingProgress) => void;
 }
 
 export const DEFAULT_SETTINGS: JoplinPortalSettings = {

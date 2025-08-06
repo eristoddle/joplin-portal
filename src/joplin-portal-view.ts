@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf, Notice, MarkdownRenderer } from 'obsidian';
 import JoplinPortalPlugin from '../main';
-import { SearchResult, JoplinNote, ImportOptions } from './types';
+import { SearchResult, JoplinNote, ImportOptions, ImageProcessingOptions } from './types';
 import { ErrorHandler } from './error-handler';
 
 export const VIEW_TYPE_JOPLIN_PORTAL = 'joplin-portal-view';
@@ -699,10 +699,25 @@ export class JoplinPortalView extends ItemView {
 			// Update loading message for image processing
 			loadingDiv.setText('Processing images...');
 
-			// Process images before rendering
+			// Process images before rendering with progress indicator
 			let processedNote = fullNote;
 			try {
-				const processedBody = await this.plugin.joplinService.processNoteBodyForImages(fullNote.body);
+				const processedBody = await this.plugin.joplinService.processNoteBodyForImages(
+					fullNote.body,
+					{
+						maxConcurrency: 3,
+						enableCompression: true,
+						compressionQuality: 0.8,
+						onProgress: (progress) => {
+							if (progress.total > 1) {
+								loadingDiv.setText(`Processing images... ${progress.processed}/${progress.total}`);
+								if (progress.current) {
+									loadingDiv.setAttribute('title', progress.current);
+								}
+							}
+						}
+					}
+				);
 				processedNote = { ...fullNote, body: processedBody };
 			} catch (imageError) {
 				// Log the error but continue with original note content
