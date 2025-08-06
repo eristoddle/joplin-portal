@@ -131,3 +131,53 @@
   - Create plugin icon and banner assets
   - Prepare submission materials for Obsidian community plugin review
   - _Requirements: Community distribution and user onboarding_
+
+- [ ] 20. Implement image resource processing in Joplin API service
+  - Add getResourceMetadata method to fetch resource information including MIME type
+  - Implement getResourceFile method to fetch raw binary data as ArrayBuffer
+  - Create processNoteBodyForImages method to convert Joplin resource links to base64 data URIs
+  - Add proper error handling for missing resources and network failures
+  - _Requirements: 6.1, 6.4, 6.5, 6.6_
+
+- [ ] 21. Integrate image processing in search preview
+  - Modify JoplinPortalView's showPreview method to process images before rendering
+  - Update renderNoteContent to call processNoteBodyForImages before MarkdownRenderer
+  - Add loading states and error handling for image processing
+  - Ensure images render properly in the preview pane
+  - _Requirements: 6.2, 6.7_
+
+- [ ] 22. Add comprehensive error handling for image processing
+  - Implement placeholder display for missing or failed image resources
+  - Add retry logic for failed image downloads with exponential backoff
+  - Handle non-image resources gracefully by preserving original links
+  - Add logging for image processing failures for debugging
+  - _Requirements: 6.6, 6.7_
+
+- [ ] 23. Optimize image processing performance
+  - Implement caching for processed images to avoid repeated API calls
+  - Add concurrent processing for multiple images in a single note
+  - Consider image size limits and compression for large images
+  - Add progress indicators for notes with many images
+  - _Requirements: 6.7_
+
+- [ ] 24. Implement image download and storage for import functionality
+  - Create downloadAndStoreImages method in import service to handle image downloads
+  - Implement generateUniqueFilename method to handle filename conflicts
+  - Add logic to determine Obsidian's attachments folder configuration
+  - Create file system operations to save downloaded images locally
+  - _Requirements: 7.1, 7.2, 7.3, 7.4_
+
+- [ ] 25. Update note import process to handle images
+  - Modify import workflow to process images before saving notes
+  - Replace Joplin resource links with local file references during import
+  - Add progress indicators for image downloads during import
+  - Implement error handling for failed image downloads with fallback options
+  - _Requirements: 7.5, 7.6, 7.7_
+
+- [ ] 26. Test image rendering and import functionality
+  - Create unit tests for image processing methods (both preview and import)
+  - Test with various image formats (PNG, JPEG, GIF, WebP)
+  - Test error scenarios (missing resources, network failures, invalid MIME types)
+  - Verify images render correctly in both search preview and dedicated view
+  - Test complete import workflow with image download and local storage
+  - _Requirements: 6.1, 6.2, 6.3, 6.6, 7.1, 7.2, 7.6_

@@ -101,6 +101,9 @@ export class JoplinApiService {
     async searchNotes(query: string, options?: SearchOptions): Promise<JoplinNote[]>
     async getNote(id: string): Promise<JoplinNote>
     async searchByTag(tag: string): Promise<JoplinNote[]>
+    async processNoteBodyForImages(noteBody: string): Promise<string>
+    async getResourceMetadata(resourceId: string): Promise<JoplinResource>
+    async getResourceFile(resourceId: string): Promise<ArrayBuffer>
 }
 ```
 
@@ -109,6 +112,7 @@ export class JoplinApiService {
 - Authentication handling
 - Request/response transformation
 - Error handling and retries
+- Image resource processing and base64 conversion
 
 ### 4. Settings Component (`JoplinPortalSettingTab`)
 
@@ -162,6 +166,44 @@ interface ImportOptions {
     applyTemplate: boolean;
     templatePath?: string;
     conflictResolution: 'skip' | 'overwrite' | 'rename';
+}
+
+interface JoplinResource {
+    id: string;
+    title: string;
+    mime: string;
+    filename: string;
+    created_time: number;
+    updated_time: number;
+    user_created_time: number;
+    user_updated_time: number;
+    file_extension: string;
+    encryption_cipher_text: string;
+    encryption_applied: number;
+    encryption_blob_encrypted: number;
+    size: number;
+}
+
+interface ImageProcessingResult {
+    originalLink: string;
+    processedLink: string;
+    success: boolean;
+    error?: string;
+}
+
+interface ImageImportResult {
+    resourceId: string;
+    originalFilename: string;
+    localFilename: string;
+    localPath: string;
+    success: boolean;
+    error?: string;
+}
+
+interface ImportService {
+    async importNotes(notes: JoplinNote[], options: ImportOptions): Promise<ImportResult[]>
+    async downloadAndStoreImages(noteBody: string, attachmentsPath: string): Promise<{processedBody: string, imageResults: ImageImportResult[]}>
+    async generateUniqueFilename(baseName: string, extension: string, targetPath: string): Promise<string>
 }
 ```
 
@@ -282,5 +324,70 @@ Based on the Joplin API documentation:
 - **Authentication**: Token-based via query parameter
 - **Search Endpoint**: `GET /search?query=YOUR_QUERY&fields=id,title,body,created_time,updated_time`
 - **Note Retrieval**: `GET /notes/:id` for full note content
+- **Resource Metadata**: `GET /resources/:id` for resource information including MIME type
+- **Resource File**: `GET /resources/:id/file` for raw binary data
 - **Pagination**: Built-in support with `page` and `limit` parameters
 - **Rate Limiting**: Implement client-side throttling to respect server limits
+
+### Image Processing Architecture
+
+The image processing system converts Joplin's proprietary resource links to displayable images:
+
+```mermaid
+graph TB
+    A[Note Body with :/resource_id] --> B[processNoteBodyForImages]
+    B --> C[Extract Resource IDs with Regex]
+    C --> D[For Each Resource ID]
+    D --> E[Get Resource Metadata]
+    E --> F[Get Resource File Data]
+    F --> G[Convert to Base64]
+    G --> H[Create Data URI]
+    H --> I[Replace Original Link]
+    I --> J[Return Processed Markdown]
+```
+
+**Image Processing Flow:**
+1. **Pattern Detection**: Use regex `/!\[(.*?)\]\(:\/([a-f0-9]{32})\)/g` to find Joplin image links
+2. **Resource Metadata**: Fetch `/resources/:id` to get MIME type and validate resource exists
+3. **Binary Data Retrieval**: Fetch `/resources/:id/file` as ArrayBuffer for image data
+4. **Base64 Conversion**: Convert ArrayBuffer to base64 string
+5. **Data URI Construction**: Create `data:{mime_type};base64,{base64_string}` format
+6. **Link Replacement**: Replace original `![alt](:/resource_id)` with `![alt](data:...)`
+
+**Error Handling for Images:**
+- Missing resources: Replace with placeholder text or broken image indicator
+- Network failures: Retry with exponential backoff, fallback to placeholder
+- Invalid MIME types: Skip non-image resources, preserve original link
+- Large images: Consider size limits and compression if needed
+
+### Image Import Architecture
+
+For imported notes, images are downloaded and stored locally in Obsidian:
+
+```mermaid
+graph TB
+    A[Import Note with Images] --> B[Extract Resource IDs]
+    B --> C[For Each Image Resource]
+    C --> D[Download Image from Joplin]
+    D --> E[Generate Local Filename]
+    E --> F[Check for Filename Conflicts]
+    F --> G[Store in Attachments Folder]
+    G --> H[Update Note Content Links]
+    H --> I[Save Note with Local References]
+```
+
+**Image Import Flow:**
+1. **Resource Extraction**: Identify all image resources in note content during import
+2. **File Download**: Download each image file from Joplin API as binary data
+3. **Filename Generation**: Create appropriate filenames using resource metadata (title, extension)
+4. **Conflict Resolution**: Handle duplicate filenames by appending numbers or timestamps
+5. **Local Storage**: Save images to Obsidian's configured attachments folder
+6. **Link Conversion**: Replace `![alt](:/resource_id)` with `![alt](local_filename.ext)`
+7. **Note Update**: Save the imported note with local image references
+
+**Attachment Management:**
+- Use Obsidian's configured attachments folder (typically `attachments/` or vault root)
+- Preserve original file extensions when possible
+- Generate meaningful filenames from resource metadata
+- Handle filename conflicts gracefully with numbering scheme
+- Maintain image quality during download and storage
