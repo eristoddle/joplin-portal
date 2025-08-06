@@ -680,29 +680,49 @@ export class JoplinPortalView extends ItemView {
 		const titleEl = previewHeader.createEl('h4', { text: result.note.title });
 		titleEl.setAttribute('title', result.note.title); // Tooltip for long titles
 
-		// Show loading state
+		// Show loading state with more specific messaging
 		const loadingDiv = this.previewContainer.createDiv('joplin-preview-loading');
+		loadingDiv.setAttribute('role', 'status');
+		loadingDiv.setAttribute('aria-live', 'polite');
 		loadingDiv.setText('Loading note content...');
 
 		try {
 			// Get full note content from API (error handling is done in the service)
 			const fullNote = await this.plugin.joplinService.getNote(result.note.id);
 
-			// Remove loading indicator
-			loadingDiv.remove();
-
 			if (!fullNote) {
+				loadingDiv.remove();
 				this.showPreviewError('Note not found or could not be loaded');
 				return;
 			}
 
+			// Update loading message for image processing
+			loadingDiv.setText('Processing images...');
+
+			// Process images before rendering
+			let processedNote = fullNote;
+			try {
+				const processedBody = await this.plugin.joplinService.processNoteBodyForImages(fullNote.body);
+				processedNote = { ...fullNote, body: processedBody };
+			} catch (imageError) {
+				// Log the error but continue with original note content
+				ErrorHandler.logDetailedError(imageError, 'Image processing failed in preview', {
+					noteId: result.note.id,
+					noteTitle: result.note.title
+				});
+				console.warn('Joplin Portal: Image processing failed, using original content');
+			}
+
+			// Remove loading indicator
+			loadingDiv.remove();
+
 			// Preview content with rendered markdown
 			const previewContent = this.previewContainer.createDiv('joplin-preview-content');
-			await this.renderNoteContent(previewContent, fullNote);
+			await this.renderNoteContent(previewContent, processedNote);
 
 			// Note metadata
 			const previewMeta = this.previewContainer.createDiv('joplin-preview-metadata');
-			this.renderNoteMetadata(previewMeta, fullNote);
+			this.renderNoteMetadata(previewMeta, processedNote);
 
 		} catch (error) {
 			// Remove loading indicator
@@ -731,41 +751,40 @@ export class JoplinPortalView extends ItemView {
 			return;
 		}
 
-		// Pre-process markdown to handle Joplin resource links
-		const processedMarkdown = this.preprocessMarkdown(note.body);
-		console.log('Processed Markdown:', processedMarkdown); // FOR DEBUGGING
-
 		// Create scrollable content area
 		const scrollableContent = contentWrapper.createDiv('joplin-preview-scrollable');
 
-		// Use Obsidian's built-in markdown renderer
-		await MarkdownRenderer.render(
-			this.plugin.app,
-			processedMarkdown,
-			scrollableContent,
-			'', // No source path needed for this context
-			this
-		);
+		try {
+			// Use Obsidian's built-in markdown renderer
+			// Note: processNoteBodyForImages should have already been called before this method
+			await MarkdownRenderer.render(
+				this.plugin.app,
+				note.body, // This should already contain processed base64 images
+				scrollableContent,
+				'', // No source path needed for this context
+				this
+			);
 
-		// Add click handlers for internal links (future enhancement)
-		this.addLinkHandlers(scrollableContent);
+			// Add click handlers for internal links (future enhancement)
+			this.addLinkHandlers(scrollableContent);
+
+		} catch (renderError) {
+			// Handle markdown rendering errors gracefully
+			ErrorHandler.logDetailedError(renderError, 'Markdown rendering failed', {
+				noteId: note.id,
+				noteTitle: note.title
+			});
+
+			// Show fallback content
+			const errorDiv = scrollableContent.createDiv('joplin-preview-render-error');
+			errorDiv.setText('Failed to render note content. Showing raw text:');
+
+			const rawContent = scrollableContent.createEl('pre', { cls: 'joplin-preview-raw-content' });
+			rawContent.setText(note.body);
+		}
 	}
 
-	private preprocessMarkdown(markdown: string): string {
-		if (!markdown) return '';
 
-		// Replace Joplin resource links with full URLs
-		const resourceRegex = /!\[(.*?)\]\(:\/([a-zA-Z0-9]{32})\)/g;
-		return markdown.replace(resourceRegex, (match, altText, resourceId) => {
-			const imageUrl = this.plugin.joplinService.getResourceUrl(resourceId);
-			if (imageUrl) {
-				// Return standard markdown image link with the full URL
-				return `![${altText}](${imageUrl})`;
-			}
-			// If for some reason the URL can't be generated, return the original match
-			return match;
-		});
-	}
 
 	private addLinkHandlers(container: HTMLElement): void {
 		// Add handlers for external links to open in browser

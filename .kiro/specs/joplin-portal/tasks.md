@@ -139,7 +139,7 @@
   - Add proper error handling for missing resources and network failures
   - _Requirements: 6.1, 6.4, 6.5, 6.6_
 
-- [ ] 21. Integrate image processing in search preview
+- [x] 21. Integrate image processing in search preview
   - Modify JoplinPortalView's showPreview method to process images before rendering
   - Update renderNoteContent to call processNoteBodyForImages before MarkdownRenderer
   - Add loading states and error handling for image processing
