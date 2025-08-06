@@ -167,7 +167,7 @@
   - Create file system operations to save downloaded images locally
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 25. Update note import process to handle images
+- [x] 25. Update note import process to handle images
   - Modify import workflow to process images before saving notes
   - Replace Joplin resource links with local file references during import
   - Add progress indicators for image downloads during import

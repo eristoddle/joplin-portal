@@ -252,16 +252,18 @@ export class ImportService {
 		// 1. Convert Joplin internal links [title](:/noteId) to plain text references
 		markdown = markdown.replace(/\[([^\]]+)\]\(:\/([a-f0-9]+)\)/g, '[[Joplin Note: $1]]');
 
-		// 2. Convert Joplin resource links ![](:/resourceId) to placeholder text
+		// 2. Convert remaining Joplin resource links ![](:/resourceId) to placeholder text
+		// Note: downloadAndStoreImages should have already converted most image resources to local files
 		markdown = markdown.replace(/!\[\]\(:\/([a-f0-9]+)\)/g, '[Joplin Resource: $1]');
 
-		// 3. Convert Joplin resource links with alt text ![alt](:/resourceId)
+		// 3. Convert remaining Joplin resource links with alt text ![alt](:/resourceId)
+		// Note: downloadAndStoreImages should have already converted most image resources to local files
 		markdown = markdown.replace(/!\[([^\]]*)\]\(:\/([a-f0-9]+)\)/g, '[Joplin Resource: $1 ($2)]');
 
 		// 4. Handle Joplin checkboxes - they should already be compatible
 		// Joplin uses - [ ] and - [x] which is standard markdown
 
-		// 5. Clean up any remaining Joplin-specific protocols
+		// 5. Clean up any remaining Joplin-specific protocols (non-image resources)
 		markdown = markdown.replace(/:\/([a-f0-9]+)/g, 'joplin-id:$1');
 
 		return markdown;
@@ -390,13 +392,18 @@ export class ImportService {
 	}
 
 	/**
-	 * Import a single Joplin note to Obsidian with comprehensive error handling
+	 * Import a single Joplin note to Obsidian with comprehensive error handling and image processing
 	 */
-	async importNoteWithOptions(joplinNote: JoplinNote, options: ImportOptions): Promise<{
+	async importNoteWithOptions(
+		joplinNote: JoplinNote,
+		options: ImportOptions,
+		onProgress?: (progress: { stage: string; imageProgress?: ImageDownloadProgress }) => void
+	): Promise<{
 		file: TFile;
 		action: 'created' | 'overwritten' | 'renamed';
 		originalFilename: string;
 		finalFilename: string;
+		imageResults?: ImageImportResult[];
 	}> {
 		try {
 			// Ensure target folder exists
@@ -425,8 +432,59 @@ export class ImportService {
 				}
 			}
 
-			// Convert markdown content
-			const convertedMarkdown = this.convertJoplinToObsidianMarkdown(joplinNote);
+			// Report progress: Starting image processing
+			if (onProgress) {
+				onProgress({ stage: 'Processing images...' });
+			}
+
+			// Process images before converting markdown
+			let processedNoteBody = joplinNote.body;
+			let imageResults: ImageImportResult[] = [];
+
+			try {
+				// Get attachments folder path
+				const attachmentsPath = this.getAttachmentsFolder();
+
+				// Download and store images, replacing Joplin resource links with local file references
+				const imageProcessingResult = await this.downloadAndStoreImages(
+					joplinNote.body,
+					attachmentsPath,
+					onProgress ? (imageProgress) => {
+						onProgress({
+							stage: `Downloading images... ${imageProgress.downloaded}/${imageProgress.total}`,
+							imageProgress
+						});
+					} : undefined
+				);
+
+				processedNoteBody = imageProcessingResult.processedBody;
+				imageResults = imageProcessingResult.imageResults;
+
+				console.log(`Joplin Portal: Processed ${imageResults.length} images for note "${joplinNote.title}"`);
+
+			} catch (imageError) {
+				// Log image processing error but continue with import
+				ErrorHandler.logDetailedError(imageError, 'Image processing failed during import', {
+					noteId: joplinNote.id,
+					noteTitle: joplinNote.title,
+					targetFolder: options.targetFolder
+				});
+
+				// Add warning comment to note about image processing failure
+				const warningComment = `<!-- Warning: Image processing failed during import: ${imageError instanceof Error ? imageError.message : String(imageError)} -->\n\n`;
+				processedNoteBody = warningComment + joplinNote.body;
+
+				console.warn(`Joplin Portal: Image processing failed for note "${joplinNote.title}", continuing with original content`);
+			}
+
+			// Report progress: Converting markdown
+			if (onProgress) {
+				onProgress({ stage: 'Converting markdown...' });
+			}
+
+			// Convert markdown content using the processed body (with local image references)
+			const noteWithProcessedImages = { ...joplinNote, body: processedNoteBody };
+			const convertedMarkdown = this.convertJoplinToObsidianMarkdown(noteWithProcessedImages);
 
 			// Generate frontmatter
 			const frontmatter = this.generateFrontmatter(joplinNote);
@@ -437,6 +495,11 @@ export class ImportService {
 			// Validate content length (prevent extremely large files)
 			if (finalContent.length > 10 * 1024 * 1024) { // 10MB limit
 				throw new Error('Note content is too large to import (>10MB)');
+			}
+
+			// Report progress: Creating file
+			if (onProgress) {
+				onProgress({ stage: 'Creating file...' });
 			}
 
 			// Create the file
@@ -452,11 +515,17 @@ export class ImportService {
 				file = await this.app.vault.create(finalPath, finalContent);
 			}
 
+			// Report progress: Complete
+			if (onProgress) {
+				onProgress({ stage: 'Import complete' });
+			}
+
 			return {
 				file,
 				action,
 				originalFilename: baseFilename,
-				finalFilename: filename
+				finalFilename: filename,
+				imageResults
 			};
 		} catch (error) {
 			// Enhanced error handling with context
@@ -513,13 +582,24 @@ export class ImportService {
 	/**
 	 * Import multiple Joplin notes with enhanced error handling and progress tracking
 	 */
-	async importNotes(joplinNotes: JoplinNote[], options: ImportOptions): Promise<{
+	async importNotes(
+		joplinNotes: JoplinNote[],
+		options: ImportOptions,
+		onProgress?: (progress: {
+			noteIndex: number;
+			totalNotes: number;
+			currentNote: string;
+			stage: string;
+			imageProgress?: ImageDownloadProgress;
+		}) => void
+	): Promise<{
 		successful: {
 			file: TFile;
 			note: JoplinNote;
 			action: 'created' | 'overwritten' | 'renamed';
 			originalFilename: string;
 			finalFilename: string;
+			imageResults?: ImageImportResult[];
 		}[];
 		failed: { note: JoplinNote; error: string }[];
 	}> {
@@ -529,6 +609,7 @@ export class ImportService {
 			action: 'created' | 'overwritten' | 'renamed';
 			originalFilename: string;
 			finalFilename: string;
+			imageResults?: ImageImportResult[];
 		}[] = [];
 		const failed: { note: JoplinNote; error: string }[] = [];
 
@@ -540,7 +621,30 @@ export class ImportService {
 			try {
 				console.log(`Joplin Portal: Importing note ${i + 1}/${joplinNotes.length}: ${note.title}`);
 
-				const result = await this.importNoteWithOptions(note, options);
+				// Report overall progress
+				if (onProgress) {
+					onProgress({
+						noteIndex: i + 1,
+						totalNotes: joplinNotes.length,
+						currentNote: note.title,
+						stage: 'Starting import...'
+					});
+				}
+
+				const result = await this.importNoteWithOptions(
+					note,
+					options,
+					onProgress ? (noteProgress) => {
+						onProgress({
+							noteIndex: i + 1,
+							totalNotes: joplinNotes.length,
+							currentNote: note.title,
+							stage: noteProgress.stage,
+							imageProgress: noteProgress.imageProgress
+						});
+					} : undefined
+				);
+
 				successful.push({
 					...result,
 					note
@@ -571,17 +675,38 @@ export class ImportService {
 		// Log final results
 		console.log(`Joplin Portal: Import completed. ${successful.length} successful, ${failed.length} failed`);
 
+		// Log image processing summary
+		const totalImages = successful.reduce((sum, result) => sum + (result.imageResults?.length || 0), 0);
+		const successfulImages = successful.reduce((sum, result) =>
+			sum + (result.imageResults?.filter(img => img.success).length || 0), 0);
+		const failedImages = totalImages - successfulImages;
+
+		if (totalImages > 0) {
+			console.log(`Joplin Portal: Image processing summary: ${successfulImages} successful, ${failedImages} failed out of ${totalImages} total images`);
+		}
+
 		// Invalidate search cache for imported notes
 		if (successful.length > 0 && this.onImportComplete) {
 			const importedNotes = successful.map(result => result.note);
 			this.onImportComplete(importedNotes);
 		}
 
-		// Show summary notice
+		// Show summary notice with image information
 		if (successful.length > 0 && failed.length === 0) {
-			new Notice(`✅ Successfully imported ${successful.length} note${successful.length !== 1 ? 's' : ''}`);
+			let message = `✅ Successfully imported ${successful.length} note${successful.length !== 1 ? 's' : ''}`;
+			if (totalImages > 0) {
+				message += ` with ${successfulImages} image${successfulImages !== 1 ? 's' : ''}`;
+				if (failedImages > 0) {
+					message += ` (${failedImages} image${failedImages !== 1 ? 's' : ''} failed)`;
+				}
+			}
+			new Notice(message);
 		} else if (successful.length > 0 && failed.length > 0) {
-			new Notice(`⚠️ Imported ${successful.length} note${successful.length !== 1 ? 's' : ''}, ${failed.length} failed`);
+			let message = `⚠️ Imported ${successful.length} note${successful.length !== 1 ? 's' : ''}, ${failed.length} failed`;
+			if (totalImages > 0) {
+				message += ` (${successfulImages}/${totalImages} images)`;
+			}
+			new Notice(message);
 		} else if (failed.length > 0) {
 			new Notice(`❌ Failed to import ${failed.length} note${failed.length !== 1 ? 's' : ''}`);
 		}
@@ -632,7 +757,13 @@ export class ImportService {
 			conflictResolution: 'rename'
 		};
 
-		const result = await this.importNotes(joplinNotes, options);
+		const result = await this.importNotes(
+			joplinNotes,
+			options,
+			progressCallback ? (progress) => {
+				progressCallback({ current: progress.noteIndex, total: progress.totalNotes });
+			} : undefined
+		);
 
 		// Convert to expected format for tests
 		return {

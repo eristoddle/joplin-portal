@@ -1550,17 +1550,48 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
-	 * Perform the actual import using ImportService
+	 * Perform the actual import using ImportService with progress tracking
 	 */
 	private async performImport(selectedResults: SearchResult[], importOptions: ImportOptions): Promise<void> {
 		const notesToImport = selectedResults.map(result => result.note);
 
-		// Show loading notice
-		this.showNotice('Starting import...');
+		// Create progress indicator
+		const progressContainer = this.createProgressIndicator('Starting import...');
+		this.containerEl.appendChild(progressContainer);
 
 		try {
-			// Use the import service to import notes
-			const result = await this.plugin.importService.importNotes(notesToImport, importOptions);
+			// Use the import service to import notes with progress tracking
+			const result = await this.plugin.importService.importNotes(
+				notesToImport,
+				importOptions,
+				(progress) => {
+					// Update progress indicator with detailed information
+					let progressMessage = `Importing note ${progress.noteIndex}/${progress.totalNotes}: ${progress.currentNote}`;
+
+					if (progress.stage) {
+						progressMessage += ` - ${progress.stage}`;
+					}
+
+					if (progress.imageProgress) {
+						const imageProgress = progress.imageProgress;
+						if (imageProgress.total > 0) {
+							progressMessage += ` (Images: ${imageProgress.downloaded + imageProgress.failed}/${imageProgress.total})`;
+						}
+					}
+
+					// Calculate overall progress percentage
+					const noteProgress = (progress.noteIndex - 1) / progress.totalNotes;
+					const currentNoteProgress = progress.imageProgress
+						? (progress.imageProgress.downloaded + progress.imageProgress.failed) / Math.max(1, progress.imageProgress.total) * 0.8
+						: 0.5; // Assume 50% progress if no image info
+					const overallProgress = (noteProgress + currentNoteProgress / progress.totalNotes) * 100;
+
+					this.updateProgressIndicator(progressContainer, overallProgress, progressMessage);
+				}
+			);
+
+			// Remove progress indicator
+			this.removeProgressIndicator(progressContainer);
 
 			// Show detailed results
 			this.showImportResults(result, importOptions);
@@ -1571,13 +1602,16 @@ export class JoplinPortalView extends ItemView {
 			}
 
 		} catch (error) {
+			// Remove progress indicator on error
+			this.removeProgressIndicator(progressContainer);
+
 			console.error('Import error:', error);
 			this.showNotice('Import failed. Please check your settings and try again.');
 		}
 	}
 
 	/**
-	 * Show detailed import results with conflict resolution feedback
+	 * Show detailed import results with conflict resolution feedback and image processing info
 	 */
 	private showImportResults(
 		result: {
@@ -1587,6 +1621,7 @@ export class JoplinPortalView extends ItemView {
 				action: 'created' | 'overwritten' | 'renamed';
 				originalFilename: string;
 				finalFilename: string;
+				imageResults?: ImageImportResult[];
 			}[];
 			failed: { note: JoplinNote; error: string }[];
 		},
@@ -1602,6 +1637,12 @@ export class JoplinPortalView extends ItemView {
 			overwritten: result.successful.filter(s => s.action === 'overwritten').length,
 			renamed: result.successful.filter(s => s.action === 'renamed').length
 		};
+
+		// Calculate image processing statistics
+		const totalImages = result.successful.reduce((sum, s) => sum + (s.imageResults?.length || 0), 0);
+		const successfulImages = result.successful.reduce((sum, s) =>
+			sum + (s.imageResults?.filter(img => img.success).length || 0), 0);
+		const failedImages = totalImages - successfulImages;
 
 		if (failureCount === 0) {
 			// All imports successful - show detailed success message
@@ -1623,6 +1664,14 @@ export class JoplinPortalView extends ItemView {
 				message += ` (${actionDetails.join(', ')})`;
 			}
 
+			// Add image processing information
+			if (totalImages > 0) {
+				message += ` with ${successfulImages} image${successfulImages !== 1 ? 's' : ''}`;
+				if (failedImages > 0) {
+					message += ` (${failedImages} image${failedImages !== 1 ? 's' : ''} failed)`;
+				}
+			}
+
 			this.showNotice(message);
 
 			// Log detailed results for user reference
@@ -1642,7 +1691,12 @@ export class JoplinPortalView extends ItemView {
 			console.error('Import failures:', result.failed);
 		} else {
 			// Mixed results
-			this.showNotice(`Imported ${successCount} of ${totalCount} notes. ${failureCount} failed. Check console for details.`);
+			let message = `Imported ${successCount} of ${totalCount} notes. ${failureCount} failed.`;
+			if (totalImages > 0) {
+				message += ` Images: ${successfulImages}/${totalImages} successful.`;
+			}
+			message += ' Check console for details.';
+			this.showNotice(message);
 			console.error('Import failures:', result.failed);
 
 			// Also log successful imports with actions
@@ -1655,8 +1709,8 @@ export class JoplinPortalView extends ItemView {
 			})));
 		}
 
-		// Show detailed results modal for complex imports
-		if (totalCount > 5 || (actionCounts && (actionCounts.overwritten > 0 || actionCounts.renamed > 0))) {
+		// Show detailed results modal for complex imports or when there are image processing results
+		if (totalCount > 5 || (actionCounts && (actionCounts.overwritten > 0 || actionCounts.renamed > 0)) || totalImages > 0) {
 			this.showDetailedImportResultsModal(result, importOptions);
 		}
 	}
@@ -1672,6 +1726,7 @@ export class JoplinPortalView extends ItemView {
 				action: 'created' | 'overwritten' | 'renamed';
 				originalFilename: string;
 				finalFilename: string;
+				imageResults?: ImageImportResult[];
 			}[];
 			failed: { note: JoplinNote; error: string }[];
 		},
@@ -1722,8 +1777,18 @@ export class JoplinPortalView extends ItemView {
 		const successCount = result.successful.length;
 		const failureCount = result.failed.length;
 
+		// Calculate image statistics
+		const totalImages = result.successful.reduce((sum, s) => sum + (s.imageResults?.length || 0), 0);
+		const successfulImages = result.successful.reduce((sum, s) =>
+			sum + (s.imageResults?.filter(img => img.success).length || 0), 0);
+		const failedImages = totalImages - successfulImages;
+
 		summary.createEl('p', { text: `Import completed: ${successCount} successful, ${failureCount} failed` });
 		summary.createEl('p', { text: `Target folder: ${importOptions.targetFolder}` });
+
+		if (totalImages > 0) {
+			summary.createEl('p', { text: `Images processed: ${successfulImages} successful, ${failedImages} failed (${totalImages} total)` });
+		}
 
 		// Successful imports
 		if (result.successful.length > 0) {
@@ -1772,6 +1837,25 @@ export class JoplinPortalView extends ItemView {
 						actionInfo.textContent = `Renamed from "${item.originalFilename}.md" to "${item.finalFilename}.md"`;
 					} else {
 						actionInfo.textContent = `Created: ${item.finalFilename}.md`;
+					}
+				}
+
+				// Add image processing information if available
+				if (item.imageResults && item.imageResults.length > 0) {
+					const imageInfo = noteInfo.createEl('div', { cls: 'joplin-import-image-info' });
+					imageInfo.style.cssText = `
+						font-size: 0.75em;
+						color: var(--text-muted);
+						margin-top: 2px;
+					`;
+
+					const successfulImgs = item.imageResults.filter(img => img.success).length;
+					const failedImgs = item.imageResults.length - successfulImgs;
+
+					if (failedImgs === 0) {
+						imageInfo.textContent = `📷 ${successfulImgs} image${successfulImgs !== 1 ? 's' : ''} downloaded`;
+					} else {
+						imageInfo.textContent = `📷 ${successfulImgs}/${item.imageResults.length} images downloaded (${failedImgs} failed)`;
 					}
 				}
 
