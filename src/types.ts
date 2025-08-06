@@ -141,6 +141,10 @@ export interface ImageProcessingResult {
 	processedLink: string;
 	success: boolean;
 	error?: string;
+	resourceId?: string;
+	mimeType?: string;
+	retryCount?: number;
+	isPlaceholder?: boolean;
 }
 
 export const DEFAULT_SETTINGS: JoplinPortalSettings = {
