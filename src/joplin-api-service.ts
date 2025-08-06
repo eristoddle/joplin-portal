@@ -10,7 +10,9 @@ import {
 	RateLimitConfig,
 	RequestQueueItem,
 	SearchValidationResult,
-	TagSearchOptions
+	TagSearchOptions,
+	JoplinResource,
+	ImageProcessingResult
 } from './types';
 import { SearchCache } from './search-cache';
 import { ErrorHandler } from './error-handler';
@@ -840,5 +842,220 @@ export class JoplinApiService {
 		// For now, we'll return an empty array as this depends on Joplin API support
 		// In a real implementation, you might cache tags from search results
 		return [];
+	}
+
+	/**
+	 * Get resource metadata including MIME type and other information
+	 * @param resourceId - The ID of the resource
+	 * @returns Promise<JoplinResource | null> - Resource metadata or null if not found
+	 */
+	async getResourceMetadata(resourceId: string): Promise<JoplinResource | null> {
+		try {
+			// Check if offline first
+			if (!ErrorHandler.isOnline()) {
+				console.log(`Joplin Portal: System is offline, cannot fetch resource metadata: ${resourceId}`);
+				return null;
+			}
+
+			const response = await RetryUtility.executeWithRetry(
+				async () => {
+					const response = await this.makeRequestQueued(`/resources/${resourceId}`);
+
+					if (response.status === 404) {
+						return null;
+					}
+
+					return await response.json as JoplinResource;
+				},
+				this.retryConfig,
+				`Get resource metadata ${resourceId}`
+			);
+
+			return response;
+		} catch (error) {
+			// Handle 404 errors gracefully (resource not found)
+			if (error instanceof Error && 'status' in error && (error as JoplinApiError).status === 404) {
+				console.log(`Joplin Portal: Resource not found: ${resourceId}`);
+				return null;
+			}
+
+			const userError = ErrorHandler.handleApiError(error, `Get resource metadata ${resourceId}`);
+			ErrorHandler.logDetailedError(error, 'Get resource metadata failed', { resourceId });
+
+			// Don't show error notice for individual resource failures to avoid spam
+			// The calling method should handle this gracefully
+			return null;
+		}
+	}
+
+	/**
+	 * Get resource file data as ArrayBuffer
+	 * @param resourceId - The ID of the resource
+	 * @returns Promise<ArrayBuffer | null> - Raw binary data or null if not found/failed
+	 */
+	async getResourceFile(resourceId: string): Promise<ArrayBuffer | null> {
+		try {
+			// Check if offline first
+			if (!ErrorHandler.isOnline()) {
+				console.log(`Joplin Portal: System is offline, cannot fetch resource file: ${resourceId}`);
+				return null;
+			}
+
+			const response = await RetryUtility.executeWithRetry(
+				async () => {
+					const response = await this.makeRequestDirect(`/resources/${resourceId}/file`);
+
+					if (response.status === 404) {
+						return null;
+					}
+
+					return response.arrayBuffer;
+				},
+				this.retryConfig,
+				`Get resource file ${resourceId}`
+			);
+
+			return response;
+		} catch (error) {
+			// Handle 404 errors gracefully (resource not found)
+			if (error instanceof Error && 'status' in error && (error as JoplinApiError).status === 404) {
+				console.log(`Joplin Portal: Resource file not found: ${resourceId}`);
+				return null;
+			}
+
+			const userError = ErrorHandler.handleApiError(error, `Get resource file ${resourceId}`);
+			ErrorHandler.logDetailedError(error, 'Get resource file failed', { resourceId });
+
+			// Don't show error notice for individual resource failures to avoid spam
+			// The calling method should handle this gracefully
+			return null;
+		}
+	}
+
+	/**
+	 * Process note body to convert Joplin resource links to base64 data URIs
+	 * @param noteBody - The original note body with Joplin resource links
+	 * @returns Promise<string> - Processed note body with base64 data URIs
+	 */
+	async processNoteBodyForImages(noteBody: string): Promise<string> {
+		if (!noteBody) {
+			return noteBody;
+		}
+
+		// Regex to find Joplin image resource links: ![alt](:/resource_id)
+		const resourceLinkRegex = /!\[(.*?)\]\(:\/([a-f0-9]{32})\)/g;
+		const matches = Array.from(noteBody.matchAll(resourceLinkRegex));
+
+		if (matches.length === 0) {
+			return noteBody;
+		}
+
+		console.log(`Joplin Portal: Processing ${matches.length} image resources in note`);
+
+		// Process all images concurrently for better performance
+		const imageProcessingPromises = matches.map(async (match): Promise<ImageProcessingResult> => {
+			const [originalLink, altText, resourceId] = match;
+
+			try {
+				// Get resource metadata to check if it's an image and get MIME type
+				const metadata = await this.getResourceMetadata(resourceId);
+
+				if (!metadata) {
+					return {
+						originalLink,
+						processedLink: originalLink,
+						success: false,
+						error: 'Resource metadata not found'
+					};
+				}
+
+				// Check if the resource is an image
+				if (!metadata.mime.startsWith('image/')) {
+					console.log(`Joplin Portal: Resource ${resourceId} is not an image (${metadata.mime}), preserving original link`);
+					return {
+						originalLink,
+						processedLink: originalLink,
+						success: true,
+						error: undefined
+					};
+				}
+
+				// Get the raw image data
+				const imageData = await this.getResourceFile(resourceId);
+
+				if (!imageData) {
+					return {
+						originalLink,
+						processedLink: originalLink,
+						success: false,
+						error: 'Resource file data not found'
+					};
+				}
+
+				// Convert ArrayBuffer to base64
+				const base64String = this.arrayBufferToBase64(imageData);
+				const dataUri = `data:${metadata.mime};base64,${base64String}`;
+				const processedLink = `![${altText}](${dataUri})`;
+
+				return {
+					originalLink,
+					processedLink,
+					success: true,
+					error: undefined
+				};
+
+			} catch (error) {
+				console.error(`Joplin Portal: Failed to process image resource ${resourceId}:`, error);
+				return {
+					originalLink,
+					processedLink: originalLink,
+					success: false,
+					error: error instanceof Error ? error.message : 'Unknown error'
+				};
+			}
+		});
+
+		// Wait for all image processing to complete
+		const results = await Promise.all(imageProcessingPromises);
+
+		// Replace the original links with processed ones
+		let processedBody = noteBody;
+		let successCount = 0;
+		let failureCount = 0;
+
+		for (const result of results) {
+			if (result.success) {
+				processedBody = processedBody.replace(result.originalLink, result.processedLink);
+				successCount++;
+			} else {
+				failureCount++;
+				// For failed images, we could optionally add a placeholder or error message
+				// For now, we preserve the original link
+				console.warn(`Joplin Portal: Failed to process image: ${result.error}`);
+			}
+		}
+
+		console.log(`Joplin Portal: Image processing complete. Success: ${successCount}, Failed: ${failureCount}`);
+
+		return processedBody;
+	}
+
+	/**
+	 * Convert ArrayBuffer to base64 string
+	 * @param buffer - ArrayBuffer containing binary data
+	 * @returns string - Base64 encoded string
+	 */
+	private arrayBufferToBase64(buffer: ArrayBuffer): string {
+		const bytes = new Uint8Array(buffer);
+		let binary = '';
+
+		// Process in chunks to avoid call stack size exceeded error for large images
+		const chunkSize = 8192;
+		for (let i = 0; i < bytes.length; i += chunkSize) {
+			const chunk = bytes.subarray(i, i + chunkSize);
+			binary += String.fromCharCode.apply(null, Array.from(chunk));
+		}
+
+		return btoa(binary);
 	}
 }

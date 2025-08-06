@@ -120,6 +120,29 @@ export interface TagSearchOptions {
 	textQuery?: string;
 }
 
+export interface JoplinResource {
+	id: string;
+	title: string;
+	mime: string;
+	filename: string;
+	created_time: number;
+	updated_time: number;
+	user_created_time: number;
+	user_updated_time: number;
+	file_extension: string;
+	encryption_cipher_text: string;
+	encryption_applied: number;
+	encryption_blob_encrypted: number;
+	size: number;
+}
+
+export interface ImageProcessingResult {
+	originalLink: string;
+	processedLink: string;
+	success: boolean;
+	error?: string;
+}
+
 export const DEFAULT_SETTINGS: JoplinPortalSettings = {
 	serverUrl: 'http://localhost:41184',
 	apiToken: '',
