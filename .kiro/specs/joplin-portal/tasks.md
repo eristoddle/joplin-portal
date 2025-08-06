@@ -160,7 +160,7 @@
   - Add progress indicators for notes with many images
   - _Requirements: 6.7_
 
-- [ ] 24. Implement image download and storage for import functionality
+- [x] 24. Implement image download and storage for import functionality
   - Create downloadAndStoreImages method in import service to handle image downloads
   - Implement generateUniqueFilename method to handle filename conflicts
   - Add logic to determine Obsidian's attachments folder configuration

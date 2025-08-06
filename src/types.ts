@@ -171,6 +171,22 @@ export interface ImageProcessingOptions {
 	onProgress?: (progress: ImageProcessingProgress) => void;
 }
 
+export interface ImageImportResult {
+	resourceId: string;
+	originalFilename: string;
+	localFilename: string;
+	localPath: string;
+	success: boolean;
+	error?: string;
+}
+
+export interface ImageDownloadProgress {
+	total: number;
+	downloaded: number;
+	failed: number;
+	current?: string;
+}
+
 export const DEFAULT_SETTINGS: JoplinPortalSettings = {
 	serverUrl: 'http://localhost:41184',
 	apiToken: '',

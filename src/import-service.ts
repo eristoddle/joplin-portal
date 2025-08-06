@@ -1,14 +1,244 @@
 import { App, TFile, TFolder, normalizePath, Notice } from 'obsidian';
-import { JoplinNote, ImportOptions } from './types';
+import { JoplinNote, ImportOptions, ImageImportResult, ImageDownloadProgress, JoplinResource } from './types';
 import { ErrorHandler } from './error-handler';
+import { JoplinApiService } from './joplin-api-service';
 
 export class ImportService {
 	private app: App;
+	private joplinApiService?: JoplinApiService;
 	private onImportComplete?: (importedNotes: JoplinNote[]) => void;
 
-	constructor(app: App, onImportComplete?: (importedNotes: JoplinNote[]) => void) {
+	constructor(app: App, joplinApiServiceOrCallback?: JoplinApiService | ((importedNotes: JoplinNote[]) => void), onImportComplete?: (importedNotes: JoplinNote[]) => void) {
 		this.app = app;
-		this.onImportComplete = onImportComplete;
+
+		// Handle backward compatibility - if second parameter is a function, it's the callback
+		if (typeof joplinApiServiceOrCallback === 'function') {
+			this.onImportComplete = joplinApiServiceOrCallback;
+		} else {
+			this.joplinApiService = joplinApiServiceOrCallback;
+			this.onImportComplete = onImportComplete;
+		}
+	}
+
+	/**
+	 * Get Obsidian's configured attachments folder path
+	 */
+	private getAttachmentsFolder(): string {
+		// Get the attachments folder setting from Obsidian
+		const attachmentFolderPath = this.app.vault.getConfig('attachmentFolderPath');
+
+		if (!attachmentFolderPath || attachmentFolderPath === '/') {
+			// If no specific folder is set, use vault root
+			return '';
+		}
+
+		if (attachmentFolderPath === './') {
+			// If set to same folder as note, we'll use a default attachments folder
+			return 'attachments';
+		}
+
+		// Return the configured path, removing leading slash if present
+		return attachmentFolderPath.startsWith('/') ? attachmentFolderPath.slice(1) : attachmentFolderPath;
+	}
+
+	/**
+	 * Generate unique filename for attachments to handle conflicts
+	 */
+	async generateUniqueFilename(baseName: string, extension: string, targetPath: string): Promise<string> {
+		const normalizedTargetPath = normalizePath(targetPath);
+		let filename = `${baseName}${extension}`;
+		let counter = 1;
+
+		while (true) {
+			const fullPath = normalizePath(`${normalizedTargetPath}/${filename}`);
+			const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
+
+			if (!existingFile) {
+				return filename;
+			}
+
+			// Generate new filename with counter
+			filename = `${baseName}-${counter}${extension}`;
+			counter++;
+		}
+	}
+
+	/**
+	 * Extract image resource IDs from note body
+	 */
+	private extractImageResourceIds(noteBody: string): string[] {
+		const resourceIds: string[] = [];
+		const imageRegex = /!\[([^\]]*)\]\(:\/([a-f0-9]{32})\)/g;
+		let match;
+
+		while ((match = imageRegex.exec(noteBody)) !== null) {
+			const resourceId = match[2];
+			if (!resourceIds.includes(resourceId)) {
+				resourceIds.push(resourceId);
+			}
+		}
+
+		return resourceIds;
+	}
+
+	/**
+	 * Download and store images for import functionality
+	 */
+	async downloadAndStoreImages(
+		noteBody: string,
+		attachmentsPath: string,
+		onProgress?: (progress: ImageDownloadProgress) => void
+	): Promise<{ processedBody: string; imageResults: ImageImportResult[] }> {
+		const resourceIds = this.extractImageResourceIds(noteBody);
+		const imageResults: ImageImportResult[] = [];
+		let processedBody = noteBody;
+
+		if (resourceIds.length === 0) {
+			return { processedBody, imageResults };
+		}
+
+		// Check if Joplin API service is available
+		if (!this.joplinApiService) {
+			throw new Error('Joplin API service is not available for image downloads');
+		}
+
+		// Ensure attachments folder exists
+		await this.ensureFolderExists(attachmentsPath);
+
+		const progress: ImageDownloadProgress = {
+			total: resourceIds.length,
+			downloaded: 0,
+			failed: 0
+		};
+
+		for (let i = 0; i < resourceIds.length; i++) {
+			const resourceId = resourceIds[i];
+			progress.current = resourceId;
+
+			if (onProgress) {
+				onProgress(progress);
+			}
+
+			try {
+				// Get resource metadata to determine filename and MIME type
+				const metadata = await this.joplinApiService.getResourceMetadata(resourceId);
+
+				if (!metadata) {
+					throw new Error(`Resource metadata not found for ${resourceId}`);
+				}
+
+				// Verify it's an image
+				if (!metadata.mime.startsWith('image/')) {
+					console.warn(`Skipping non-image resource: ${resourceId} (${metadata.mime})`);
+					continue;
+				}
+
+				// Download the image data
+				const imageData = await this.joplinApiService.getResourceFile(resourceId);
+
+				if (!imageData) {
+					throw new Error(`Failed to download image data for ${resourceId}`);
+				}
+
+				// Generate filename from metadata
+				let baseName = metadata.title || `joplin-image-${resourceId.slice(0, 8)}`;
+				let extension = metadata.file_extension || this.getExtensionFromMimeType(metadata.mime);
+
+				// Sanitize filename
+				baseName = this.sanitizeFilename(baseName);
+
+				// Ensure extension starts with dot
+				if (extension && !extension.startsWith('.')) {
+					extension = '.' + extension;
+				}
+
+				// Generate unique filename to avoid conflicts
+				const uniqueFilename = await this.generateUniqueFilename(baseName, extension, attachmentsPath);
+				const localPath = normalizePath(`${attachmentsPath}/${uniqueFilename}`);
+
+				// Create the file in Obsidian vault
+				const uint8Array = new Uint8Array(imageData);
+				await this.app.vault.createBinary(localPath, uint8Array);
+
+				// Record successful import
+				const importResult: ImageImportResult = {
+					resourceId,
+					originalFilename: metadata.filename || `${metadata.title}${extension}`,
+					localFilename: uniqueFilename,
+					localPath,
+					success: true
+				};
+				imageResults.push(importResult);
+
+				// Replace the Joplin resource link with local file reference
+				const joplinLinkRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${resourceId}\\)`, 'g');
+				processedBody = processedBody.replace(joplinLinkRegex, `![$1](${uniqueFilename})`);
+
+				progress.downloaded++;
+				console.log(`Downloaded image: ${uniqueFilename} (${resourceId})`);
+
+			} catch (error) {
+				progress.failed++;
+
+				const importResult: ImageImportResult = {
+					resourceId,
+					originalFilename: `unknown-${resourceId}`,
+					localFilename: '',
+					localPath: '',
+					success: false,
+					error: error instanceof Error ? error.message : String(error)
+				};
+				imageResults.push(importResult);
+
+				// Log error but continue with other images
+				ErrorHandler.logDetailedError(error, `Failed to download image ${resourceId}`, {
+					resourceId,
+					noteBodyLength: noteBody.length,
+					attachmentsPath
+				});
+
+				// Add warning comment to the note
+				const joplinLinkRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${resourceId}\\)`, 'g');
+				processedBody = processedBody.replace(
+					joplinLinkRegex,
+					`<!-- Warning: Failed to download image ${resourceId}: ${importResult.error} -->\n![Image failed to download](:/${resourceId})`
+				);
+			}
+		}
+
+		if (onProgress) {
+			onProgress(progress);
+		}
+
+		console.log(`Image download completed: ${progress.downloaded} successful, ${progress.failed} failed`);
+
+		return { processedBody, imageResults };
+	}
+
+	/**
+	 * Get file extension from MIME type
+	 */
+	private getExtensionFromMimeType(mimeType: string): string {
+		const mimeToExt: { [key: string]: string } = {
+			'image/jpeg': '.jpg',
+			'image/jpg': '.jpg',
+			'image/png': '.png',
+			'image/gif': '.gif',
+			'image/webp': '.webp',
+			'image/svg+xml': '.svg',
+			'image/bmp': '.bmp',
+			'image/tiff': '.tiff',
+			'image/ico': '.ico'
+		};
+
+		return mimeToExt[mimeType.toLowerCase()] || '.jpg';
+	}
+
+	/**
+	 * Generate filename from Joplin note (for backward compatibility with tests)
+	 */
+	generateFileName(joplinNote: JoplinNote): string {
+		return this.sanitizeFilename(joplinNote.title) + '.md';
 	}
 
 	/**
@@ -115,9 +345,9 @@ export class ImportService {
 	}
 
 	/**
-	 * Generate unique filename if file already exists
+	 * Generate unique filename for notes if file already exists
 	 */
-	async generateUniqueFilename(folderPath: string, baseFilename: string): Promise<string> {
+	async generateUniqueNoteFilename(folderPath: string, baseFilename: string): Promise<string> {
 		const normalizedFolderPath = normalizePath(folderPath);
 		let filename = baseFilename;
 		let counter = 1;
@@ -162,7 +392,7 @@ export class ImportService {
 	/**
 	 * Import a single Joplin note to Obsidian with comprehensive error handling
 	 */
-	async importNote(joplinNote: JoplinNote, options: ImportOptions): Promise<{
+	async importNoteWithOptions(joplinNote: JoplinNote, options: ImportOptions): Promise<{
 		file: TFile;
 		action: 'created' | 'overwritten' | 'renamed';
 		originalFilename: string;
@@ -186,7 +416,7 @@ export class ImportService {
 					case 'skip':
 						throw new Error(`File already exists: ${filename}.md`);
 					case 'rename':
-						filename = await this.generateUniqueFilename(options.targetFolder, baseFilename);
+						filename = await this.generateUniqueNoteFilename(options.targetFolder, baseFilename);
 						action = 'renamed';
 						break;
 					case 'overwrite':
@@ -310,7 +540,7 @@ export class ImportService {
 			try {
 				console.log(`Joplin Portal: Importing note ${i + 1}/${joplinNotes.length}: ${note.title}`);
 
-				const result = await this.importNote(note, options);
+				const result = await this.importNoteWithOptions(note, options);
 				successful.push({
 					...result,
 					note
@@ -357,5 +587,63 @@ export class ImportService {
 		}
 
 		return { successful, failed };
+	}
+
+	/**
+	 * Import a single note (backward compatibility method for tests)
+	 */
+	async importNote(joplinNote: JoplinNote, targetFolder: string, conflictResolution: 'skip' | 'overwrite' | 'rename' = 'rename'): Promise<{
+		success: boolean;
+		filePath?: string;
+		error?: string;
+	}> {
+		try {
+			const options: ImportOptions = {
+				targetFolder,
+				applyTemplate: false,
+				conflictResolution
+			};
+
+			const result = await this.importNoteWithOptions(joplinNote, options);
+
+			return {
+				success: true,
+				filePath: result.file.path
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : String(error)
+			};
+		}
+	}
+
+	/**
+	 * Import multiple notes (backward compatibility method for tests)
+	 */
+	async importMultipleNotes(
+		joplinNotes: JoplinNote[],
+		targetFolder: string,
+		progressCallback?: (progress: { current: number; total: number }) => void
+	): Promise<{ successful: any[]; failed: any[] }> {
+		const options: ImportOptions = {
+			targetFolder,
+			applyTemplate: false,
+			conflictResolution: 'rename'
+		};
+
+		const result = await this.importNotes(joplinNotes, options);
+
+		// Convert to expected format for tests
+		return {
+			successful: result.successful.map(item => ({
+				note: item.note,
+				filePath: item.file.path
+			})),
+			failed: result.failed.map(item => ({
+				note: item.note,
+				error: item.error
+			}))
+		};
 	}
 }
