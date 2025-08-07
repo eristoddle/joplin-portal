@@ -64,21 +64,95 @@ export class ImportService {
 	}
 
 	/**
-	 * Extract image resource IDs from note body
+	 * Extract image resource IDs from note body (both markdown and HTML formats)
 	 */
 	private extractImageResourceIds(noteBody: string): string[] {
 		const resourceIds: string[] = [];
-		const imageRegex = /!\[([^\]]*)\]\(:\/([a-f0-9]{32})\)/g;
+
+		// Extract from markdown format: ![alt](:/resource_id)
+		const markdownImageRegex = /!\[([^\]]*)\]\(:\/([a-f0-9]{32})\)/g;
 		let match;
 
-		while ((match = imageRegex.exec(noteBody)) !== null) {
+		while ((match = markdownImageRegex.exec(noteBody)) !== null) {
 			const resourceId = match[2];
 			if (!resourceIds.includes(resourceId)) {
 				resourceIds.push(resourceId);
 			}
 		}
 
+		// Extract from HTML format: <img src="joplin-id:resource_id" ... />
+		const htmlImageRegex = /<img[^>]*src=["']joplin-id:([a-f0-9]{32})["'][^>]*>/g;
+
+		while ((match = htmlImageRegex.exec(noteBody)) !== null) {
+			const resourceId = match[1];
+			if (!resourceIds.includes(resourceId)) {
+				resourceIds.push(resourceId);
+			}
+		}
+
 		return resourceIds;
+	}
+
+	/**
+	 * Extract HTML attributes from an img tag while preserving various quote styles
+	 * @param htmlTag - The complete HTML img tag
+	 * @returns Record<string, string> - Object containing all attributes except src
+	 */
+	private extractHtmlImageAttributes(htmlTag: string): Record<string, string> {
+		const attributes: Record<string, string> = {};
+
+		// Enhanced regex to match HTML attributes with various quote styles and edge cases
+		// Matches: attribute="value", attribute='value', attribute=value (no quotes), and boolean attributes
+		const attributeRegex = /\s+(\w+)(?:=(?:["']([^"']*)["']|([^\s>]+)))?/g;
+		let match;
+
+		while ((match = attributeRegex.exec(htmlTag)) !== null) {
+			const [, attributeName, quotedValue, unquotedValue] = match;
+
+			// Skip the src attribute as we'll replace it, and skip tag names
+			if (attributeName.toLowerCase() === 'src' || attributeName.toLowerCase() === 'img') {
+				continue;
+			}
+
+			// Handle different attribute value formats
+			if (quotedValue !== undefined) {
+				// Quoted value (single or double quotes)
+				attributes[attributeName] = quotedValue;
+			} else if (unquotedValue !== undefined) {
+				// Unquoted value
+				attributes[attributeName] = unquotedValue;
+			} else {
+				// Boolean attribute (no value)
+				attributes[attributeName] = attributeName;
+			}
+		}
+
+		return attributes;
+	}
+
+	/**
+	 * Reconstruct HTML img tag with local file reference while preserving all attributes
+	 * @param localFilename - The local filename to use as the src attribute
+	 * @param attributes - Object containing all HTML attributes to preserve
+	 * @returns string - Reconstructed HTML img tag
+	 */
+	private reconstructHtmlImageTag(localFilename: string, attributes: Record<string, string>): string {
+		// Create new attributes object with local filename as src
+		const reconstructedAttributes = {
+			src: localFilename,
+			...attributes
+		};
+
+		// Build attribute string with proper escaping
+		const attributeString = Object.entries(reconstructedAttributes)
+			.map(([key, value]) => {
+				// Escape quotes in attribute values
+				const escapedValue = value.replace(/"/g, '&quot;');
+				return `${key}="${escapedValue}"`;
+			})
+			.join(' ');
+
+		return `<img ${attributeString}/>`;
 	}
 
 	/**
@@ -92,6 +166,12 @@ export class ImportService {
 		const resourceIds = this.extractImageResourceIds(noteBody);
 		const imageResults: ImageImportResult[] = [];
 		let processedBody = noteBody;
+
+		// Count markdown and HTML images for comprehensive logging
+		const markdownImageCount = (noteBody.match(/!\[([^\]]*)\]\(:\/([a-f0-9]{32})\)/g) || []).length;
+		const htmlImageCount = (noteBody.match(/<img[^>]*src=["']joplin-id:([a-f0-9]{32})["'][^>]*>/g) || []).length;
+
+		console.log(`Joplin Portal: Found ${resourceIds.length} total image resources for import (${markdownImageCount} markdown, ${htmlImageCount} HTML)`);
 
 		if (resourceIds.length === 0) {
 			return { processedBody, imageResults };
@@ -170,9 +250,22 @@ export class ImportService {
 				};
 				imageResults.push(importResult);
 
-				// Replace the Joplin resource link with local file reference
+				// Replace the Joplin resource link with local file reference (markdown format)
 				const joplinLinkRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${resourceId}\\)`, 'g');
 				processedBody = processedBody.replace(joplinLinkRegex, `![$1](${uniqueFilename})`);
+
+				// Replace HTML img tags with joplin-id URLs with local file references
+				const htmlImageRegex = new RegExp(`<img[^>]*src=["']joplin-id:${resourceId}["'][^>]*>`, 'g');
+				processedBody = processedBody.replace(htmlImageRegex, (match) => {
+					// Extract attributes from the original HTML tag
+					const attributes = this.extractHtmlImageAttributes(match);
+
+					// Reconstruct HTML tag with local filename while preserving attributes
+					const reconstructedTag = this.reconstructHtmlImageTag(uniqueFilename, attributes);
+
+					console.log(`Joplin Portal: Converted HTML image tag for resource ${resourceId} to local reference: ${uniqueFilename}`);
+					return reconstructedTag;
+				});
 
 				progress.downloaded++;
 				console.log(`Downloaded image: ${uniqueFilename} (${resourceId})`);
@@ -197,12 +290,34 @@ export class ImportService {
 					attachmentsPath
 				});
 
-				// Add warning comment to the note
+				// Add warning comment to the note for markdown images
 				const joplinLinkRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${resourceId}\\)`, 'g');
 				processedBody = processedBody.replace(
 					joplinLinkRegex,
 					`<!-- Warning: Failed to download image ${resourceId}: ${importResult.error} -->\n![Image failed to download](:/${resourceId})`
 				);
+
+				// Add warning comment and preserve HTML img tags for failed HTML images
+				const htmlImageRegex = new RegExp(`<img[^>]*src=["']joplin-id:${resourceId}["'][^>]*>`, 'g');
+				processedBody = processedBody.replace(htmlImageRegex, (match) => {
+					// Extract attributes from the original HTML tag
+					const attributes = this.extractHtmlImageAttributes(match);
+
+					// Create a placeholder with preserved attributes and error information
+					const placeholderAttributes = {
+						...attributes,
+						alt: attributes.alt || 'Image failed to download',
+						title: `Failed to download image resource ${resourceId}. Error: ${importResult.error}`
+					};
+
+					// Use a broken image data URI as placeholder
+					const brokenImageDataUri = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBzdHJva2U9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
+					const placeholderTag = this.reconstructHtmlImageTag(brokenImageDataUri, placeholderAttributes);
+					const errorComment = `<!-- Warning: Failed to download HTML image ${resourceId}: ${importResult.error} -->`;
+
+					console.log(`Joplin Portal: Created placeholder for failed HTML image resource ${resourceId}`);
+					return `${errorComment}\n${placeholderTag}`;
+				});
 			}
 		}
 
@@ -210,7 +325,12 @@ export class ImportService {
 			onProgress(progress);
 		}
 
-		console.log(`Image download completed: ${progress.downloaded} successful, ${progress.failed} failed`);
+		// Log comprehensive summary including HTML image processing
+		const finalMarkdownImageCount = (processedBody.match(/!\[[^\]]*\]\([^)]+\)/g) || []).length;
+		const finalHtmlImageCount = (processedBody.match(/<img[^>]*src="[^"]*"[^>]*>/g) || []).length;
+
+		console.log(`Joplin Portal: Image download completed: ${progress.downloaded} successful, ${progress.failed} failed`);
+		console.log(`Joplin Portal: Final processed note contains ${finalMarkdownImageCount} markdown images and ${finalHtmlImageCount} HTML images`);
 
 		return { processedBody, imageResults };
 	}

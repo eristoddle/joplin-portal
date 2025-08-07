@@ -196,7 +196,7 @@
   - Update error handling to create HTML placeholders for failed HTML images
   - _Requirements: 8.3, 8.5, 8.6_
 
-- [ ] 29. Update import service to handle HTML images during note import
+- [x] 29. Update import service to handle HTML images during note import
   - Modify downloadAndStoreImages method to detect and process HTML img tags with joplin-id: URLs
   - Update replaceResourceLinksWithLocal method to handle HTML image format conversion
   - Ensure HTML img tags are converted to local file references while preserving attributes

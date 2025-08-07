@@ -448,4 +448,113 @@ describe('ImportService - Image Import Functionality (Task 26)', () => {
 			expect(result.processedBody).not.toContain(':/def456abc78901234567890123456789');
 		});
 	});
+
+	describe('HTML Image Processing (Task 29)', () => {
+		it('should extract resource IDs from HTML img tags with joplin-id URLs', async () => {
+			const noteBody = `
+				<p>This is an HTML image:</p>
+				<img width="100" height="50" alt="HTML image" src="joplin-id:abc123def45678901234567890123456"/>
+				<p>Another HTML image:</p>
+				<img class="center" src="joplin-id:def456abc78901234567890123456789" title="Test"/>
+			`;
+
+			mockApp.vault.getAbstractFileByPath.mockReturnValue(null);
+
+			const result = await importService.downloadAndStoreImages(noteBody, 'attachments');
+
+			expect(result.imageResults).toHaveLength(2);
+			expect(result.imageResults[0].resourceId).toBe('abc123def45678901234567890123456');
+			expect(result.imageResults[1].resourceId).toBe('def456abc78901234567890123456789');
+		});
+
+		it('should convert HTML img tags to local file references while preserving attributes', async () => {
+			const noteBody = `
+				<p>This is an HTML image:</p>
+				<img width="100" height="50" alt="HTML image" class="center" src="joplin-id:abc123def45678901234567890123456"/>
+			`;
+
+			mockApp.vault.getAbstractFileByPath.mockReturnValue(null);
+
+			const result = await importService.downloadAndStoreImages(noteBody, 'attachments');
+
+			expect(result.imageResults).toHaveLength(1);
+			expect(result.imageResults[0].success).toBe(true);
+
+			// Check that HTML img tag is converted to local reference while preserving attributes
+			expect(result.processedBody).toContain('<img src="test-image.jpg"');
+			expect(result.processedBody).toContain('width="100"');
+			expect(result.processedBody).toContain('height="50"');
+			expect(result.processedBody).toContain('alt="HTML image"');
+			expect(result.processedBody).toContain('class="center"');
+			expect(result.processedBody).not.toContain('joplin-id:');
+		});
+
+		it('should handle mixed markdown and HTML images in the same note', async () => {
+			const noteBody = `
+				<p>Markdown image:</p>
+				![Markdown Image](:/abc123def45678901234567890123456)
+				<p>HTML image:</p>
+				<img alt="HTML Image" src="joplin-id:def456abc78901234567890123456789"/>
+			`;
+
+			mockApp.vault.getAbstractFileByPath.mockReturnValue(null);
+
+			const result = await importService.downloadAndStoreImages(noteBody, 'attachments');
+
+			expect(result.imageResults).toHaveLength(2);
+			expect(result.imageResults[0].success).toBe(true);
+			expect(result.imageResults[1].success).toBe(true);
+
+			// Check that both formats are converted correctly
+			expect(result.processedBody).toContain('![Markdown Image](test-image.jpg)');
+			expect(result.processedBody).toContain('<img alt="HTML Image" src="test-image.jpg"/>');
+			expect(result.processedBody).not.toContain(':/abc123def45678901234567890123456');
+			expect(result.processedBody).not.toContain('joplin-id:def456abc78901234567890123456789');
+		});
+
+		it('should create placeholders for failed HTML images while preserving attributes', async () => {
+			const noteBody = `
+				<img width="200" alt="Failed image" src="joplin-id:abc123def45678901234567890123456"/>
+			`;
+
+			mockJoplinApiService.getResourceMetadata.mockRejectedValue(new Error('Network error'));
+
+			const result = await importService.downloadAndStoreImages(noteBody, 'attachments');
+
+			expect(result.imageResults).toHaveLength(1);
+			expect(result.imageResults[0].success).toBe(false);
+
+			// Check that placeholder is created with preserved attributes
+			expect(result.processedBody).toContain('<!-- Warning: Failed to download HTML image');
+			expect(result.processedBody).toContain('width="200"');
+			expect(result.processedBody).toContain('alt="Failed image"');
+			expect(result.processedBody).toContain('title="Failed to download image resource');
+		});
+
+		it('should log comprehensive information about HTML image processing', async () => {
+			const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+			const noteBody = `
+				![Markdown](:/abc123def45678901234567890123456)
+				<img src="joplin-id:def456abc78901234567890123456789"/>
+			`;
+
+			mockApp.vault.getAbstractFileByPath.mockReturnValue(null);
+
+			await importService.downloadAndStoreImages(noteBody, 'attachments');
+
+			// Check that logging includes HTML image processing information
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Found 2 total image resources for import (1 markdown, 1 HTML)')
+			);
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Converted HTML image tag for resource')
+			);
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Final processed note contains')
+			);
+
+			consoleSpy.mockRestore();
+		});
+	});
 });
