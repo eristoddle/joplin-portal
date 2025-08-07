@@ -24,21 +24,27 @@ export class ImportService {
 	 * Get Obsidian's configured attachments folder path
 	 */
 	private getAttachmentsFolder(): string {
-		// Get the attachments folder setting from Obsidian
-		const attachmentFolderPath = this.app.vault.getConfig('attachmentFolderPath');
+		try {
+			// Get the attachments folder setting from Obsidian
+			const attachmentFolderPath = this.app.vault.getConfig('attachmentFolderPath');
 
-		if (!attachmentFolderPath || attachmentFolderPath === '/') {
-			// If no specific folder is set, use vault root
-			return '';
-		}
+			if (!attachmentFolderPath || attachmentFolderPath === '/') {
+				// If no specific folder is set, use vault root
+				return '';
+			}
 
-		if (attachmentFolderPath === './') {
-			// If set to same folder as note, we'll use a default attachments folder
+			if (attachmentFolderPath === './') {
+				// If set to same folder as note, we'll use a default attachments folder
+				return 'attachments';
+			}
+
+			// Return the configured path, removing leading slash if present
+			return attachmentFolderPath.startsWith('/') ? attachmentFolderPath.slice(1) : attachmentFolderPath;
+		} catch (error) {
+			// Fallback to a default attachments folder if getConfig fails
+			console.warn('Joplin Portal: Failed to get attachments folder config, using default:', error);
 			return 'attachments';
 		}
-
-		// Return the configured path, removing leading slash if present
-		return attachmentFolderPath.startsWith('/') ? attachmentFolderPath.slice(1) : attachmentFolderPath;
 	}
 
 	/**
@@ -157,6 +163,8 @@ export class ImportService {
 
 	/**
 	 * Download and store images for import functionality
+	 * This method downloads images and saves them as local files, then updates the note body
+	 * to reference the local files instead of Joplin resource IDs
 	 */
 	async downloadAndStoreImages(
 		noteBody: string,
@@ -190,6 +198,9 @@ export class ImportService {
 			downloaded: 0,
 			failed: 0
 		};
+
+		// Create a mapping of resource IDs to local filenames for replacement
+		const resourceToFilenameMap = new Map<string, string>();
 
 		for (let i = 0; i < resourceIds.length; i++) {
 			const resourceId = resourceIds[i];
@@ -250,22 +261,8 @@ export class ImportService {
 				};
 				imageResults.push(importResult);
 
-				// Replace the Joplin resource link with local file reference (markdown format)
-				const joplinLinkRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${resourceId}\\)`, 'g');
-				processedBody = processedBody.replace(joplinLinkRegex, `![$1](${uniqueFilename})`);
-
-				// Replace HTML img tags with joplin-id URLs with local file references
-				const htmlImageRegex = new RegExp(`<img[^>]*src=["']joplin-id:${resourceId}["'][^>]*>`, 'g');
-				processedBody = processedBody.replace(htmlImageRegex, (match) => {
-					// Extract attributes from the original HTML tag
-					const attributes = this.extractHtmlImageAttributes(match);
-
-					// Reconstruct HTML tag with local filename while preserving attributes
-					const reconstructedTag = this.reconstructHtmlImageTag(uniqueFilename, attributes);
-
-					console.log(`Joplin Portal: Converted HTML image tag for resource ${resourceId} to local reference: ${uniqueFilename}`);
-					return reconstructedTag;
-				});
+				// Store the mapping for later replacement
+				resourceToFilenameMap.set(resourceId, uniqueFilename);
 
 				progress.downloaded++;
 				console.log(`Downloaded image: ${uniqueFilename} (${resourceId})`);
@@ -289,37 +286,11 @@ export class ImportService {
 					noteBodyLength: noteBody.length,
 					attachmentsPath
 				});
-
-				// Add warning comment to the note for markdown images
-				const joplinLinkRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${resourceId}\\)`, 'g');
-				processedBody = processedBody.replace(
-					joplinLinkRegex,
-					`<!-- Warning: Failed to download image ${resourceId}: ${importResult.error} -->\n![Image failed to download](:/${resourceId})`
-				);
-
-				// Add warning comment and preserve HTML img tags for failed HTML images
-				const htmlImageRegex = new RegExp(`<img[^>]*src=["']joplin-id:${resourceId}["'][^>]*>`, 'g');
-				processedBody = processedBody.replace(htmlImageRegex, (match) => {
-					// Extract attributes from the original HTML tag
-					const attributes = this.extractHtmlImageAttributes(match);
-
-					// Create a placeholder with preserved attributes and error information
-					const placeholderAttributes = {
-						...attributes,
-						alt: attributes.alt || 'Image failed to download',
-						title: `Failed to download image resource ${resourceId}. Error: ${importResult.error}`
-					};
-
-					// Use a broken image data URI as placeholder
-					const brokenImageDataUri = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBzdHJva2U9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
-					const placeholderTag = this.reconstructHtmlImageTag(brokenImageDataUri, placeholderAttributes);
-					const errorComment = `<!-- Warning: Failed to download HTML image ${resourceId}: ${importResult.error} -->`;
-
-					console.log(`Joplin Portal: Created placeholder for failed HTML image resource ${resourceId}`);
-					return `${errorComment}\n${placeholderTag}`;
-				});
 			}
 		}
+
+		// Now replace all image references in the note body
+		processedBody = this.replaceImageReferences(noteBody, resourceToFilenameMap, imageResults);
 
 		if (onProgress) {
 			onProgress(progress);
@@ -333,6 +304,75 @@ export class ImportService {
 		console.log(`Joplin Portal: Final processed note contains ${finalMarkdownImageCount} markdown images and ${finalHtmlImageCount} HTML images`);
 
 		return { processedBody, imageResults };
+	}
+
+	/**
+	 * Replace image references in note body with local file references or error placeholders
+	 */
+	private replaceImageReferences(
+		noteBody: string,
+		resourceToFilenameMap: Map<string, string>,
+		imageResults: ImageImportResult[]
+	): string {
+		let processedBody = noteBody;
+
+		// Get all resource IDs that were processed (both successful and failed)
+		const allResourceIds = new Set<string>();
+		resourceToFilenameMap.forEach((_, resourceId) => allResourceIds.add(resourceId));
+		imageResults.forEach(result => allResourceIds.add(result.resourceId));
+
+		// Process each resource ID
+		for (const resourceId of allResourceIds) {
+			const localFilename = resourceToFilenameMap.get(resourceId);
+			const imageResult = imageResults.find(result => result.resourceId === resourceId);
+
+			if (localFilename) {
+				// Successful download - replace with local file reference
+
+				// Replace markdown format: ![alt](:/resource_id) -> ![alt](filename)
+				const markdownRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${resourceId}\\)`, 'g');
+				processedBody = processedBody.replace(markdownRegex, `![$1](${localFilename})`);
+
+				// Replace HTML format: <img src="joplin-id:resource_id" ...> -> <img src="filename" ...>
+				const htmlRegex = new RegExp(`<img([^>]*?)src=["']joplin-id:${resourceId}["']([^>]*?)>`, 'g');
+				processedBody = processedBody.replace(htmlRegex, `<img$1src="${localFilename}"$2>`);
+
+				console.log(`Joplin Portal: Replaced image references for resource ${resourceId} with local file: ${localFilename}`);
+			} else if (imageResult && !imageResult.success) {
+				// Failed download - replace with error placeholders
+
+				// Replace markdown format with error comment
+				const markdownRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${resourceId}\\)`, 'g');
+				processedBody = processedBody.replace(
+					markdownRegex,
+					`<!-- Warning: Failed to download image ${resourceId}: ${imageResult.error} -->\n![Image failed to download](:/${resourceId})`
+				);
+
+				// Replace HTML format with error placeholder
+				const htmlRegex = new RegExp(`<img([^>]*?)src=["']joplin-id:${resourceId}["']([^>]*?)>`, 'g');
+				processedBody = processedBody.replace(htmlRegex, (match) => {
+					// Extract attributes from the original HTML tag
+					const attributes = this.extractHtmlImageAttributes(match);
+
+					// Create a placeholder with preserved attributes and error information
+					const placeholderAttributes = {
+						...attributes,
+						alt: attributes.alt || 'Image failed to download',
+						title: `Failed to download image resource ${resourceId}. Error: ${imageResult.error}`
+					};
+
+					// Use a broken image data URI as placeholder
+					const brokenImageDataUri = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBzdHJva2U9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
+					const placeholderTag = this.reconstructHtmlImageTag(brokenImageDataUri, placeholderAttributes);
+					const errorComment = `<!-- Warning: Failed to download HTML image ${resourceId}: ${imageResult.error} -->`;
+
+					console.log(`Joplin Portal: Created placeholder for failed HTML image resource ${resourceId}`);
+					return `${errorComment}\n${placeholderTag}`;
+				});
+			}
+		}
+
+		return processedBody;
 	}
 
 	/**
