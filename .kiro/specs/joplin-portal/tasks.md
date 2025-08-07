@@ -189,7 +189,7 @@
   - Update processNoteBodyForImages to handle both markdown and HTML image formats in the same note
   - _Requirements: 8.1, 8.2, 8.5_
 
-- [ ] 28. Add HTML image replacement logic with attribute preservation
+- [x] 28. Add HTML image replacement logic with attribute preservation
   - Create reconstructHtmlImageTag method to rebuild img tag with data URI while preserving attributes
   - Implement proper HTML attribute parsing to handle various quote styles and attribute orders
   - Add validation for resource ID format extracted from joplin-id: URLs

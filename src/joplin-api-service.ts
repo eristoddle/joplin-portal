@@ -1557,49 +1557,70 @@ export class JoplinApiService {
 	 * @param errorMessage - Error message to include in placeholder
 	 * @returns string - Placeholder HTML with preserved attributes
 	 */
+	/**
+	 * Create a placeholder for failed or missing HTML images with attribute preservation
+	 * @param originalHtmlTag - The original HTML img tag
+	 * @param errorMessage - Error message to include in placeholder
+	 * @returns string - Placeholder HTML with preserved attributes
+	 */
 	private createHtmlImagePlaceholder(originalHtmlTag: string, errorMessage: string): string {
 		// Extract attributes from the original HTML tag
 		const attributes = this.extractHtmlImageAttributes(originalHtmlTag);
 
-		// Extract resource ID for reference
+		// Extract resource ID for reference with validation
 		const resourceMatch = originalHtmlTag.match(/joplin-id:([a-f0-9]{32})/);
 		const resourceId = resourceMatch ? resourceMatch[1] : 'unknown';
 
-		// Create placeholder attributes, preserving original ones
-		const placeholderAttributes = {
+		// Create placeholder data URI (broken image icon)
+		const placeholderDataUri = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBzdHJva2U9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
+
+		// Enhance attributes with placeholder-specific information
+		const enhancedAttributes = {
 			...attributes,
-			src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBzdHJva2U9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=', // Base64 encoded broken image icon
 			alt: attributes.alt || 'Image Unavailable',
 			title: `Failed to load image resource ${resourceId}. Error: ${errorMessage}`
 		};
 
-		// Reconstruct HTML tag with placeholder
-		const attributeString = Object.entries(placeholderAttributes)
-			.map(([key, value]) => `${key}="${value}"`)
-			.join(' ');
-
+		// Use reconstructHtmlImageTag to build the placeholder
+		const placeholderTag = this.reconstructHtmlImageTag(placeholderDataUri, enhancedAttributes);
 		const errorComment = `<!-- Joplin Portal: Failed to load HTML image resource ${resourceId}. Error: ${errorMessage} -->`;
 
-		return `<img ${attributeString}/>\n${errorComment}`;
+		return `${placeholderTag}\n${errorComment}`;
 	}
 
 	/**
-	 * Extract and parse HTML attributes from an img tag
+	 * Extract and parse HTML attributes from an img tag with improved parsing
+	 * Handles various quote styles, attribute orders, and edge cases
 	 * @param htmlTag - The HTML img tag string
 	 * @returns Record<string, string> - Object containing all attributes
 	 */
 	private extractHtmlImageAttributes(htmlTag: string): Record<string, string> {
 		const attributes: Record<string, string> = {};
 
-		// Regex to match HTML attributes: attribute="value" or attribute='value'
-		const attributeRegex = /(\w+)=["']([^"']*)["']/g;
+		// Enhanced regex to match HTML attributes with various quote styles and edge cases
+		// Matches: attribute="value", attribute='value', attribute=value (no quotes), and boolean attributes
+		// Use word boundary and whitespace to avoid matching tag names
+		const attributeRegex = /\s+(\w+)(?:=(?:["']([^"']*)["']|([^\s>]+)))?/g;
 		let match;
 
 		while ((match = attributeRegex.exec(htmlTag)) !== null) {
-			const [, attributeName, attributeValue] = match;
-			// Skip the src attribute as we'll replace it
-			if (attributeName.toLowerCase() !== 'src') {
-				attributes[attributeName] = attributeValue;
+			const [, attributeName, quotedValue, unquotedValue] = match;
+
+			// Skip the src attribute as we'll replace it, and skip tag names
+			if (attributeName.toLowerCase() === 'src' || attributeName.toLowerCase() === 'img') {
+				continue;
+			}
+
+			// Handle different attribute value formats
+			if (quotedValue !== undefined) {
+				// Quoted value (single or double quotes)
+				attributes[attributeName] = quotedValue;
+			} else if (unquotedValue !== undefined) {
+				// Unquoted value
+				attributes[attributeName] = unquotedValue;
+			} else {
+				// Boolean attribute (no value)
+				attributes[attributeName] = attributeName;
 			}
 		}
 
@@ -1607,12 +1628,12 @@ export class JoplinApiService {
 	}
 
 	/**
-	 * Process HTML img tag to extract resource ID from joplin-id: URL format
+	 * Process HTML img tag to extract resource ID from joplin-id: URL format with validation
 	 * @param htmlTag - The complete HTML img tag
-	 * @returns object containing resource ID and preserved attributes
+	 * @returns object containing resource ID and preserved attributes, or null if invalid
 	 */
 	private processHtmlImageTag(htmlTag: string): { resourceId: string; attributes: Record<string, string> } | null {
-		// Extract resource ID from joplin-id: URL
+		// Validate resource ID format extracted from joplin-id: URLs
 		const resourceMatch = htmlTag.match(/joplin-id:([a-f0-9]{32})/);
 		if (!resourceMatch) {
 			console.warn('Joplin Portal: Invalid joplin-id format in HTML img tag:', htmlTag);
@@ -1620,9 +1641,41 @@ export class JoplinApiService {
 		}
 
 		const resourceId = resourceMatch[1];
+
+		// Additional validation for resource ID format (32-character hex string)
+		if (!/^[a-f0-9]{32}$/.test(resourceId)) {
+			console.warn('Joplin Portal: Invalid resource ID format extracted from joplin-id URL:', resourceId);
+			return null;
+		}
+
 		const attributes = this.extractHtmlImageAttributes(htmlTag);
 
 		return { resourceId, attributes };
+	}
+
+	/**
+	 * Reconstruct HTML img tag with data URI while preserving all attributes
+	 * @param dataUri - The data URI to use as the src attribute
+	 * @param attributes - Object containing all HTML attributes to preserve
+	 * @returns string - Reconstructed HTML img tag
+	 */
+	private reconstructHtmlImageTag(dataUri: string, attributes: Record<string, string>): string {
+		// Create new attributes object with data URI as src
+		const reconstructedAttributes = {
+			src: dataUri,
+			...attributes
+		};
+
+		// Build attribute string with proper escaping
+		const attributeString = Object.entries(reconstructedAttributes)
+			.map(([key, value]) => {
+				// Escape quotes in attribute values
+				const escapedValue = value.replace(/"/g, '&quot;');
+				return `${key}="${escapedValue}"`;
+			})
+			.join(' ');
+
+		return `<img ${attributeString}/>`;
 	}
 
 	/**
@@ -1741,13 +1794,9 @@ export class JoplinApiService {
 		if (cachedDataUri) {
 			console.log(`Joplin Portal: Using cached image for HTML resource ${resourceId}`);
 
-			// Extract and preserve attributes
+			// Extract and preserve attributes, then reconstruct HTML tag using the new method
 			const attributes = this.extractHtmlImageAttributes(originalHtmlTag);
-			const attributeString = Object.entries(attributes)
-				.map(([key, value]) => `${key}="${value}"`)
-				.join(' ');
-
-			const processedHtmlTag = `<img src="${cachedDataUri}" ${attributeString}/>`;
+			const processedHtmlTag = this.reconstructHtmlImageTag(cachedDataUri, attributes);
 
 			return {
 				originalLink: originalHtmlTag,
@@ -1882,13 +1931,9 @@ export class JoplinApiService {
 			// Cache the processed image
 			this.imageCache.set(resourceId, dataUri, metadata.mime);
 
-			// Extract and preserve attributes, then reconstruct HTML tag
+			// Extract and preserve attributes, then reconstruct HTML tag using the new method
 			const attributes = this.extractHtmlImageAttributes(originalHtmlTag);
-			const attributeString = Object.entries(attributes)
-				.map(([key, value]) => `${key}="${value}"`)
-				.join(' ');
-
-			const processedHtmlTag = `<img src="${dataUri}" ${attributeString}/>`;
+			const processedHtmlTag = this.reconstructHtmlImageTag(dataUri, attributes);
 
 			return {
 				originalLink: originalHtmlTag,
