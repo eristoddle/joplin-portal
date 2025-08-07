@@ -182,7 +182,7 @@
   - Test complete import workflow with image download and local storage
   - _Requirements: 6.1, 6.2, 6.3, 6.6, 7.1, 7.2, 7.6_
 
-- [ ] 27. Implement HTML image detection and processing in Joplin API service
+- [x] 27. Implement HTML image detection and processing in Joplin API service
   - Add regex pattern to detect HTML img tags with joplin-id: URLs in processNoteBodyForImages method
   - Create extractHtmlImageAttributes method to parse and preserve HTML attributes (width, height, alt, class, style)
   - Implement processHtmlImageTag method to extract resource ID from joplin-id: URL format

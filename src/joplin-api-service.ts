@@ -995,6 +995,7 @@ export class JoplinApiService {
 
 	/**
 	 * Process note body to convert Joplin resource links to base64 data URIs with optimizations
+	 * Handles both markdown format ![alt](:/resource_id) and HTML format <img src="joplin-id:resource_id"/>
 	 * @param noteBody - The original note body with Joplin resource links
 	 * @param options - Processing options including progress callback and concurrency settings
 	 * @returns Promise<string> - Processed note body with base64 data URIs
@@ -1017,24 +1018,41 @@ export class JoplinApiService {
 
 		// Regex to find Joplin image resource links: ![alt](:/resource_id)
 		const resourceLinkRegex = /!\[(.*?)\]\(:\/([a-f0-9]{32})\)/g;
-		const matches = Array.from(noteBody.matchAll(resourceLinkRegex));
+		const markdownMatches = Array.from(noteBody.matchAll(resourceLinkRegex));
 
-		if (matches.length === 0) {
+		// Regex to find HTML img tags with joplin-id: URLs: <img src="joplin-id:resource_id" ... />
+		const htmlImageRegex = /<img[^>]*src=["']joplin-id:([a-f0-9]{32})["'][^>]*>/g;
+		const htmlMatches = Array.from(noteBody.matchAll(htmlImageRegex));
+
+		const totalMatches = markdownMatches.length + htmlMatches.length;
+
+		if (totalMatches === 0) {
 			return noteBody;
 		}
 
-		console.log(`Joplin Portal: Processing ${matches.length} image resources in note with concurrency ${maxConcurrency}`);
+		console.log(`Joplin Portal: Processing ${totalMatches} image resources in note (${markdownMatches.length} markdown, ${htmlMatches.length} HTML) with concurrency ${maxConcurrency}`);
 
 		// Initialize progress tracking
 		const progress: ImageProcessingProgress = {
-			total: matches.length,
+			total: totalMatches,
 			processed: 0,
 			failed: 0
 		};
 
-		// Process images with controlled concurrency
-		const results = await this.processImagesWithConcurrency(
-			matches,
+		// Process markdown images
+		const markdownResults = await this.processImagesWithConcurrency(
+			markdownMatches,
+			maxConcurrency,
+			maxImageSize,
+			enableCompression,
+			compressionQuality,
+			progress,
+			onProgress
+		);
+
+		// Process HTML images
+		const htmlResults = await this.processHtmlImagesWithConcurrency(
+			htmlMatches,
 			maxConcurrency,
 			maxImageSize,
 			enableCompression,
@@ -1050,7 +1068,8 @@ export class JoplinApiService {
 		let placeholderCount = 0;
 		let cacheHits = 0;
 
-		for (const result of results) {
+		// Process markdown results
+		for (const result of markdownResults) {
 			if (result.success) {
 				processedBody = processedBody.replace(result.originalLink, result.processedLink);
 				if (result.isPlaceholder) {
@@ -1071,6 +1090,38 @@ export class JoplinApiService {
 				ErrorHandler.logDetailedError(
 					new Error(result.error || 'Image processing failed'),
 					'Image processing failure',
+					{
+						resourceId: result.resourceId,
+						originalLink: result.originalLink,
+						mimeType: result.mimeType,
+						retryCount: result.retryCount
+					}
+				);
+			}
+		}
+
+		// Process HTML results
+		for (const result of htmlResults) {
+			if (result.success) {
+				processedBody = processedBody.replace(result.originalLink, result.processedLink);
+				if (result.isPlaceholder) {
+					placeholderCount++;
+				} else {
+					successCount++;
+					if (result.fromCache) {
+						cacheHits++;
+					}
+				}
+			} else {
+				failureCount++;
+				// For failed images, replace with placeholder
+				const placeholderLink = this.createHtmlImagePlaceholder(result.originalLink, result.error || 'Unknown error');
+				processedBody = processedBody.replace(result.originalLink, placeholderLink);
+
+				// Log detailed error information for debugging
+				ErrorHandler.logDetailedError(
+					new Error(result.error || 'Image processing failed'),
+					'HTML image processing failure',
 					{
 						resourceId: result.resourceId,
 						originalLink: result.originalLink,
@@ -1498,6 +1549,358 @@ export class JoplinApiService {
 		const errorComment = `<!-- Joplin Portal: Failed to load image resource ${resourceId}. Error: ${errorMessage} -->`;
 
 		return `${placeholderText}\n${errorComment}`;
+	}
+
+	/**
+	 * Create a placeholder for failed or missing HTML images
+	 * @param originalHtmlTag - The original HTML img tag
+	 * @param errorMessage - Error message to include in placeholder
+	 * @returns string - Placeholder HTML with preserved attributes
+	 */
+	private createHtmlImagePlaceholder(originalHtmlTag: string, errorMessage: string): string {
+		// Extract attributes from the original HTML tag
+		const attributes = this.extractHtmlImageAttributes(originalHtmlTag);
+
+		// Extract resource ID for reference
+		const resourceMatch = originalHtmlTag.match(/joplin-id:([a-f0-9]{32})/);
+		const resourceId = resourceMatch ? resourceMatch[1] : 'unknown';
+
+		// Create placeholder attributes, preserving original ones
+		const placeholderAttributes = {
+			...attributes,
+			src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBzdHJva2U9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=', // Base64 encoded broken image icon
+			alt: attributes.alt || 'Image Unavailable',
+			title: `Failed to load image resource ${resourceId}. Error: ${errorMessage}`
+		};
+
+		// Reconstruct HTML tag with placeholder
+		const attributeString = Object.entries(placeholderAttributes)
+			.map(([key, value]) => `${key}="${value}"`)
+			.join(' ');
+
+		const errorComment = `<!-- Joplin Portal: Failed to load HTML image resource ${resourceId}. Error: ${errorMessage} -->`;
+
+		return `<img ${attributeString}/>\n${errorComment}`;
+	}
+
+	/**
+	 * Extract and parse HTML attributes from an img tag
+	 * @param htmlTag - The HTML img tag string
+	 * @returns Record<string, string> - Object containing all attributes
+	 */
+	private extractHtmlImageAttributes(htmlTag: string): Record<string, string> {
+		const attributes: Record<string, string> = {};
+
+		// Regex to match HTML attributes: attribute="value" or attribute='value'
+		const attributeRegex = /(\w+)=["']([^"']*)["']/g;
+		let match;
+
+		while ((match = attributeRegex.exec(htmlTag)) !== null) {
+			const [, attributeName, attributeValue] = match;
+			// Skip the src attribute as we'll replace it
+			if (attributeName.toLowerCase() !== 'src') {
+				attributes[attributeName] = attributeValue;
+			}
+		}
+
+		return attributes;
+	}
+
+	/**
+	 * Process HTML img tag to extract resource ID from joplin-id: URL format
+	 * @param htmlTag - The complete HTML img tag
+	 * @returns object containing resource ID and preserved attributes
+	 */
+	private processHtmlImageTag(htmlTag: string): { resourceId: string; attributes: Record<string, string> } | null {
+		// Extract resource ID from joplin-id: URL
+		const resourceMatch = htmlTag.match(/joplin-id:([a-f0-9]{32})/);
+		if (!resourceMatch) {
+			console.warn('Joplin Portal: Invalid joplin-id format in HTML img tag:', htmlTag);
+			return null;
+		}
+
+		const resourceId = resourceMatch[1];
+		const attributes = this.extractHtmlImageAttributes(htmlTag);
+
+		return { resourceId, attributes };
+	}
+
+	/**
+	 * Process multiple HTML images with controlled concurrency
+	 * @param matches - Array of regex matches for HTML img tags
+	 * @param maxConcurrency - Maximum number of concurrent image processing operations
+	 * @param maxImageSize - Maximum image size in bytes
+	 * @param enableCompression - Whether to enable image compression
+	 * @param compressionQuality - Compression quality (0.1 to 1.0)
+	 * @param progress - Progress tracking object
+	 * @param onProgress - Progress callback function
+	 * @returns Promise<ImageProcessingResult[]> - Array of processing results
+	 */
+	private async processHtmlImagesWithConcurrency(
+		matches: RegExpMatchArray[],
+		maxConcurrency: number,
+		maxImageSize: number,
+		enableCompression: boolean,
+		compressionQuality: number,
+		progress: ImageProcessingProgress,
+		onProgress?: (progress: ImageProcessingProgress) => void
+	): Promise<ImageProcessingResult[]> {
+		const results: ImageProcessingResult[] = [];
+		const semaphore = new Array(maxConcurrency).fill(null);
+		let currentIndex = 0;
+
+		// Process images in batches with controlled concurrency
+		const processNextBatch = async (): Promise<void> => {
+			const batch: Promise<void>[] = [];
+
+			for (let i = 0; i < maxConcurrency && currentIndex < matches.length; i++) {
+				const matchIndex = currentIndex++;
+				const match = matches[matchIndex];
+				const [originalHtmlTag, resourceId] = match;
+
+				progress.current = `Processing HTML image ${matchIndex + 1}/${matches.length}`;
+				onProgress?.(progress);
+
+				const processPromise = this.processHtmlImageResourceOptimized(
+					originalHtmlTag,
+					resourceId,
+					maxImageSize,
+					enableCompression,
+					compressionQuality
+				).then(result => {
+					results[matchIndex] = result;
+					progress.processed++;
+					if (!result.success) {
+						progress.failed++;
+					}
+					onProgress?.(progress);
+				}).catch(error => {
+					// Handle unexpected errors
+					const errorResult: ImageProcessingResult = {
+						originalLink: originalHtmlTag,
+						processedLink: this.createHtmlImagePlaceholder(originalHtmlTag, error.message),
+						success: true, // Mark as success since we have a placeholder
+						error: error.message,
+						resourceId,
+						isPlaceholder: true
+					};
+					results[matchIndex] = errorResult;
+					progress.processed++;
+					progress.failed++;
+					onProgress?.(progress);
+				});
+
+				batch.push(processPromise);
+			}
+
+			if (batch.length > 0) {
+				await Promise.all(batch);
+			}
+		};
+
+		// Process all images in batches
+		while (currentIndex < matches.length) {
+			await processNextBatch();
+		}
+
+		// Ensure results array is complete (fill any gaps with placeholders)
+		for (let i = 0; i < matches.length; i++) {
+			if (!results[i]) {
+				const [originalHtmlTag] = matches[i];
+				results[i] = {
+					originalLink: originalHtmlTag,
+					processedLink: this.createHtmlImagePlaceholder(originalHtmlTag, 'Processing failed'),
+					success: true,
+					error: 'Processing failed',
+					isPlaceholder: true
+				};
+			}
+		}
+
+		return results;
+	}
+
+	/**
+	 * Process a single HTML image resource with caching, compression, and optimization
+	 * @param originalHtmlTag - The original HTML img tag
+	 * @param resourceId - Joplin resource ID
+	 * @param maxImageSize - Maximum image size in bytes
+	 * @param enableCompression - Whether to enable compression
+	 * @param compressionQuality - Compression quality
+	 * @returns Promise<ImageProcessingResult> - Processing result
+	 */
+	private async processHtmlImageResourceOptimized(
+		originalHtmlTag: string,
+		resourceId: string,
+		maxImageSize: number,
+		enableCompression: boolean,
+		compressionQuality: number
+	): Promise<ImageProcessingResult> {
+		// Check cache first
+		const cachedDataUri = this.imageCache.get(resourceId);
+		if (cachedDataUri) {
+			console.log(`Joplin Portal: Using cached image for HTML resource ${resourceId}`);
+
+			// Extract and preserve attributes
+			const attributes = this.extractHtmlImageAttributes(originalHtmlTag);
+			const attributeString = Object.entries(attributes)
+				.map(([key, value]) => `${key}="${value}"`)
+				.join(' ');
+
+			const processedHtmlTag = `<img src="${cachedDataUri}" ${attributeString}/>`;
+
+			return {
+				originalLink: originalHtmlTag,
+				processedLink: processedHtmlTag,
+				success: true,
+				resourceId,
+				fromCache: true
+			};
+		}
+
+		// Process with retry logic
+		const retryConfig = {
+			maxRetries: 2,
+			baseDelay: 500,
+			maxDelay: 5000,
+			backoffMultiplier: 2
+		};
+
+		try {
+			return await RetryUtility.executeWithRetry(
+				async () => {
+					return await this.processHtmlImageResourceInternal(
+						originalHtmlTag,
+						resourceId,
+						maxImageSize,
+						enableCompression,
+						compressionQuality
+					);
+				},
+				retryConfig,
+				`Process optimized HTML image resource ${resourceId}`
+			);
+		} catch (error) {
+			// If all retries failed, create a placeholder result
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+			console.warn(`Joplin Portal: Failed to process HTML image resource ${resourceId} after retries: ${errorMessage}`);
+
+			return {
+				originalLink: originalHtmlTag,
+				processedLink: this.createHtmlImagePlaceholder(originalHtmlTag, errorMessage),
+				success: true, // Mark as success since we have a placeholder
+				error: errorMessage,
+				resourceId,
+				retryCount: retryConfig.maxRetries,
+				isPlaceholder: true
+			};
+		}
+	}
+
+	/**
+	 * Internal method to process HTML image resource
+	 * @param originalHtmlTag - The original HTML img tag
+	 * @param resourceId - Joplin resource ID
+	 * @param maxImageSize - Maximum image size in bytes
+	 * @param enableCompression - Whether to enable compression
+	 * @param compressionQuality - Compression quality
+	 * @returns Promise<ImageProcessingResult> - Processing result
+	 */
+	private async processHtmlImageResourceInternal(
+		originalHtmlTag: string,
+		resourceId: string,
+		maxImageSize: number,
+		enableCompression: boolean,
+		compressionQuality: number
+	): Promise<ImageProcessingResult> {
+		// Get resource metadata to check if it's an image and get MIME type
+		const metadata = await this.getResourceMetadata(resourceId);
+
+		if (!metadata) {
+			throw new Error('Resource metadata not found - resource may have been deleted');
+		}
+
+		// Check if the resource is an image
+		if (!metadata.mime.startsWith('image/')) {
+			console.log(`Joplin Portal: HTML resource ${resourceId} is not an image (${metadata.mime}), preserving original tag`);
+			return {
+				originalLink: originalHtmlTag,
+				processedLink: originalHtmlTag,
+				success: true,
+				resourceId,
+				mimeType: metadata.mime,
+				retryCount: 0
+			};
+		}
+
+		// Check image size before downloading
+		if (metadata.size > maxImageSize) {
+			console.warn(`Joplin Portal: HTML image ${resourceId} is too large (${Math.round(metadata.size / 1024 / 1024)}MB), creating placeholder`);
+			return {
+				originalLink: originalHtmlTag,
+				processedLink: this.createHtmlImagePlaceholder(originalHtmlTag, `Image too large (${Math.round(metadata.size / 1024 / 1024)}MB)`),
+				success: true,
+				resourceId,
+				mimeType: metadata.mime,
+				retryCount: 0,
+				isPlaceholder: true
+			};
+		}
+
+		// Get the raw image data
+		const imageData = await this.getResourceFile(resourceId);
+
+		if (!imageData) {
+			throw new Error('Resource file data not found - file may be corrupted or inaccessible');
+		}
+
+		try {
+			// Convert ArrayBuffer to base64
+			const base64String = this.arrayBufferToBase64(imageData);
+			let dataUri = `data:${metadata.mime};base64,${base64String}`;
+
+			// Apply compression if enabled and image is large
+			if (enableCompression && ImageCompression.shouldCompress(dataUri)) {
+				console.log(`Joplin Portal: Compressing large HTML image ${resourceId}`);
+
+				const compressionOptions: CompressionOptions = {
+					quality: compressionQuality,
+					maxWidth: 1920,
+					maxHeight: 1080,
+					format: metadata.mime.includes('png') ? 'png' : 'jpeg'
+				};
+
+				const compressionResult = await ImageCompression.compressImage(dataUri, compressionOptions);
+
+				if (compressionResult.wasCompressed) {
+					dataUri = compressionResult.compressedDataUri;
+					console.log(`Joplin Portal: Compressed HTML image ${resourceId} by ${Math.round((1 - compressionResult.compressionRatio) * 100)}%`);
+				}
+			}
+
+			// Cache the processed image
+			this.imageCache.set(resourceId, dataUri, metadata.mime);
+
+			// Extract and preserve attributes, then reconstruct HTML tag
+			const attributes = this.extractHtmlImageAttributes(originalHtmlTag);
+			const attributeString = Object.entries(attributes)
+				.map(([key, value]) => `${key}="${value}"`)
+				.join(' ');
+
+			const processedHtmlTag = `<img src="${dataUri}" ${attributeString}/>`;
+
+			return {
+				originalLink: originalHtmlTag,
+				processedLink: processedHtmlTag,
+				success: true,
+				resourceId,
+				mimeType: metadata.mime,
+				retryCount: 0
+			};
+		} catch (error) {
+			throw new Error(`Failed to convert HTML image to base64: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
 	}
 
 	/**
