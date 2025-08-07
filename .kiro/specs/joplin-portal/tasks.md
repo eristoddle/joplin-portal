@@ -203,7 +203,7 @@
   - Add comprehensive logging for HTML image processing during import
   - _Requirements: 8.4, 8.7_
 
-- [ ] 30. Test HTML image processing functionality
+- [x] 30. Test HTML image processing functionality
   - Create unit tests for HTML image detection regex and attribute parsing
   - Test HTML image processing with various attribute combinations (width, height, alt, class, style)
   - Test mixed content notes containing both markdown and HTML images
