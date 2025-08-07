@@ -181,3 +181,32 @@
   - Verify images render correctly in both search preview and dedicated view
   - Test complete import workflow with image download and local storage
   - _Requirements: 6.1, 6.2, 6.3, 6.6, 7.1, 7.2, 7.6_
+
+- [ ] 27. Implement HTML image detection and processing in Joplin API service
+  - Add regex pattern to detect HTML img tags with joplin-id: URLs in processNoteBodyForImages method
+  - Create extractHtmlImageAttributes method to parse and preserve HTML attributes (width, height, alt, class, style)
+  - Implement processHtmlImageTag method to extract resource ID from joplin-id: URL format
+  - Update processNoteBodyForImages to handle both markdown and HTML image formats in the same note
+  - _Requirements: 8.1, 8.2, 8.5_
+
+- [ ] 28. Add HTML image replacement logic with attribute preservation
+  - Create reconstructHtmlImageTag method to rebuild img tag with data URI while preserving attributes
+  - Implement proper HTML attribute parsing to handle various quote styles and attribute orders
+  - Add validation for resource ID format extracted from joplin-id: URLs
+  - Update error handling to create HTML placeholders for failed HTML images
+  - _Requirements: 8.3, 8.5, 8.6_
+
+- [ ] 29. Update import service to handle HTML images during note import
+  - Modify downloadAndStoreImages method to detect and process HTML img tags with joplin-id: URLs
+  - Update replaceResourceLinksWithLocal method to handle HTML image format conversion
+  - Ensure HTML img tags are converted to local file references while preserving attributes
+  - Add comprehensive logging for HTML image processing during import
+  - _Requirements: 8.4, 8.7_
+
+- [ ] 30. Test HTML image processing functionality
+  - Create unit tests for HTML image detection regex and attribute parsing
+  - Test HTML image processing with various attribute combinations (width, height, alt, class, style)
+  - Test mixed content notes containing both markdown and HTML images
+  - Verify HTML images render correctly in preview and convert properly during import
+  - Test error scenarios with malformed HTML img tags and invalid joplin-id URLs
+  - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7_

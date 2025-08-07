@@ -95,3 +95,17 @@ The Joplin Portal plugin enables Obsidian users to access, search, and import no
 5. WHEN converting note content for import THEN the system SHALL replace Joplin resource links with standard Obsidian attachment links
 6. WHEN import is complete THEN the imported note SHALL reference local image files instead of Joplin resources
 7. IF image download fails during import THEN the system SHALL log the error and preserve the original link with a warning comment
+
+### Requirement 8
+
+**User Story:** As an Obsidian user, I want Joplin notes containing HTML image tags with joplin-id URLs to render properly in both preview and import, so that I can see all images regardless of their original format in Joplin.
+
+#### Acceptance Criteria
+
+1. WHEN a Joplin note contains HTML img tags with joplin-id: URLs (e.g., `<img src="joplin-id:resource_id"/>`) THEN the system SHALL detect and process these images
+2. WHEN processing HTML img tags with joplin-id URLs THEN the system SHALL extract the resource ID from the joplin-id: prefix
+3. WHEN displaying note preview THEN the system SHALL convert HTML img tags with joplin-id URLs to base64 data URIs for rendering
+4. WHEN importing notes THEN the system SHALL convert HTML img tags with joplin-id URLs to standard Obsidian attachment links
+5. WHEN processing HTML img tags THEN the system SHALL preserve any existing attributes like width, height, alt text, and CSS classes
+6. WHEN an HTML img tag with joplin-id URL cannot be processed THEN the system SHALL display a placeholder with the original attributes preserved
+7. WHEN both markdown and HTML image formats exist in the same note THEN the system SHALL process both formats correctly

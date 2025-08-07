@@ -102,6 +102,7 @@ export class JoplinApiService {
     async getNote(id: string): Promise<JoplinNote>
     async searchByTag(tag: string): Promise<JoplinNote[]>
     async processNoteBodyForImages(noteBody: string): Promise<string>
+    async processHtmlImagesInNote(noteBody: string): Promise<string>
     async getResourceMetadata(resourceId: string): Promise<JoplinResource>
     async getResourceFile(resourceId: string): Promise<ArrayBuffer>
 }
@@ -348,17 +349,56 @@ graph TB
 
 **Image Processing Flow:**
 1. **Pattern Detection**: Use regex `/!\[(.*?)\]\(:\/([a-f0-9]{32})\)/g` to find Joplin image links
-2. **Resource Metadata**: Fetch `/resources/:id` to get MIME type and validate resource exists
-3. **Binary Data Retrieval**: Fetch `/resources/:id/file` as ArrayBuffer for image data
-4. **Base64 Conversion**: Convert ArrayBuffer to base64 string
-5. **Data URI Construction**: Create `data:{mime_type};base64,{base64_string}` format
-6. **Link Replacement**: Replace original `![alt](:/resource_id)` with `![alt](data:...)`
+2. **HTML Pattern Detection**: Use regex `/<img[^>]*src=["']joplin-id:([a-f0-9]{32})["'][^>]*>/g` to find HTML img tags with joplin-id URLs
+3. **Resource Metadata**: Fetch `/resources/:id` to get MIME type and validate resource exists
+4. **Binary Data Retrieval**: Fetch `/resources/:id/file` as ArrayBuffer for image data
+5. **Base64 Conversion**: Convert ArrayBuffer to base64 string
+6. **Data URI Construction**: Create `data:{mime_type};base64,{base64_string}` format
+7. **Link Replacement**: Replace original `![alt](:/resource_id)` with `![alt](data:...)` or `<img src="data:...">` for HTML tags
 
 **Error Handling for Images:**
 - Missing resources: Replace with placeholder text or broken image indicator
 - Network failures: Retry with exponential backoff, fallback to placeholder
 - Invalid MIME types: Skip non-image resources, preserve original link
 - Large images: Consider size limits and compression if needed
+
+### HTML Image Processing Architecture
+
+Some Joplin notes contain HTML img tags with joplin-id URLs instead of markdown format. The system must handle both formats:
+
+```mermaid
+graph TB
+    A[Note Body with Mixed Formats] --> B[processNoteBodyForImages]
+    B --> C[Detect Markdown Images]
+    B --> D[Detect HTML Images]
+    C --> E[Extract Resource ID from :/resource_id]
+    D --> F[Extract Resource ID from joplin-id:resource_id]
+    E --> G[Process Resource]
+    F --> G
+    G --> H[Get Resource Data]
+    H --> I[Convert to Base64]
+    I --> J[Replace Markdown with Data URI]
+    I --> K[Replace HTML with Data URI]
+    J --> L[Return Processed Content]
+    K --> L
+```
+
+**HTML Image Processing Flow:**
+1. **HTML Pattern Detection**: Use regex `/<img[^>]*src=["']joplin-id:([a-f0-9]{32})["'][^>]*>/g` to find HTML img tags
+2. **Attribute Preservation**: Extract and preserve existing HTML attributes (width, height, alt, class, style)
+3. **Resource ID Extraction**: Extract the 32-character hex resource ID from the joplin-id: URL
+4. **Resource Processing**: Use the same resource fetching logic as markdown images
+5. **HTML Reconstruction**: Replace the joplin-id: URL with data URI while preserving all other attributes
+6. **Fallback Handling**: For failed resources, maintain the original HTML structure with placeholder content
+
+**HTML Image Replacement Examples:**
+- Input: `<img width="20" height="20" src="joplin-id:2f95b263563c46cabec92e206ed90be7"/>`
+- Output: `<img width="20" height="20" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."/>`
+
+**Dual Format Support:**
+- Process both markdown `![alt](:/resource_id)` and HTML `<img src="joplin-id:resource_id"/>` in the same note
+- Maintain consistent error handling and caching across both formats
+- Preserve the original format structure (markdown stays markdown, HTML stays HTML)
 
 ### Image Import Architecture
 
@@ -377,12 +417,14 @@ graph TB
 ```
 
 **Image Import Flow:**
-1. **Resource Extraction**: Identify all image resources in note content during import
+1. **Resource Extraction**: Identify all image resources in note content during import (both markdown and HTML formats)
 2. **File Download**: Download each image file from Joplin API as binary data
 3. **Filename Generation**: Create appropriate filenames using resource metadata (title, extension)
 4. **Conflict Resolution**: Handle duplicate filenames by appending numbers or timestamps
 5. **Local Storage**: Save images to Obsidian's configured attachments folder
-6. **Link Conversion**: Replace `![alt](:/resource_id)` with `![alt](local_filename.ext)`
+6. **Link Conversion**:
+   - Replace `![alt](:/resource_id)` with `![alt](local_filename.ext)` for markdown
+   - Replace `<img src="joplin-id:resource_id"/>` with `<img src="local_filename.ext"/>` for HTML
 7. **Note Update**: Save the imported note with local image references
 
 **Attachment Management:**
