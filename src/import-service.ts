@@ -403,6 +403,103 @@ export class ImportService {
 	}
 
 	/**
+	 * Check for potential conflicts when importing notes
+	 */
+	checkForConflicts(notes: JoplinNote[], targetFolder: string = ''): { conflicts: Array<{ note: JoplinNote; existingPath: string }> } {
+		const conflicts: Array<{ note: JoplinNote; existingPath: string }> = [];
+
+		for (const note of notes) {
+			const filename = this.generateFileName(note);
+			const folderPath = targetFolder ? normalizePath(targetFolder) : '';
+			const fullPath = folderPath ? normalizePath(`${folderPath}/${filename}`) : filename;
+
+			const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
+			if (existingFile instanceof TFile) {
+				conflicts.push({
+					note,
+					existingPath: fullPath
+				});
+			}
+		}
+
+		return { conflicts };
+	}
+
+	/**
+	 * Import multiple Joplin notes to Obsidian
+	 */
+	async importNotes(
+		notes: JoplinNote[],
+		options: ImportOptions,
+		onProgress?: (progress: ImportProgress) => void
+	): Promise<{
+		successful: Array<{
+			file: any;
+			note: JoplinNote;
+			action: 'created' | 'overwritten' | 'renamed';
+			originalFilename: string;
+			finalFilename: string;
+			imageResults?: ImageImportResult[];
+		}>;
+		failed: Array<{ note: JoplinNote; error: string }>;
+	}> {
+		const successful: Array<{
+			file: any;
+			note: JoplinNote;
+			action: 'created' | 'overwritten' | 'renamed';
+			originalFilename: string;
+			finalFilename: string;
+			imageResults?: ImageImportResult[];
+		}> = [];
+		const failed: Array<{ note: JoplinNote; error: string }> = [];
+
+		for (let i = 0; i < notes.length; i++) {
+			const note = notes[i];
+
+			// Report overall progress
+			if (onProgress) {
+				onProgress({
+					stage: `Importing note ${i + 1} of ${notes.length}: ${note.title}`,
+					current: i + 1,
+					total: notes.length
+				});
+			}
+
+			try {
+				const result = await this.importNote(note, options, onProgress);
+				if (result.success && result.filePath) {
+					const originalFilename = this.generateFileName(note);
+					const finalFilename = result.filePath.split('/').pop() || originalFilename;
+
+					successful.push({
+						file: null, // We don't have the actual file object here
+						note,
+						action: 'created', // For now, assume all are created (could be enhanced)
+						originalFilename,
+						finalFilename,
+						imageResults: [] // Could be enhanced to track image results
+					});
+				} else {
+					failed.push({
+						note,
+						error: result.error || 'Unknown error'
+					});
+				}
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				console.error(`Joplin Portal: Failed to import note "${note.title}":`, error);
+
+				failed.push({
+					note,
+					error: errorMessage
+				});
+			}
+		}
+
+		return { successful, failed };
+	}
+
+	/**
 	 * Import a single Joplin note to Obsidian
 	 */
 	async importNote(
@@ -502,10 +599,8 @@ export class ImportService {
 
 			console.log(`Joplin Portal: Successfully imported note "${joplinNote.title}" to ${finalPath}`);
 
-			// Call completion callback if provided
-			if (this.onImportComplete) {
-				this.onImportComplete();
-			}
+			// Note: onImportComplete callback removed to avoid issues with undefined data
+			// The UI will handle completion through the return value
 
 			return { success: true, filePath: finalPath };
 
