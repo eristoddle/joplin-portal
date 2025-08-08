@@ -699,34 +699,12 @@ export class JoplinPortalView extends ItemView {
 			// Update loading message for image processing
 			loadingDiv.setText('Processing images...');
 
-			// Process images before rendering with progress indicator
-			let processedNote = fullNote;
-			try {
-				const processedBody = await this.plugin.joplinService.processNoteBodyForImages(
-					fullNote.body,
-					{
-						maxConcurrency: 3,
-						enableCompression: true,
-						compressionQuality: 0.8,
-						onProgress: (progress) => {
-							if (progress.total > 1) {
-								loadingDiv.setText(`Processing images... ${progress.processed}/${progress.total}`);
-								if (progress.current) {
-									loadingDiv.setAttribute('title', progress.current);
-								}
-							}
-						}
-					}
-				);
-				processedNote = { ...fullNote, body: processedBody };
-			} catch (imageError) {
-				// Log the error but continue with original note content
-				ErrorHandler.logDetailedError(imageError, 'Image processing failed in preview', {
-					noteId: result.note.id,
-					noteTitle: result.note.title
-				});
-				console.warn('Joplin Portal: Image processing failed, using original content');
-			}
+			// Process note body to convert Joplin resource links to API URLs for preview
+			const processedBody = this.plugin.joplinService.processNoteBodyForPreview(fullNote.body);
+			const processedNote = {
+				...fullNote,
+				body: processedBody
+			};
 
 			// Remove loading indicator
 			loadingDiv.remove();

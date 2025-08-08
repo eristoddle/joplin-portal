@@ -210,3 +210,11 @@
   - Verify HTML images render correctly in preview and convert properly during import
   - Test error scenarios with malformed HTML img tags and invalid joplin-id URLs
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7_
+
+- [x] 31. Clean up ineffective image processing code and implement proper solution
+  - Remove complex base64 conversion methods that don't work properly
+  - Remove image cache, compression, and HTML processing utilities that are unnecessary
+  - Implement simple URL replacement for preview panel using Joplin API URLs
+  - Implement proper image download for import functionality to Obsidian attachments folder
+  - Clean up related test files that test the removed functionality
+  - _Requirements: 6.1, 6.2, 7.1, 7.2_

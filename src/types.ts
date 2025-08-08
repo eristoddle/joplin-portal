@@ -120,57 +120,6 @@ export interface TagSearchOptions {
 	textQuery?: string;
 }
 
-export interface JoplinResource {
-	id: string;
-	title: string;
-	mime: string;
-	filename: string;
-	created_time: number;
-	updated_time: number;
-	user_created_time: number;
-	user_updated_time: number;
-	file_extension: string;
-	encryption_cipher_text: string;
-	encryption_applied: number;
-	encryption_blob_encrypted: number;
-	size: number;
-}
-
-export interface ImageProcessingResult {
-	originalLink: string;
-	processedLink: string;
-	success: boolean;
-	error?: string;
-	resourceId?: string;
-	mimeType?: string;
-	retryCount?: number;
-	isPlaceholder?: boolean;
-	fromCache?: boolean;
-}
-
-export interface ImageCacheEntry {
-	dataUri: string;
-	mimeType: string;
-	size: number;
-	timestamp: number;
-	resourceId: string;
-}
-
-export interface ImageProcessingProgress {
-	total: number;
-	processed: number;
-	failed: number;
-	current?: string;
-}
-
-export interface ImageProcessingOptions {
-	maxConcurrency?: number;
-	maxImageSize?: number;
-	enableCompression?: boolean;
-	compressionQuality?: number;
-	onProgress?: (progress: ImageProcessingProgress) => void;
-}
-
 export interface ImageImportResult {
 	resourceId: string;
 	originalFilename: string;
