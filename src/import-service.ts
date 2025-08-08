@@ -73,28 +73,43 @@ export class ImportService {
 	 * Extract image resource IDs from note body (both markdown and HTML formats)
 	 */
 	private extractImageResourceIds(noteBody: string): string[] {
-		const resourceIds: string[] = [];
+    const resourceIds: string[] = [];
 
-		// Extract from markdown format: ![alt](:/resource_id)
-		const markdownMatches = noteBody.matchAll(/!\[([^\]]*)\]\(:\/([a-f0-9]{32})\)/g);
-		for (const match of markdownMatches) {
-			const resourceId = match[2];
-			if (!resourceIds.includes(resourceId)) {
-				resourceIds.push(resourceId);
-			}
-		}
+    // Matches Markdown: ![alt](:/id)
+    const markdownMatches = noteBody.matchAll(/!\[[^\]]*\]\(:\/([a-f0-9]+)\)/gi);
+    for (const match of markdownMatches) {
+        if (!resourceIds.includes(match[1])) {
+            resourceIds.push(match[1]);
+        }
+    }
 
-		// Extract from HTML format: <img src="joplin-id:resource_id" ... />
-		const htmlMatches = noteBody.matchAll(/<img[^>]*src=["']joplin-id:([a-f0-9]{32})["'][^>]*>/g);
-		for (const match of htmlMatches) {
-			const resourceId = match[1];
-			if (!resourceIds.includes(resourceId)) {
-				resourceIds.push(resourceId);
-			}
-		}
+    // Matches HTML: <img src=":/id" ...>
+    const htmlColonMatches = noteBody.matchAll(/<img[^>]+src=["']:\/*([a-f0-9]+)["'][^>]*>/gi);
+    for (const match of htmlColonMatches) {
+        if (!resourceIds.includes(match[1])) {
+            resourceIds.push(match[1]);
+        }
+    }
 
-		return resourceIds;
-	}
+    // Matches HTML: <img src="joplin-id:id" ...>
+    const htmlJoplinIdMatches = noteBody.matchAll(/<img[^>]+src=["']joplin-id:([a-f0-9]+)["'][^>]*>/gi);
+    for (const match of htmlJoplinIdMatches) {
+        if (!resourceIds.includes(match[1])) {
+            resourceIds.push(match[1]);
+        }
+    }
+
+		// const regex = /(?:(?:!\[[^\]]*\]\()|<img[^>]+src=["'])(?:app:\/\/obsidian\.md\/)?(?::\/|joplin-id:)([a-f0-9]+)(?=["')\)])/gi;
+
+    // for (const match of noteBody.matchAll(regex)) {
+    //     const id = match[1];
+    //     if (!resourceIds.includes(id)) {
+    //         resourceIds.push(id);
+    //     }
+    // }
+
+    return resourceIds;
+}
 
 	/**
 	 * Download and store images for import functionality
