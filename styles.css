@@ -256,6 +256,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Removed tooltip dependency - title is readable with proper truncation */
 }
 
 .joplin-result-snippet {
@@ -268,6 +269,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  /* Removed tooltip dependency - snippet is properly formatted and readable */
 }
 
 .joplin-result-metadata {
@@ -345,6 +347,9 @@
   color: var(--text-normal);
   font-size: 16px;
   font-weight: 600;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  /* Allow long titles to wrap instead of relying on tooltips */
 }
 
 .joplin-preview-content {

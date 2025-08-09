@@ -251,7 +251,7 @@
   - Run existing test suite to ensure no regressions were introduced
   - _Requirements: 9.1, 9.2, 9.3, 10.1, 10.2, 3.5_
 
-- [ ] 36. Remove intrusive tooltips from search results and preview
+- [x] 36. Remove intrusive tooltips from search results and preview
   - Audit all tooltip implementations in JoplinPortalView to identify random/intrusive ones
   - Remove or disable tooltips that appear during scrolling or content viewing
   - Implement TooltipManager class to control when tooltips should appear

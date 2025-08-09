@@ -1,7 +1,8 @@
 import { ItemView, WorkspaceLeaf, Notice, MarkdownRenderer } from 'obsidian';
 import JoplinPortalPlugin from '../main';
-import { SearchResult, JoplinNote, ImportOptions, ImageProcessingOptions } from './types';
+import { SearchResult, JoplinNote, ImportOptions } from './types';
 import { ErrorHandler } from './error-handler';
+import { TooltipManager } from './tooltip-manager';
 
 export const VIEW_TYPE_JOPLIN_PORTAL = 'joplin-portal-view';
 
@@ -25,10 +26,19 @@ export class JoplinPortalView extends ItemView {
 	private resizeObserver: ResizeObserver | null = null;
 	private globalKeydownHandler: (e: KeyboardEvent) => void;
 	private currentFocusIndex = -1;
+	private tooltipManager: TooltipManager;
 
 	constructor(leaf: WorkspaceLeaf, plugin: JoplinPortalPlugin) {
 		super(leaf);
 		this.plugin = plugin;
+
+		// Initialize tooltip manager with minimal intrusive settings
+		this.tooltipManager = new TooltipManager({
+			enabled: true,
+			showOnHover: false, // Prevent hover tooltips during scrolling
+			autoHideDelay: 1500, // Quick auto-hide
+			essentialOnly: true // Only show essential tooltips
+		});
 	}
 
 	getViewType(): string {
@@ -66,6 +76,9 @@ export class JoplinPortalView extends ItemView {
 
 		// Add resize observer for responsive behavior
 		this.setupResizeObserver(container);
+
+		// Add scroll listeners to hide tooltips during scrolling
+		this.setupScrollListeners(container);
 	}
 
 	async onClose(): Promise<void> {
@@ -82,6 +95,11 @@ export class JoplinPortalView extends ItemView {
 
 		// Remove global keyboard listeners
 		this.cleanupGlobalKeyboardShortcuts();
+
+		// Clean up tooltip manager
+		if (this.tooltipManager) {
+			this.tooltipManager.destroy();
+		}
 	}
 
 	private createSearchInterface(container: Element): void {
@@ -545,13 +563,13 @@ export class JoplinPortalView extends ItemView {
 			// Note title with proper truncation
 			const titleEl = resultContent.createDiv('joplin-result-title');
 			titleEl.setText(result.note.title || 'Untitled Note');
-			titleEl.setAttribute('title', result.note.title || 'Untitled Note'); // Tooltip for full title
+			// Removed intrusive tooltip - title is already visible and truncation is handled by CSS
 
 			// Note snippet with proper formatting
 			const snippetEl = resultContent.createDiv('joplin-result-snippet');
 			const cleanSnippet = this.formatSnippet(result.snippet);
 			snippetEl.setText(cleanSnippet);
-			snippetEl.setAttribute('title', cleanSnippet); // Tooltip for full snippet
+			// Removed intrusive tooltip - snippet is already formatted for readability
 
 			// Note metadata with enhanced information
 			const metadataEl = resultContent.createDiv('joplin-result-metadata');
@@ -656,7 +674,7 @@ export class JoplinPortalView extends ItemView {
 		// Preview header with note title
 		const previewHeader = this.previewContainer.createDiv('joplin-preview-note-header');
 		const titleEl = previewHeader.createEl('h4', { text: result.note.title });
-		titleEl.setAttribute('title', result.note.title); // Tooltip for long titles
+		// Removed intrusive tooltip - title is displayed in header and can be styled for proper wrapping
 
 		// Show loading state with more specific messaging
 		const loadingDiv = this.previewContainer.createDiv('joplin-preview-loading');
@@ -1925,6 +1943,20 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
+	 * Show essential tooltip only when necessary (e.g., for error states or critical info)
+	 */
+	private showEssentialTooltip(element: HTMLElement, content: string, context: string = 'info'): void {
+		this.tooltipManager.showEssentialTooltip(element, content, context);
+	}
+
+	/**
+	 * Hide all tooltips (useful when scrolling starts)
+	 */
+	private hideAllTooltips(): void {
+		this.tooltipManager.hideAllTooltips();
+	}
+
+	/**
 	 * Show a notice to the user
 	 */
 	private showNotice(message: string): void {
@@ -2164,5 +2196,31 @@ export class JoplinPortalView extends ItemView {
 
 			this.resizeObserver.observe(container);
 		}
+	}
+
+	/**
+	 * Setup scroll listeners to hide tooltips during scrolling
+	 */
+	private setupScrollListeners(container: Element): void {
+		// Hide tooltips when scrolling in results container
+		const resultsContainer = container.querySelector('.joplin-results-container');
+		if (resultsContainer) {
+			resultsContainer.addEventListener('scroll', () => {
+				this.hideAllTooltips();
+			});
+		}
+
+		// Hide tooltips when scrolling in preview container
+		const previewContainer = container.querySelector('.joplin-preview-container');
+		if (previewContainer) {
+			previewContainer.addEventListener('scroll', () => {
+				this.hideAllTooltips();
+			});
+		}
+
+		// Hide tooltips on any scroll within the main container
+		container.addEventListener('scroll', () => {
+			this.hideAllTooltips();
+		}, { passive: true });
 	}
 }
