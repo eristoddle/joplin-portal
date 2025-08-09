@@ -18,12 +18,9 @@ export default class JoplinPortalPlugin extends Plugin {
 
 		// Initialize services
 		this.joplinService = new JoplinApiService(this.settings);
-		this.importService = new ImportService(this.app, (importedNotes) => {
-			// Invalidate search cache when notes are imported
-			const keywords = importedNotes.map(note => note.title).concat(
-				importedNotes.flatMap(note => note.tags || [])
-			);
-			this.joplinService.invalidateSearchCache(keywords);
+		this.importService = new ImportService(this.app, this.joplinService, () => {
+			// Callback for when import is complete - can be used for cache invalidation
+			// Note: This callback is currently not used but kept for future functionality
 		});
 
 		// Set up offline/online detection

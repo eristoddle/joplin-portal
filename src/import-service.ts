@@ -74,6 +74,7 @@ export class ImportService {
 	 */
 	private extractImageResourceIds(noteBody: string): string[] {
     const resourceIds: string[] = [];
+		console.log('notebody', noteBody);
 
     // Matches Markdown: ![alt](:/id)
     const markdownMatches = noteBody.matchAll(/!\[[^\]]*\]\(:\/([a-f0-9]+)\)/gi);
@@ -97,17 +98,9 @@ export class ImportService {
         if (!resourceIds.includes(match[1])) {
             resourceIds.push(match[1]);
         }
-    }
+		}
 
-		// const regex = /(?:(?:!\[[^\]]*\]\()|<img[^>]+src=["'])(?:app:\/\/obsidian\.md\/)?(?::\/|joplin-id:)([a-f0-9]+)(?=["')\)])/gi;
-
-    // for (const match of noteBody.matchAll(regex)) {
-    //     const id = match[1];
-    //     if (!resourceIds.includes(id)) {
-    //         resourceIds.push(id);
-    //     }
-    // }
-
+		console.log('resourceIds', resourceIds)
     return resourceIds;
 }
 
