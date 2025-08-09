@@ -136,6 +136,13 @@ export interface ImageDownloadProgress {
 	current?: string;
 }
 
+export interface ImportProgress {
+	stage: string;
+	current?: number;
+	total?: number;
+	imageProgress?: ImageDownloadProgress;
+}
+
 export const DEFAULT_SETTINGS: JoplinPortalSettings = {
 	serverUrl: 'http://localhost:41184',
 	apiToken: '',

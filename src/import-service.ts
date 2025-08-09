@@ -298,7 +298,9 @@ export class ImportService {
 		frontmatter += `updated: ${new Date(joplinNote.updated_time).toISOString()}\n`;
 
 		if (joplinNote.source_url) {
-			frontmatter += `source-url: ${joplinNote.source_url}\n`;
+			// Escape the URL value to ensure proper YAML formatting
+			const escapedUrl = joplinNote.source_url.replace(/"/g, '\\"');
+			frontmatter += `source: "${escapedUrl}"\n`;
 		}
 
 		frontmatter += '---\n\n';

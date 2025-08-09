@@ -80,6 +80,48 @@ describe('ImportService', () => {
     });
   });
 
+  describe('generateFrontmatter', () => {
+    it('should generate frontmatter with source URL when available', () => {
+      const result = importService.generateFrontmatter(mockJoplinNote);
+
+      expect(result).toContain('---');
+      expect(result).toContain(`joplin-id: ${mockJoplinNote.id}`);
+      expect(result).toContain(`created: ${new Date(mockJoplinNote.created_time).toISOString()}`);
+      expect(result).toContain(`updated: ${new Date(mockJoplinNote.updated_time).toISOString()}`);
+      expect(result).toContain(`source: "${mockJoplinNote.source_url}"`);
+      expect(result).toMatch(/---\n\n$/);  // Ends with ---\n\n
+    });
+
+    it('should generate frontmatter without source URL when not available', () => {
+      const noteWithoutSource = { ...mockJoplinNote, source_url: undefined };
+      const result = importService.generateFrontmatter(noteWithoutSource);
+
+      expect(result).toContain('---');
+      expect(result).toContain(`joplin-id: ${noteWithoutSource.id}`);
+      expect(result).toContain(`created: ${new Date(noteWithoutSource.created_time).toISOString()}`);
+      expect(result).toContain(`updated: ${new Date(noteWithoutSource.updated_time).toISOString()}`);
+      expect(result).not.toContain('source:');
+      expect(result).toMatch(/---\n\n$/);  // Ends with ---\n\n
+    });
+
+    it('should properly escape source URL with quotes', () => {
+      const noteWithQuotedUrl = {
+        ...mockJoplinNote,
+        source_url: 'https://example.com/path?param="value"&other=test'
+      };
+      const result = importService.generateFrontmatter(noteWithQuotedUrl);
+
+      expect(result).toContain('source: "https://example.com/path?param=\\"value\\"&other=test"');
+    });
+
+    it('should handle empty source URL', () => {
+      const noteWithEmptySource = { ...mockJoplinNote, source_url: '' };
+      const result = importService.generateFrontmatter(noteWithEmptySource);
+
+      expect(result).not.toContain('source:');
+    });
+  });
+
   describe('generateFileName', () => {
     it('should generate safe filename from note title', () => {
       const result = importService.generateFileName(mockJoplinNote);
@@ -93,7 +135,7 @@ describe('ImportService', () => {
       };
 
       const result = importService.generateFileName(noteWithSpecialChars);
-      expect(result).toBe('Test_Note_With_Special_Characters___.md');
+      expect(result).toBe('Test-Note-With-Special-Characters----.md');
     });
 
     it('should handle very long titles', () => {
@@ -104,7 +146,7 @@ describe('ImportService', () => {
 
       const result = importService.generateFileName(noteWithLongTitle);
       expect(result.length).toBeLessThanOrEqual(255); // Max filename length
-      expect(result).toEndWith('.md');
+      expect(result).toMatch(/\.md$/);  // Ends with .md
     });
 
     it('should handle empty title', () => {

@@ -235,7 +235,7 @@
   - Update help text and accessibility labels to reflect simplified interface
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
 
-- [ ] 34. Add source URL to note frontmatter during import
+- [x] 34. Add source URL to note frontmatter during import
   - Update ImportService.generateFrontmatter method to include source URL field
   - Modify frontmatter generation to add "source: [URL]" when source_url is available
   - Ensure source URL field is properly formatted and escaped in YAML frontmatter
