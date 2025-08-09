@@ -227,7 +227,7 @@
   - Add logging to debug tag search API requests and responses
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 33. Remove combined search functionality and simplify search interface
+- [x] 33. Remove combined search functionality and simplify search interface
   - Remove "Combined" option from search type selector in JoplinPortalView
   - Update search interface to only show "Text Search" and "Tag Search" options
   - Remove combined search logic from performSearch method

@@ -102,12 +102,11 @@ export class JoplinPortalView extends ItemView {
 
 		this.searchTypeSelect.createEl('option', { value: 'text', text: 'Text Search' });
 		this.searchTypeSelect.createEl('option', { value: 'tag', text: 'Tag Search' });
-		this.searchTypeSelect.createEl('option', { value: 'combined', text: 'Combined' });
 
 		// Add help text for screen readers
 		const helpText = searchContainer.createDiv('sr-only');
 		helpText.id = 'search-type-help';
-		helpText.textContent = 'Choose between text search, tag search, or combined search modes';
+		helpText.textContent = 'Choose between text search and tag search modes';
 
 		// Search inputs container
 		const searchInputsContainer = searchContainer.createDiv('joplin-search-inputs');
@@ -339,11 +338,6 @@ export class JoplinPortalView extends ItemView {
 				this.searchInput.style.display = 'none';
 				this.tagSearchInput.style.display = 'block';
 				break;
-			case 'combined':
-				this.searchInput.style.display = 'block';
-				this.tagSearchInput.style.display = 'block';
-				this.searchInput.placeholder = 'Search text in notes...';
-				break;
 		}
 	}
 
@@ -388,10 +382,10 @@ export class JoplinPortalView extends ItemView {
 		let tagQuery = '';
 
 		// Get queries based on search type
-		if (searchType === 'text' || searchType === 'combined') {
+		if (searchType === 'text') {
 			query = this.searchInput.value.trim();
 		}
-		if (searchType === 'tag' || searchType === 'combined') {
+		if (searchType === 'tag') {
 			tagQuery = this.tagSearchInput.value.trim();
 		}
 
@@ -450,22 +444,6 @@ export class JoplinPortalView extends ItemView {
 						tags,
 						operator: 'OR', // Default to OR for multiple tags
 						includeText: false
-					});
-				}
-			} else if (searchType === 'combined') {
-				// Combined text and tag search
-				const tags = tagQuery.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-				if (tags.length > 0) {
-					results = await this.plugin.joplinService.searchNotesByTags({
-						tags,
-						operator: 'OR',
-						includeText: true,
-						textQuery: query
-					});
-				} else if (query) {
-					// Fall back to text search if no tags provided
-					results = await this.plugin.joplinService.searchNotes(query, {
-						limit: this.plugin.settings.searchLimit || 50
 					});
 				}
 			} else {
