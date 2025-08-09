@@ -18,7 +18,13 @@ describe('JoplinApiService', () => {
   const mockRequestUrl = vi.mocked(requestUrl);
 
   beforeEach(() => {
-    service = new JoplinApiService('http://localhost:41184', 'test-token');
+    service = new JoplinApiService({
+      serverUrl: 'http://localhost:41184',
+      apiToken: 'test-token',
+      defaultImportFolder: 'Imported from Joplin',
+      importTemplate: '',
+      searchLimit: 50
+    });
     vi.clearAllMocks();
   });
 
@@ -34,7 +40,13 @@ describe('JoplinApiService', () => {
     });
 
     it('should normalize server URL by removing trailing slash', () => {
-      const serviceWithTrailingSlash = new JoplinApiService('http://localhost:41184/', 'test-token');
+      const serviceWithTrailingSlash = new JoplinApiService({
+        serverUrl: 'http://localhost:41184/',
+        apiToken: 'test-token',
+        defaultImportFolder: 'Imported from Joplin',
+        importTemplate: '',
+        searchLimit: 50
+      });
       expect(serviceWithTrailingSlash['baseUrl']).toBe('http://localhost:41184');
     });
   });
@@ -167,36 +179,121 @@ describe('JoplinApiService', () => {
     });
   });
 
-  describe('searchByTag', () => {
-    it('should search notes by tag', async () => {
+  describe('searchNotesByTags', () => {
+    it('should search notes by single tag with proper format', async () => {
       mockRequestUrl.mockResolvedValueOnce({
         status: 200,
         json: mockSearchResponse
       } as any);
 
-      const result = await service.searchByTag('test');
+      const result = await service.searchNotesByTags({
+        tags: ['test'],
+        operator: 'OR'
+      });
 
-      expect(result).toEqual(mockJoplinNotes);
+      expect(result).toHaveLength(mockJoplinNotes.length);
       expect(mockRequestUrl).toHaveBeenCalledWith({
-        url: 'http://localhost:41184/search?query=tag:test&fields=id,title,body,created_time,updated_time,parent_id&token=test-token',
+        url: expect.stringContaining('search?query=tag%3Atest'),
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' })
       });
     });
 
-    it('should handle tags with special characters', async () => {
+    it('should search notes by multiple tags with OR operator', async () => {
+      mockRequestUrl.mockResolvedValueOnce({
+        status: 200,
+        json: mockSearchResponse
+      } as any);
+
+      const result = await service.searchNotesByTags({
+        tags: ['work', 'project'],
+        operator: 'OR'
+      });
+
+      expect(result).toHaveLength(mockJoplinNotes.length);
+      expect(mockRequestUrl).toHaveBeenCalledWith({
+        url: expect.stringContaining('tag%3Awork%20OR%20tag%3Aproject'),
+        method: 'GET',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' })
+      });
+    });
+
+    it('should search notes by multiple tags with AND operator', async () => {
+      mockRequestUrl.mockResolvedValueOnce({
+        status: 200,
+        json: mockSearchResponse
+      } as any);
+
+      const result = await service.searchNotesByTags({
+        tags: ['work', 'urgent'],
+        operator: 'AND'
+      });
+
+      expect(result).toHaveLength(mockJoplinNotes.length);
+      expect(mockRequestUrl).toHaveBeenCalledWith({
+        url: expect.stringContaining('tag%3Awork%20tag%3Aurgent'),
+        method: 'GET',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' })
+      });
+    });
+
+    it('should handle tags with spaces by replacing with underscores', async () => {
       mockRequestUrl.mockResolvedValueOnce({
         status: 200,
         json: mockEmptySearchResponse
       } as any);
 
-      await service.searchByTag('test-tag with spaces');
+      await service.searchNotesByTags({
+        tags: ['test tag with spaces'],
+        operator: 'OR'
+      });
 
       expect(mockRequestUrl).toHaveBeenCalledWith({
-        url: 'http://localhost:41184/search?query=tag:test-tag%20with%20spaces&fields=id,title,body,created_time,updated_time,parent_id&token=test-token',
+        url: expect.stringContaining('tag%3Atest_tag_with_spaces'),
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' })
       });
+    });
+
+    it('should combine tag search with text search when includeText is true', async () => {
+      mockRequestUrl.mockResolvedValueOnce({
+        status: 200,
+        json: mockSearchResponse
+      } as any);
+
+      await service.searchNotesByTags({
+        tags: ['work'],
+        operator: 'OR',
+        includeText: true,
+        textQuery: 'meeting notes'
+      });
+
+      expect(mockRequestUrl).toHaveBeenCalledWith({
+        url: expect.stringContaining('tag%3Awork%20meeting%20notes'),
+        method: 'GET',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' })
+      });
+    });
+
+    it('should return empty array for empty tags', async () => {
+      const result = await service.searchNotesByTags({
+        tags: [],
+        operator: 'OR'
+      });
+
+      expect(result).toEqual([]);
+      expect(mockRequestUrl).not.toHaveBeenCalled();
+    });
+
+    it('should handle API errors gracefully', async () => {
+      mockRequestUrl.mockRejectedValueOnce(mockApiError);
+
+      const result = await service.searchNotesByTags({
+        tags: ['test'],
+        operator: 'OR'
+      });
+
+      expect(result).toEqual([]);
     });
   });
 

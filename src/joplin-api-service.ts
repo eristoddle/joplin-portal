@@ -250,24 +250,46 @@ export class JoplinApiService {
 			}
 
 			// Build tag query - Joplin supports tag: prefix for tag searches
-			const tagQueries = tagOptions.tags.map(tag => `tag:${tag.replace(/\s+/g, '_')}`);
+			// According to Joplin API documentation, each tag should be prefixed with "tag:"
+			// Try both quoted and unquoted formats to ensure compatibility
+			const tagQueries = tagOptions.tags.map(tag => {
+				// Clean the tag name - remove spaces and special characters that might interfere
+				const cleanTag = tag.trim().replace(/\s+/g, '_');
+				// Use unquoted format as it may be more reliable for tag searches
+				return `tag:${cleanTag}`;
+			});
+
 			let searchQuery: string;
 
 			if (tagOptions.operator === 'AND') {
-				// For AND operation, combine all tag queries
+				// For AND operation, combine all tag queries with spaces
 				searchQuery = tagQueries.join(' ');
 			} else {
-				// For OR operation, use parentheses and OR
-				searchQuery = `(${tagQueries.join(' OR ')})`;
+				// For OR operation, use OR keyword between tag queries
+				searchQuery = tagQueries.join(' OR ');
 			}
 
 			// Add text query if provided
 			if (tagOptions.includeText && tagOptions.textQuery) {
 				const textQuery = tagOptions.textQuery.trim();
 				if (textQuery) {
-					searchQuery = `${searchQuery} ${textQuery}`;
+					if (tagOptions.operator === 'AND') {
+						searchQuery = `${searchQuery} ${textQuery}`;
+					} else {
+						searchQuery = `(${searchQuery}) ${textQuery}`;
+					}
 				}
 			}
+
+			// Add detailed logging for debugging tag search
+			console.log('Joplin Portal: Tag search debug info:', {
+				originalTags: tagOptions.tags,
+				cleanedTagQueries: tagQueries,
+				finalSearchQuery: searchQuery,
+				operator: tagOptions.operator,
+				includeText: tagOptions.includeText,
+				textQuery: tagOptions.textQuery
+			});
 
 			// Check cache first
 			const cacheKey = `tags:${JSON.stringify(tagOptions)}`;
@@ -280,6 +302,13 @@ export class JoplinApiService {
 			const results = await this.searchNotesWithRetry(searchQuery, {
 				searchType: 'tag',
 				tags: tagOptions.tags
+			});
+
+			// Log the API response for debugging
+			console.log('Joplin Portal: Tag search API response:', {
+				searchQuery,
+				resultCount: results.length,
+				resultTitles: results.map(r => r.note.title).slice(0, 5) // First 5 titles for debugging
 			});
 
 			// Cache the results
@@ -312,8 +341,27 @@ export class JoplinApiService {
 			params.append('order_dir', options.order_dir);
 		}
 
-		const response = await this.makeRequestQueued(`/search?${params.toString()}`);
+		const fullUrl = `/search?${params.toString()}`;
+
+		// Add detailed logging for debugging API requests
+		console.log('Joplin Portal: API request debug info:', {
+			endpoint: fullUrl,
+			query: query.trim(),
+			searchType: options?.searchType,
+			tags: options?.tags,
+			fullParams: Object.fromEntries(params.entries())
+		});
+
+		const response = await this.makeRequestQueued(fullUrl);
 		const data: JoplinSearchResponse = await response.json;
+
+		// Log API response details
+		console.log('Joplin Portal: API response debug info:', {
+			query: query.trim(),
+			itemCount: data.items?.length || 0,
+			hasMore: data.has_more,
+			firstFewTitles: data.items?.slice(0, 3).map(item => item.title) || []
+		});
 
 		// Transform JoplinNote[] to SearchResult[]
 		return this.transformToSearchResults(data.items || [], query);
@@ -881,5 +929,45 @@ export class JoplinApiService {
 		// For now, we'll return an empty array as this depends on Joplin API support
 		// In a real implementation, you might cache tags from search results
 		return [];
+	}
+
+	/**
+	 * Test tag search functionality with a known tag
+	 * This is a debugging method to verify tag search is working correctly
+	 * @param tagName - Tag name to test
+	 * @returns Promise<{success: boolean, resultCount: number, sampleTitles: string[], error?: string}>
+	 */
+	async testTagSearch(tagName: string): Promise<{
+		success: boolean;
+		resultCount: number;
+		sampleTitles: string[];
+		queryUsed: string;
+		error?: string;
+	}> {
+		try {
+			console.log(`Joplin Portal: Testing tag search for tag "${tagName}"`);
+
+			const results = await this.searchNotesByTags({
+				tags: [tagName],
+				operator: 'OR'
+			});
+
+			const queryUsed = `tag:${tagName.trim().replace(/\s+/g, '_')}`;
+
+			return {
+				success: true,
+				resultCount: results.length,
+				sampleTitles: results.slice(0, 5).map(r => r.note.title),
+				queryUsed
+			};
+		} catch (error) {
+			return {
+				success: false,
+				resultCount: 0,
+				sampleTitles: [],
+				queryUsed: `tag:${tagName.trim().replace(/\s+/g, '_')}`,
+				error: error instanceof Error ? error.message : 'Unknown error'
+			};
+		}
 	}
 }

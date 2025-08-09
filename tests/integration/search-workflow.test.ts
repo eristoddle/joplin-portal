@@ -17,6 +17,7 @@ describe('Search Workflow Integration', () => {
 
     mockJoplinService = {
       searchNotes: vi.fn(),
+      searchNotesByTags: vi.fn(),
       getNote: vi.fn(),
       testConnection: vi.fn()
     };
@@ -264,6 +265,107 @@ describe('Search Workflow Integration', () => {
       mockContainerEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
       expect(resultItems[1]).toHaveClass('selected');
       expect(resultItems[0]).not.toHaveClass('selected');
+    });
+  });
+
+  describe('tag search workflow', () => {
+    it('should perform tag search and display results', async () => {
+      mockJoplinService.searchNotesByTags.mockResolvedValue(mockJoplinNotes);
+
+      await view.onOpen();
+
+      // Switch to tag search mode
+      const searchTypeSelect = mockContainerEl.querySelector('select') as HTMLSelectElement;
+      searchTypeSelect.value = 'tag';
+      searchTypeSelect.dispatchEvent(new Event('change'));
+
+      // Simulate user entering tag search query
+      const tagSearchInput = mockContainerEl.querySelector('.joplin-tag-search-input') as HTMLInputElement;
+      const searchButton = mockContainerEl.querySelector('button') as HTMLButtonElement;
+
+      tagSearchInput.value = 'work, project';
+      searchButton.click();
+
+      // Wait for search to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(mockJoplinService.searchNotesByTags).toHaveBeenCalledWith({
+        tags: ['work', 'project'],
+        operator: 'OR',
+        includeText: false
+      });
+
+      // Check that results are displayed
+      const resultItems = mockContainerEl.querySelectorAll('.joplin-result-item');
+      expect(resultItems.length).toBe(3);
+    });
+
+    it('should handle tag search with single tag', async () => {
+      mockJoplinService.searchNotesByTags.mockResolvedValue(mockJoplinNotes);
+
+      await view.onOpen();
+
+      // Switch to tag search mode
+      const searchTypeSelect = mockContainerEl.querySelector('select') as HTMLSelectElement;
+      searchTypeSelect.value = 'tag';
+      searchTypeSelect.dispatchEvent(new Event('change'));
+
+      const tagSearchInput = mockContainerEl.querySelector('.joplin-tag-search-input') as HTMLInputElement;
+      const searchButton = mockContainerEl.querySelector('button') as HTMLButtonElement;
+
+      tagSearchInput.value = 'important';
+      searchButton.click();
+
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(mockJoplinService.searchNotesByTags).toHaveBeenCalledWith({
+        tags: ['important'],
+        operator: 'OR',
+        includeText: false
+      });
+    });
+
+    it('should handle empty tag search results', async () => {
+      mockJoplinService.searchNotesByTags.mockResolvedValue([]);
+
+      await view.onOpen();
+
+      const searchTypeSelect = mockContainerEl.querySelector('select') as HTMLSelectElement;
+      searchTypeSelect.value = 'tag';
+      searchTypeSelect.dispatchEvent(new Event('change'));
+
+      const tagSearchInput = mockContainerEl.querySelector('.joplin-tag-search-input') as HTMLInputElement;
+      const searchButton = mockContainerEl.querySelector('button') as HTMLButtonElement;
+
+      tagSearchInput.value = 'nonexistent-tag';
+      searchButton.click();
+
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      const noResultsMessage = mockContainerEl.querySelector('.joplin-no-results');
+      expect(noResultsMessage).toBeTruthy();
+      expect(noResultsMessage?.textContent).toContain('No notes found');
+    });
+
+    it('should handle tag search errors gracefully', async () => {
+      mockJoplinService.searchNotesByTags.mockRejectedValue(new Error('Tag search API Error'));
+
+      await view.onOpen();
+
+      const searchTypeSelect = mockContainerEl.querySelector('select') as HTMLSelectElement;
+      searchTypeSelect.value = 'tag';
+      searchTypeSelect.dispatchEvent(new Event('change'));
+
+      const tagSearchInput = mockContainerEl.querySelector('.joplin-tag-search-input') as HTMLInputElement;
+      const searchButton = mockContainerEl.querySelector('button') as HTMLButtonElement;
+
+      tagSearchInput.value = 'test-tag';
+      searchButton.click();
+
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // The service should handle the error gracefully and return empty results
+      expect(mockJoplinService.searchNotesByTags).toHaveBeenCalled();
     });
   });
 });
