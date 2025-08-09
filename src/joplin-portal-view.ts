@@ -32,12 +32,12 @@ export class JoplinPortalView extends ItemView {
 		super(leaf);
 		this.plugin = plugin;
 
-		// Initialize tooltip manager with minimal intrusive settings
+		// Initialize tooltip manager with essential-only strategy
 		this.tooltipManager = new TooltipManager({
 			enabled: true,
-			showOnHover: false, // Prevent hover tooltips during scrolling
-			autoHideDelay: 1500, // Quick auto-hide
-			essentialOnly: true // Only show essential tooltips
+			showOnHover: false, // Never show on hover to prevent intrusive behavior
+			autoHideDelay: 1000, // Very quick auto-hide (1 second)
+			essentialOnly: true // Only show essential tooltips for errors/warnings
 		});
 	}
 
@@ -1944,9 +1944,24 @@ export class JoplinPortalView extends ItemView {
 
 	/**
 	 * Show essential tooltip only when necessary (e.g., for error states or critical info)
+	 * This method implements the essential-only tooltip strategy
 	 */
 	private showEssentialTooltip(element: HTMLElement, content: string, context: string = 'info'): void {
+		// Only show tooltips for truly essential contexts
+		const essentialContexts = ['error', 'warning', 'action-required', 'critical-info'];
+		if (!essentialContexts.includes(context)) {
+			return; // Don't show non-essential tooltips
+		}
+
 		this.tooltipManager.showEssentialTooltip(element, content, context);
+	}
+
+	/**
+	 * Show tooltip only on intentional user interaction (click, focus, keypress)
+	 * This prevents tooltips from appearing during scrolling or accidental hover
+	 */
+	private showTooltipOnIntentionalInteraction(element: HTMLElement, content: string, context: string = 'info', interactionType: 'click' | 'focus' | 'keypress' = 'click'): void {
+		this.tooltipManager.showTooltipOnIntentionalInteraction(element, content, context, interactionType);
 	}
 
 	/**
@@ -2199,28 +2214,33 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
-	 * Setup scroll listeners to hide tooltips during scrolling
+	 * Setup scroll listeners to hide tooltips during scrolling and mark scrolling state
 	 */
 	private setupScrollListeners(container: Element): void {
 		// Hide tooltips when scrolling in results container
 		const resultsContainer = container.querySelector('.joplin-results-container');
 		if (resultsContainer) {
 			resultsContainer.addEventListener('scroll', () => {
-				this.hideAllTooltips();
-			});
+				this.tooltipManager.markScrollingStart();
+			}, { passive: true });
 		}
 
 		// Hide tooltips when scrolling in preview container
 		const previewContainer = container.querySelector('.joplin-preview-container');
 		if (previewContainer) {
 			previewContainer.addEventListener('scroll', () => {
-				this.hideAllTooltips();
-			});
+				this.tooltipManager.markScrollingStart();
+			}, { passive: true });
 		}
 
 		// Hide tooltips on any scroll within the main container
 		container.addEventListener('scroll', () => {
-			this.hideAllTooltips();
+			this.tooltipManager.markScrollingStart();
+		}, { passive: true });
+
+		// Also listen for wheel events to catch scrolling that might not trigger scroll events
+		container.addEventListener('wheel', () => {
+			this.tooltipManager.markScrollingStart();
 		}, { passive: true });
 	}
 }

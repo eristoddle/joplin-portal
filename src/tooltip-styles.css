@@ -1,0 +1,76 @@
+/* Essential-only tooltip styles for less intrusive behavior */
+
+/* Base tooltip styling for essential tooltips */
+.joplin-tooltip-element[data-tooltip-context="essential"] {
+	position: relative;
+}
+
+/* Custom tooltip styling to make them less intrusive */
+.joplin-tooltip-element[data-tooltip-context="essential"]:hover::after {
+	content: attr(title);
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 6px 8px;
+	font-size: 0.8em;
+	white-space: nowrap;
+	z-index: 1000;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s ease-in-out;
+	max-width: 250px;
+	white-space: normal;
+	word-wrap: break-word;
+}
+
+/* Show tooltip on hover with delay to prevent accidental triggers */
+.joplin-tooltip-element[data-tooltip-context="essential"]:hover::after {
+	opacity: 1;
+	transition-delay: 0.5s; /* 500ms delay before showing */
+}
+
+/* Error context tooltips - more prominent but still subtle */
+.joplin-tooltip-element[data-tooltip-context="essential"][data-context="error"]:hover::after {
+	background: var(--background-modifier-error);
+	border-color: var(--text-error);
+	color: var(--text-error);
+}
+
+/* Warning context tooltips - subtle warning styling */
+.joplin-tooltip-element[data-tooltip-context="essential"][data-context="warning"]:hover::after {
+	background: var(--background-modifier-warning);
+	border-color: var(--text-warning);
+	color: var(--text-warning);
+}
+
+/* Critical info tooltips - subtle info styling */
+.joplin-tooltip-element[data-tooltip-context="essential"][data-context="critical-info"]:hover::after {
+	background: var(--background-modifier-info);
+	border-color: var(--text-accent);
+	color: var(--text-accent);
+}
+
+/* Hide native browser tooltips for elements with custom styling */
+.joplin-tooltip-element[data-tooltip-context="essential"] {
+	/* We'll handle the title attribute programmatically */
+}
+
+/* Ensure tooltips don't interfere with scrolling */
+.joplin-results-container::-webkit-scrollbar-thumb:hover ~ .joplin-tooltip-element::after,
+.joplin-preview-container::-webkit-scrollbar-thumb:hover ~ .joplin-tooltip-element::after {
+	display: none;
+}
+
+/* Responsive tooltip positioning */
+@media (max-width: 400px) {
+	.joplin-tooltip-element[data-tooltip-context="essential"]:hover::after {
+		max-width: 200px;
+		font-size: 0.75em;
+	}
+}

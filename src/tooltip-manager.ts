@@ -17,6 +17,9 @@ export class TooltipManager {
 	private config: TooltipConfig;
 	private activeTooltips: Set<HTMLElement> = new Set();
 	private hideTimers: Map<HTMLElement, NodeJS.Timeout> = new Map();
+	private scrollingState: boolean = false;
+	private scrollTimer: NodeJS.Timeout | null = null;
+	private lastInteractionTime: number = 0;
 
 	constructor(config: Partial<TooltipConfig> = {}) {
 		this.config = {
@@ -30,6 +33,7 @@ export class TooltipManager {
 
 	/**
 	 * Determines if a tooltip should be shown based on context and content
+	 * This method implements the essential-only tooltip strategy
 	 */
 	shouldShowTooltip(element: HTMLElement, content: string, context: string): boolean {
 		// If tooltips are disabled globally, never show
@@ -40,7 +44,7 @@ export class TooltipManager {
 		// If essential-only mode is enabled, be very restrictive
 		if (this.config.essentialOnly) {
 			// Only show tooltips for essential functionality that isn't self-explanatory
-			const essentialContexts = ['error', 'warning', 'action-required'];
+			const essentialContexts = ['error', 'warning', 'action-required', 'critical-info'];
 			if (!essentialContexts.includes(context)) {
 				return false;
 			}
@@ -59,6 +63,11 @@ export class TooltipManager {
 
 		// Don't show tooltip if element is not truncated (content fits)
 		if (this.isContentFullyVisible(element, content)) {
+			return false;
+		}
+
+		// Additional check: Don't show tooltips during scrolling or rapid interactions
+		if (this.isUserScrolling()) {
 			return false;
 		}
 
@@ -99,17 +108,24 @@ export class TooltipManager {
 
 	/**
 	 * Show an essential tooltip with auto-hide functionality
+	 * Only shows tooltips on intentional user interaction, not during scrolling
 	 */
 	showEssentialTooltip(element: HTMLElement, content: string, context: string = 'info'): void {
 		if (!this.shouldShowTooltip(element, content, context)) {
 			return;
 		}
 
-		// Set the tooltip
+		// Record this as an intentional interaction
+		this.lastInteractionTime = Date.now();
+
+		// Set the tooltip with enhanced styling for less intrusion
 		element.setAttribute('title', content);
 		this.activeTooltips.add(element);
 
-		// Set up auto-hide if configured
+		// Apply less intrusive styling if possible
+		this.applyTooltipStyling(element, context);
+
+		// Set up quick auto-hide for essential tooltips
 		if (this.config.autoHideDelay > 0) {
 			// Clear any existing timer for this element
 			const existingTimer = this.hideTimers.get(element);
@@ -117,43 +133,17 @@ export class TooltipManager {
 				clearTimeout(existingTimer);
 			}
 
-			// Set new timer
+			// Set new timer with shorter delay for essential tooltips
+			const quickHideDelay = Math.min(this.config.autoHideDelay, 2000); // Max 2 seconds
 			const timer = setTimeout(() => {
 				this.hideTooltip(element);
-			}, this.config.autoHideDelay);
+			}, quickHideDelay);
 
 			this.hideTimers.set(element, timer);
 		}
 	}
 
-	/**
-	 * Hide tooltip from an element
-	 */
-	hideTooltip(element: HTMLElement): void {
-		element.removeAttribute('title');
-		this.activeTooltips.delete(element);
 
-		// Clear timer if exists
-		const timer = this.hideTimers.get(element);
-		if (timer) {
-			clearTimeout(timer);
-			this.hideTimers.delete(element);
-		}
-	}
-
-	/**
-	 * Hide all active tooltips
-	 */
-	hideAllTooltips(): void {
-		this.activeTooltips.forEach(element => {
-			element.removeAttribute('title');
-		});
-		this.activeTooltips.clear();
-
-		// Clear all timers
-		this.hideTimers.forEach(timer => clearTimeout(timer));
-		this.hideTimers.clear();
-	}
 
 	/**
 	 * Update configuration
@@ -175,9 +165,115 @@ export class TooltipManager {
 	}
 
 	/**
+	 * Check if user is currently scrolling (to prevent intrusive tooltips)
+	 */
+	private isUserScrolling(): boolean {
+		return this.scrollingState;
+	}
+
+	/**
+	 * Mark that scrolling has started (call this from scroll event listeners)
+	 */
+	markScrollingStart(): void {
+		this.scrollingState = true;
+
+		// Clear any existing scroll timer
+		if (this.scrollTimer) {
+			clearTimeout(this.scrollTimer);
+		}
+
+		// Hide all tooltips immediately when scrolling starts
+		this.hideAllTooltips();
+
+		// Set timer to mark scrolling as ended after a delay
+		this.scrollTimer = setTimeout(() => {
+			this.scrollingState = false;
+		}, 150); // 150ms delay after scrolling stops
+	}
+
+	/**
+	 * Show tooltip only on intentional user interaction (not hover during scrolling)
+	 */
+	showTooltipOnIntentionalInteraction(element: HTMLElement, content: string, context: string = 'info', interactionType: 'click' | 'focus' | 'keypress' = 'click'): void {
+		// Only show if this is an intentional interaction and not during scrolling
+		if (this.isUserScrolling()) {
+			return;
+		}
+
+		// Require a minimum time between interactions to prevent rapid-fire tooltips
+		const now = Date.now();
+		if (now - this.lastInteractionTime < 100) { // 100ms debounce
+			return;
+		}
+
+		// For click and focus interactions, show the tooltip
+		if (interactionType === 'click' || interactionType === 'focus' || interactionType === 'keypress') {
+			this.showEssentialTooltip(element, content, context);
+		}
+	}
+
+	/**
+	 * Apply less intrusive styling to tooltip elements
+	 */
+	private applyTooltipStyling(element: HTMLElement, context: string = 'info'): void {
+		// Add a CSS class for less intrusive tooltip styling
+		element.classList.add('joplin-tooltip-element');
+
+		// Set data attributes for CSS styling
+		element.setAttribute('data-tooltip-context', 'essential');
+		element.setAttribute('data-context', context);
+	}
+
+	/**
+	 * Remove tooltip styling from element
+	 */
+	private removeTooltipStyling(element: HTMLElement): void {
+		element.classList.remove('joplin-tooltip-element');
+		element.removeAttribute('data-tooltip-context');
+		element.removeAttribute('data-context');
+	}
+
+	/**
+	 * Enhanced hide tooltip that also removes styling
+	 */
+	hideTooltip(element: HTMLElement): void {
+		element.removeAttribute('title');
+		this.removeTooltipStyling(element);
+		this.activeTooltips.delete(element);
+
+		// Clear timer if exists
+		const timer = this.hideTimers.get(element);
+		if (timer) {
+			clearTimeout(timer);
+			this.hideTimers.delete(element);
+		}
+	}
+
+	/**
+	 * Enhanced hide all tooltips that also removes styling
+	 */
+	hideAllTooltips(): void {
+		this.activeTooltips.forEach(element => {
+			element.removeAttribute('title');
+			this.removeTooltipStyling(element);
+		});
+		this.activeTooltips.clear();
+
+		// Clear all timers
+		this.hideTimers.forEach(timer => clearTimeout(timer));
+		this.hideTimers.clear();
+	}
+
+	/**
 	 * Clean up resources
 	 */
 	destroy(): void {
 		this.hideAllTooltips();
+
+		// Clear scroll timer
+		if (this.scrollTimer) {
+			clearTimeout(this.scrollTimer);
+			this.scrollTimer = null;
+		}
 	}
 }
