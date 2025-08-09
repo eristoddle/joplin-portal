@@ -275,7 +275,7 @@
   - Test drawer interface at different sizes to ensure optimal space usage
   - _Requirements: 12.1, 12.4_
 
-- [ ] 39. Create import options modal for secondary functionality
+- [x] 39. Create import options modal for secondary functionality
   - Implement ImportOptionsModal class with clean, focused interface design
   - Move target folder selection, template options, and conflict resolution to modal
   - Add advanced settings section within the modal for additional configuration

@@ -3,6 +3,7 @@ import JoplinPortalPlugin from '../main';
 import { SearchResult, JoplinNote, ImportOptions } from './types';
 import { ErrorHandler } from './error-handler';
 import { TooltipManager } from './tooltip-manager';
+import { ImportOptionsModal } from './import-options-modal';
 
 export const VIEW_TYPE_JOPLIN_PORTAL = 'joplin-portal-view';
 
@@ -1039,6 +1040,7 @@ export class JoplinPortalView extends ItemView {
 
 	/**
 	 * Show import confirmation dialog (public method for external access)
+	 * Now opens the import options modal first, then proceeds with import
 	 */
 	public async showImportConfirmationDialog(): Promise<void> {
 		const selectedResults = this.currentResults.filter(result => result.markedForImport);
@@ -1049,15 +1051,36 @@ export class JoplinPortalView extends ItemView {
 			return;
 		}
 
-		// Get import options using the new method
-		const importOptions: ImportOptions = this.getCurrentImportOptions();
+		// Open the import options modal
+		const modal = new ImportOptionsModal(
+			this.plugin,
+			(importOptions: ImportOptions) => {
+				// User confirmed import with options
+				this.proceedWithImport(selectedResults, importOptions);
+			},
+			() => {
+				// User cancelled import
+				// No action needed, modal is already closed
+			}
+		);
 
-		// Check for conflicts before showing confirmation
+		// Pre-populate modal with current settings
+		modal.setImportOptions(this.getCurrentImportOptions());
+
+		// Open the modal
+		modal.open();
+	}
+
+	/**
+	 * Proceed with import after getting options from modal
+	 */
+	private async proceedWithImport(selectedResults: SearchResult[], importOptions: ImportOptions): Promise<void> {
+		// Check for conflicts before showing final confirmation
 		const notesToImport = selectedResults.map(result => result.note);
 		const conflictCheck = this.plugin.importService.checkForConflicts(notesToImport, importOptions.targetFolder);
 
 		if (conflictCheck.conflicts.length > 0) {
-			// Show conflict resolution dialog first
+			// Show conflict resolution dialog
 			const resolvedOptions = await this.showConflictResolutionDialog(conflictCheck.conflicts, importOptions);
 			if (!resolvedOptions) {
 				// User cancelled conflict resolution
@@ -1067,6 +1090,18 @@ export class JoplinPortalView extends ItemView {
 			Object.assign(importOptions, resolvedOptions);
 		}
 
+		// Show final confirmation dialog with summary
+		this.showFinalConfirmationDialog(selectedResults, importOptions, conflictCheck.conflicts.length > 0);
+	}
+
+	/**
+	 * Show final confirmation dialog with import summary
+	 */
+	private showFinalConfirmationDialog(
+		selectedResults: SearchResult[],
+		importOptions: ImportOptions,
+		hadConflicts: boolean
+	): void {
 		// Create confirmation dialog
 		const modal = document.createElement('div');
 		modal.className = 'joplin-import-confirmation-modal';
@@ -1118,7 +1153,7 @@ export class JoplinPortalView extends ItemView {
 		});
 
 		// Show conflict resolution summary if there were conflicts
-		if (conflictCheck.conflicts.length > 0) {
+		if (hadConflicts) {
 			const conflictSummary = summary.createDiv('joplin-conflict-summary');
 			conflictSummary.style.cssText = `
 				background: var(--background-modifier-error);
@@ -1128,7 +1163,7 @@ export class JoplinPortalView extends ItemView {
 				border-left: 4px solid var(--text-error);
 			`;
 			conflictSummary.createEl('p', {
-				text: `⚠️ ${conflictCheck.conflicts.length} file conflict${conflictCheck.conflicts.length !== 1 ? 's' : ''} detected and resolved`,
+				text: `⚠️ File conflicts detected and resolved`,
 				cls: 'joplin-conflict-warning'
 			});
 		}
