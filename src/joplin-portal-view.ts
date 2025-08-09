@@ -970,6 +970,21 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
+	 * Clear all import selections
+	 */
+	private clearImportSelections(): void {
+		this.currentResults.forEach(result => {
+			result.markedForImport = false;
+		});
+
+		// Update checkboxes in UI
+		const checkboxes = this.resultsContainer.querySelectorAll('.joplin-import-checkbox') as NodeListOf<HTMLInputElement>;
+		checkboxes.forEach(checkbox => {
+			checkbox.checked = false;
+		});
+	}
+
+	/**
 	 * Get the current import options from the simplified interface
 	 * This method provides default values since the UI elements are no longer visible
 	 */
@@ -1051,16 +1066,18 @@ export class JoplinPortalView extends ItemView {
 			return;
 		}
 
-		// Open the import options modal
+		// Open the import options modal with integrated import execution
 		const modal = new ImportOptionsModal(
 			this.plugin,
-			(importOptions: ImportOptions) => {
-				// User confirmed import with options
-				this.proceedWithImport(selectedResults, importOptions);
-			},
-			() => {
-				// User cancelled import
-				// No action needed, modal is already closed
+			selectedResults,
+			(success: boolean) => {
+				// Import completed (success or failure)
+				if (success) {
+					// Clear import selections after successful import
+					this.clearImportSelections();
+					this.updateImportSelectionCount();
+				}
+				// Modal is already closed at this point
 			}
 		);
 
@@ -1071,28 +1088,7 @@ export class JoplinPortalView extends ItemView {
 		modal.open();
 	}
 
-	/**
-	 * Proceed with import after getting options from modal
-	 */
-	private async proceedWithImport(selectedResults: SearchResult[], importOptions: ImportOptions): Promise<void> {
-		// Check for conflicts before showing final confirmation
-		const notesToImport = selectedResults.map(result => result.note);
-		const conflictCheck = this.plugin.importService.checkForConflicts(notesToImport, importOptions.targetFolder);
 
-		if (conflictCheck.conflicts.length > 0) {
-			// Show conflict resolution dialog
-			const resolvedOptions = await this.showConflictResolutionDialog(conflictCheck.conflicts, importOptions);
-			if (!resolvedOptions) {
-				// User cancelled conflict resolution
-				return;
-			}
-			// Update import options with resolved conflicts
-			Object.assign(importOptions, resolvedOptions);
-		}
-
-		// Show final confirmation dialog with summary
-		this.showFinalConfirmationDialog(selectedResults, importOptions, conflictCheck.conflicts.length > 0);
-	}
 
 	/**
 	 * Show final confirmation dialog with import summary

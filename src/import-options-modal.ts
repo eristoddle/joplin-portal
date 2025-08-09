@@ -1,6 +1,6 @@
 import { Modal, Setting, Notice } from 'obsidian';
 import JoplinPortalPlugin from '../main';
-import { ImportOptions } from './types';
+import { ImportOptions, SearchResult, ImportProgress } from './types';
 
 export class ImportOptionsModal extends Modal {
 	plugin: JoplinPortalPlugin;
@@ -8,18 +8,19 @@ export class ImportOptionsModal extends Modal {
 	private applyTemplateCheckbox: HTMLInputElement;
 	private templatePathInput: HTMLInputElement;
 	private conflictResolutionSelect: HTMLSelectElement;
-	private onConfirm: (options: ImportOptions) => void;
-	private onCancel: () => void;
+	private selectedResults: SearchResult[];
+	private onComplete: (success: boolean) => void;
+	private isImporting = false;
 
 	constructor(
 		plugin: JoplinPortalPlugin,
-		onConfirm: (options: ImportOptions) => void,
-		onCancel: () => void
+		selectedResults: SearchResult[],
+		onComplete: (success: boolean) => void
 	) {
 		super(plugin.app);
 		this.plugin = plugin;
-		this.onConfirm = onConfirm;
-		this.onCancel = onCancel;
+		this.selectedResults = selectedResults;
+		this.onComplete = onComplete;
 	}
 
 	onOpen(): void {
@@ -203,23 +204,27 @@ export class ImportOptionsModal extends Modal {
 			border-top: 1px solid var(--background-modifier-border);
 		`;
 
-		// Cancel button
+		// Cancel button (secondary action)
 		const cancelButton = buttonsContainer.createEl('button', {
 			text: 'Cancel',
 			cls: 'mod-cancel'
 		});
 		cancelButton.addEventListener('click', () => {
+			if (this.isImporting) {
+				// Don't allow cancellation during import
+				return;
+			}
 			this.close();
-			this.onCancel();
+			this.onComplete(false);
 		});
 
 		// Import button (primary action)
 		const importButton = buttonsContainer.createEl('button', {
-			text: 'Import Notes',
+			text: `Import ${this.selectedResults.length} Note${this.selectedResults.length !== 1 ? 's' : ''}`,
 			cls: 'mod-cta'
 		});
 		importButton.addEventListener('click', () => {
-			this.handleImportConfirm();
+			this.executeImport();
 		});
 
 		// Store button references for keyboard navigation
@@ -339,13 +344,59 @@ export class ImportOptionsModal extends Modal {
 		existingErrors.forEach(error => error.remove());
 	}
 
-	private handleImportConfirm(): void {
+	private async executeImport(): Promise<void> {
+		// Validate inputs first
+		const importOptions = this.validateAndGetImportOptions();
+		if (!importOptions) {
+			return; // Validation failed, error already shown
+		}
+
+		// Prevent multiple simultaneous imports
+		if (this.isImporting) {
+			return;
+		}
+
+		this.isImporting = true;
+
+		try {
+			// Update UI to show import in progress
+			this.showImportProgress();
+
+			// Get notes to import
+			const notesToImport = this.selectedResults.map(result => result.note);
+
+			// Execute the import with progress feedback
+			const importResult = await this.plugin.importService.importNotes(
+				notesToImport,
+				importOptions,
+				(progress: ImportProgress) => {
+					this.updateImportProgress(progress);
+				}
+			);
+
+			// Show import results
+			this.showImportResults(importResult);
+
+			// Close modal after a brief delay to show results
+			setTimeout(() => {
+				this.close();
+				this.onComplete(true);
+			}, 2000);
+
+		} catch (error) {
+			console.error('Joplin Portal: Import failed:', error);
+			this.showImportError(error instanceof Error ? error.message : String(error));
+			this.isImporting = false;
+		}
+	}
+
+	private validateAndGetImportOptions(): ImportOptions | null {
 		// Validate inputs
 		const targetFolder = this.targetFolderInput.value.trim();
 		if (!targetFolder) {
 			this.showValidationError('Target folder is required');
 			this.targetFolderInput.focus();
-			return;
+			return null;
 		}
 
 		const applyTemplate = this.applyTemplateCheckbox.checked;
@@ -354,26 +405,22 @@ export class ImportOptionsModal extends Modal {
 		if (applyTemplate && !templatePath) {
 			this.showValidationError('Template path is required when applying template');
 			this.templatePathInput.focus();
-			return;
+			return null;
 		}
 
 		if (applyTemplate && templatePath && !templatePath.endsWith('.md')) {
 			this.showValidationError('Template path must end with .md');
 			this.templatePathInput.focus();
-			return;
+			return null;
 		}
 
 		// Create import options object
-		const importOptions: ImportOptions = {
+		return {
 			targetFolder,
 			applyTemplate,
 			templatePath: applyTemplate ? templatePath : undefined,
 			conflictResolution: this.conflictResolutionSelect.value as 'skip' | 'overwrite' | 'rename'
 		};
-
-		// Close modal and execute callback
-		this.close();
-		this.onConfirm(importOptions);
 	}
 
 	onClose(): void {
@@ -411,5 +458,188 @@ export class ImportOptionsModal extends Modal {
 		if (options.conflictResolution !== undefined) {
 			this.conflictResolutionSelect.value = options.conflictResolution;
 		}
+	}
+
+	private showImportProgress(): void {
+		// Clear any existing validation errors
+		this.clearValidationErrors();
+
+		// Disable form inputs during import
+		this.targetFolderInput.disabled = true;
+		this.applyTemplateCheckbox.disabled = true;
+		this.templatePathInput.disabled = true;
+		this.conflictResolutionSelect.disabled = true;
+
+		// Update button states
+		this.cancelButton.disabled = true;
+		this.importButton.disabled = true;
+		this.importButton.setText('Importing...');
+		this.importButton.addClass('loading');
+
+		// Create progress container
+		const progressContainer = this.contentEl.createDiv('import-progress-container');
+		progressContainer.style.cssText = `
+			margin-top: 20px;
+			padding: 15px;
+			background: var(--background-secondary);
+			border-radius: 6px;
+			border-left: 3px solid var(--interactive-accent);
+		`;
+
+		const progressTitle = progressContainer.createEl('h4', { text: 'Import Progress' });
+		progressTitle.style.cssText = `
+			margin: 0 0 10px 0;
+			color: var(--interactive-accent);
+		`;
+
+		const progressStatus = progressContainer.createDiv('import-progress-status');
+		progressStatus.style.cssText = `
+			font-size: 0.9em;
+			color: var(--text-muted);
+			margin-bottom: 10px;
+		`;
+		progressStatus.setText('Starting import...');
+
+		// Progress bar
+		const progressBarContainer = progressContainer.createDiv('import-progress-bar-container');
+		progressBarContainer.style.cssText = `
+			width: 100%;
+			height: 8px;
+			background: var(--background-modifier-border);
+			border-radius: 4px;
+			overflow: hidden;
+		`;
+
+		const progressBar = progressBarContainer.createDiv('import-progress-bar');
+		progressBar.style.cssText = `
+			height: 100%;
+			background: var(--interactive-accent);
+			width: 0%;
+			transition: width 0.3s ease;
+		`;
+
+		// Store references for updates
+		this.progressStatus = progressStatus;
+		this.progressBar = progressBar;
+	}
+
+	private progressStatus: HTMLElement;
+	private progressBar: HTMLElement;
+
+	private updateImportProgress(progress: ImportProgress): void {
+		if (!this.progressStatus || !this.progressBar) {
+			return;
+		}
+
+		// Update status text
+		this.progressStatus.setText(progress.stage || 'Processing...');
+
+		// Update progress bar if we have current/total info
+		if (progress.current !== undefined && progress.total !== undefined) {
+			const percentage = Math.round((progress.current / progress.total) * 100);
+			this.progressBar.style.width = `${percentage}%`;
+		}
+	}
+
+	private showImportResults(result: { successful: any[]; failed: any[] }): void {
+		if (!this.progressStatus) {
+			return;
+		}
+
+		// Update progress to show completion
+		if (this.progressBar) {
+			this.progressBar.style.width = '100%';
+		}
+
+		// Show results summary
+		const successCount = result.successful.length;
+		const failedCount = result.failed.length;
+		const totalCount = successCount + failedCount;
+
+		if (failedCount === 0) {
+			// All successful
+			this.progressStatus.style.color = 'var(--text-success)';
+			this.progressStatus.setText(`✅ Successfully imported ${successCount} of ${totalCount} notes`);
+		} else if (successCount === 0) {
+			// All failed
+			this.progressStatus.style.color = 'var(--text-error)';
+			this.progressStatus.setText(`❌ Failed to import ${failedCount} notes`);
+		} else {
+			// Mixed results
+			this.progressStatus.style.color = 'var(--text-warning)';
+			this.progressStatus.setText(`⚠️ Imported ${successCount} of ${totalCount} notes (${failedCount} failed)`);
+		}
+
+		// Update button text
+		this.importButton.setText('Import Complete');
+		this.importButton.removeClass('loading');
+
+		// Show detailed results if there were failures
+		if (failedCount > 0) {
+			this.showFailureDetails(result.failed);
+		}
+
+		// Show success notice
+		if (successCount > 0) {
+			new Notice(`Successfully imported ${successCount} note${successCount !== 1 ? 's' : ''} to Obsidian`);
+		}
+	}
+
+	private showImportError(errorMessage: string): void {
+		if (this.progressStatus) {
+			this.progressStatus.style.color = 'var(--text-error)';
+			this.progressStatus.setText(`❌ Import failed: ${errorMessage}`);
+		}
+
+		// Re-enable form
+		this.targetFolderInput.disabled = false;
+		this.applyTemplateCheckbox.disabled = false;
+		this.templatePathInput.disabled = false;
+		this.conflictResolutionSelect.disabled = false;
+		this.cancelButton.disabled = false;
+		this.importButton.disabled = false;
+		this.importButton.setText(`Import ${this.selectedResults.length} Note${this.selectedResults.length !== 1 ? 's' : ''}`);
+		this.importButton.removeClass('loading');
+
+		// Show error notice
+		new Notice(`Import failed: ${errorMessage}`, 5000);
+	}
+
+	private showFailureDetails(failures: Array<{ note: any; error: string }>): void {
+		const progressContainer = this.contentEl.querySelector('.import-progress-container');
+		if (!progressContainer) {
+			return;
+		}
+
+		const failuresContainer = progressContainer.createDiv('import-failures-container');
+		failuresContainer.style.cssText = `
+			margin-top: 15px;
+			padding: 10px;
+			background: var(--background-modifier-error);
+			border-radius: 4px;
+			border-left: 3px solid var(--text-error);
+		`;
+
+		const failuresTitle = failuresContainer.createEl('h5', { text: 'Failed Imports:' });
+		failuresTitle.style.cssText = `
+			margin: 0 0 8px 0;
+			color: var(--text-error);
+		`;
+
+		const failuresList = failuresContainer.createEl('ul');
+		failuresList.style.cssText = `
+			margin: 0;
+			padding-left: 20px;
+			font-size: 0.85em;
+		`;
+
+		failures.forEach(failure => {
+			const listItem = failuresList.createEl('li');
+			listItem.style.cssText = `
+				margin-bottom: 4px;
+				color: var(--text-muted);
+			`;
+			listItem.setText(`${failure.note.title || 'Untitled'}: ${failure.error}`);
+		});
 	}
 }

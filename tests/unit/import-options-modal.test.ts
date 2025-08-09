@@ -121,8 +121,7 @@ import { ImportOptions } from '../../src/types';
 describe('ImportOptionsModal', () => {
 	let mockPlugin: any;
 	let mockApp: any;
-	let onConfirm: vi.Mock;
-	let onCancel: vi.Mock;
+	let onComplete: vi.Mock;
 	let modal: ImportOptionsModal;
 
 	beforeEach(() => {
@@ -138,20 +137,37 @@ describe('ImportOptionsModal', () => {
 				defaultImportFolder: 'Test Folder',
 				importTemplate: '',
 				searchLimit: 50
+			},
+			importService: {
+				importNotes: vi.fn().mockResolvedValue({
+					successful: [],
+					failed: []
+				})
 			}
 		};
 
-		onConfirm = vi.fn();
-		onCancel = vi.fn();
+		const mockSelectedResults = [
+			{
+				note: {
+					id: 'test-1',
+					title: 'Test Note 1',
+					body: 'Test content',
+					created_time: Date.now(),
+					updated_time: Date.now()
+				}
+			}
+		];
 
-		modal = new ImportOptionsModal(mockPlugin, onConfirm, onCancel);
+		onComplete = vi.fn();
+
+		modal = new ImportOptionsModal(mockPlugin, mockSelectedResults, onComplete);
 	});
 
 	describe('constructor', () => {
 		it('should initialize with plugin and callbacks', () => {
 			expect(modal.plugin).toBe(mockPlugin);
-			expect(modal['onConfirm']).toBe(onConfirm);
-			expect(modal['onCancel']).toBe(onCancel);
+			expect(modal['onComplete']).toBe(onComplete);
+			expect(modal['selectedResults']).toBeDefined();
 		});
 	});
 
