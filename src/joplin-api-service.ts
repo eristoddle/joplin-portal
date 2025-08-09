@@ -560,7 +560,7 @@ export class JoplinApiService {
 
 		// Replace HTML format: <img src="joplin-id:resource_id" ... /> -> <img src="API_URL" ... />
 		processedBody = processedBody.replace(
-			/(<img[^>]*src=["'])joplin-id:([a-f0-9]{32})(["'][^>]*>)/g,
+			/(<img[^>]*src=["']):\/([a-f0-9]+)(["'][^>]*>)/g,
 			(match, prefix, resourceId, suffix) => {
 				const apiUrl = this.getResourceUrl(resourceId);
 				return `${prefix}${apiUrl}${suffix}`;
