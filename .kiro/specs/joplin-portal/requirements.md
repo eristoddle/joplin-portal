@@ -23,12 +23,13 @@ The Joplin Portal plugin enables Obsidian users to access, search, and import no
 
 #### Acceptance Criteria
 
-1. WHEN the user opens the Joplin Portal panel THEN the system SHALL display a search interface
-2. WHEN the user enters a search query THEN the system SHALL perform full-text search against the Joplin API
-3. WHEN search results are returned THEN the system SHALL display note titles, snippets, and metadata in a readable list
-4. WHEN the user clicks on a search result THEN the system SHALL display the full note content in a preview pane
-5. IF the Joplin API supports tag search THEN the system SHALL provide tag-based filtering options
+1. WHEN the user opens the Joplin Portal panel THEN the system SHALL display a search interface with text search and tag search options
+2. WHEN the user selects text search and enters a query THEN the system SHALL perform full-text search against the Joplin API
+3. WHEN the user selects tag search and enters tag names THEN the system SHALL search for notes containing those specific tags using the correct Joplin API tag search syntax
+4. WHEN search results are returned THEN the system SHALL display note titles, snippets, and metadata in a readable list
+5. WHEN the user clicks on a search result THEN the system SHALL display the full note content in a preview pane
 6. WHEN no results are found THEN the system SHALL display an appropriate "no results" message
+7. WHEN performing tag search THEN the system SHALL use the proper Joplin API tag search format to ensure accurate results
 
 ### Requirement 3
 
@@ -39,10 +40,11 @@ The Joplin Portal plugin enables Obsidian users to access, search, and import no
 1. WHEN viewing search results THEN the system SHALL provide checkboxes for each note to mark for import
 2. WHEN the user selects notes for import THEN the system SHALL provide options for target folder and template application
 3. WHEN the user confirms import THEN the system SHALL convert Joplin notes to Obsidian-compatible markdown format
-4. WHEN importing notes THEN the system SHALL preserve note content, titles, and creation dates
-5. IF the target folder doesn't exist THEN the system SHALL create it automatically
-6. WHEN import is complete THEN the system SHALL provide feedback on successful imports and any errors
-7. IF a note with the same name already exists THEN the system SHALL prompt the user for conflict resolution
+4. WHEN importing notes THEN the system SHALL preserve note content, titles, creation dates, and source URL in frontmatter
+5. WHEN importing notes with source URLs THEN the system SHALL add the source URL as a "source" field in the note's frontmatter
+6. IF the target folder doesn't exist THEN the system SHALL create it automatically
+7. WHEN import is complete THEN the system SHALL provide feedback on successful imports and any errors
+8. IF a note with the same name already exists THEN the system SHALL prompt the user for conflict resolution
 
 ### Requirement 4
 
@@ -109,3 +111,29 @@ The Joplin Portal plugin enables Obsidian users to access, search, and import no
 5. WHEN processing HTML img tags THEN the system SHALL preserve any existing attributes like width, height, alt text, and CSS classes
 6. WHEN an HTML img tag with joplin-id URL cannot be processed THEN the system SHALL display a placeholder with the original attributes preserved
 7. WHEN both markdown and HTML image formats exist in the same note THEN the system SHALL process both formats correctly
+
+### Requirement 9
+
+**User Story:** As an Obsidian user, I want accurate tag search functionality that returns all notes with the specified tags, so that I can find all relevant content by topic.
+
+#### Acceptance Criteria
+
+1. WHEN the user performs a tag search THEN the system SHALL use the correct Joplin API search syntax with "tag:" prefix for each tag
+2. WHEN searching for a specific tag THEN the system SHALL return ALL notes that contain that tag, not a subset
+3. WHEN the Joplin API returns tag search results THEN the system SHALL properly parse and display all matching notes
+4. WHEN tag search returns fewer results than expected THEN the system SHALL log the API request and response for debugging
+5. WHEN multiple tags are specified THEN the system SHALL use OR logic to find notes containing any of the specified tags
+6. WHEN tag search fails THEN the system SHALL provide clear error messaging to help diagnose the issue
+
+### Requirement 10
+
+**User Story:** As an Obsidian user, I want a simple search interface with clear options, so that I can easily choose between text search and tag search without confusion.
+
+#### Acceptance Criteria
+
+1. WHEN the user opens the search interface THEN the system SHALL provide only two search options: "Text Search" and "Tag Search"
+2. WHEN the user selects "Text Search" THEN the system SHALL show only the text search input field
+3. WHEN the user selects "Tag Search" THEN the system SHALL show only the tag search input field with appropriate placeholder text
+4. WHEN the user switches between search types THEN the system SHALL clear previous results and reset the interface
+5. WHEN the user performs a search THEN the system SHALL use only the selected search method without combining different search types
+6. WHEN displaying search results THEN the system SHALL clearly indicate which search method was used

@@ -98,22 +98,21 @@ export class JoplinApiService {
     private httpClient: HttpClient;
 
     async testConnection(): Promise<boolean>
-    async searchNotes(query: string, options?: SearchOptions): Promise<JoplinNote[]>
+    async searchNotes(query: string, options?: SearchOptions): Promise<SearchResult[]>
+    async searchNotesByTags(tagOptions: TagSearchOptions): Promise<SearchResult[]>
     async getNote(id: string): Promise<JoplinNote>
-    async searchByTag(tag: string): Promise<JoplinNote[]>
-    async processNoteBodyForImages(noteBody: string): Promise<string>
-    async processHtmlImagesInNote(noteBody: string): Promise<string>
-    async getResourceMetadata(resourceId: string): Promise<JoplinResource>
-    async getResourceFile(resourceId: string): Promise<ArrayBuffer>
+    async processNoteBodyForPreview(noteBody: string): string
+    async getResourceUrl(resourceId: string): string
 }
 ```
 
 **Responsibilities:**
-- HTTP communication with Joplin API
+- HTTP communication with Joplin API using correct tag search syntax
 - Authentication handling
-- Request/response transformation
+- Request/response transformation with proper tag search implementation
 - Error handling and retries
-- Image resource processing and base64 conversion
+- Image resource URL generation for preview
+- Accurate tag search using "tag:" prefix syntax
 
 ### 4. Settings Component (`JoplinPortalSettingTab`)
 
@@ -153,6 +152,13 @@ interface JoplinNote {
     parent_id: string;
     tags?: string[];
     source_url?: string;
+}
+
+interface TagSearchOptions {
+    tags: string[];
+    operator: 'AND' | 'OR';
+    includeText?: boolean;
+    textQuery?: string;
 }
 
 interface SearchResult {
@@ -323,44 +329,64 @@ Based on the Joplin API documentation:
 
 - **Base URL**: Typically `http://localhost:41184` (configurable)
 - **Authentication**: Token-based via query parameter
-- **Search Endpoint**: `GET /search?query=YOUR_QUERY&fields=id,title,body,created_time,updated_time`
-- **Note Retrieval**: `GET /notes/:id` for full note content
-- **Resource Metadata**: `GET /resources/:id` for resource information including MIME type
-- **Resource File**: `GET /resources/:id/file` for raw binary data
+- **Search Endpoint**: `GET /search?query=YOUR_QUERY&fields=id,title,body,created_time,updated_time,source_url`
+- **Tag Search Syntax**: Use `tag:tagname` format in query parameter for accurate tag searching
+- **Multiple Tag Search**: Use `tag:tag1 OR tag:tag2` for OR logic, `tag:tag1 tag:tag2` for AND logic
+- **Note Retrieval**: `GET /notes/:id` for full note content including source_url field
+- **Resource File**: `GET /resources/:id/file` for direct image access via URL
 - **Pagination**: Built-in support with `page` and `limit` parameters
 - **Rate Limiting**: Implement client-side throttling to respect server limits
 
+### Search Interface Design
+
+The search interface provides two distinct modes:
+
+1. **Text Search Mode**:
+   - Single text input for full-text search
+   - Searches note titles and content
+   - Uses standard Joplin search query syntax
+
+2. **Tag Search Mode**:
+   - Single input for comma-separated tags
+   - Uses proper `tag:` prefix syntax for each tag
+   - Supports OR logic for multiple tags
+   - Returns ALL notes containing specified tags
+
+**Removed Features**:
+- Combined search mode (removed for simplicity and clarity)
+- Complex search interfaces that could confuse users
+
 ### Image Processing Architecture
 
-The image processing system converts Joplin's proprietary resource links to displayable images:
+The image processing system uses direct Joplin API URLs for preview and downloads images for import:
 
 ```mermaid
 graph TB
-    A[Note Body with :/resource_id] --> B[processNoteBodyForImages]
+    A[Note Body with :/resource_id] --> B[processNoteBodyForPreview]
     B --> C[Extract Resource IDs with Regex]
     C --> D[For Each Resource ID]
-    D --> E[Get Resource Metadata]
-    E --> F[Get Resource File Data]
-    F --> G[Convert to Base64]
-    G --> H[Create Data URI]
-    H --> I[Replace Original Link]
-    I --> J[Return Processed Markdown]
+    D --> E[Generate API URL]
+    E --> F[Replace Original Link with API URL]
+    F --> G[Return Processed Markdown]
+
+    H[Import Process] --> I[downloadAndStoreImages]
+    I --> J[Download from API URL]
+    J --> K[Save to Attachments Folder]
+    K --> L[Replace with Local File Reference]
 ```
 
-**Image Processing Flow:**
-1. **Pattern Detection**: Use regex `/!\[(.*?)\]\(:\/([a-f0-9]{32})\)/g` to find Joplin image links
-2. **HTML Pattern Detection**: Use regex `/<img[^>]*src=["']joplin-id:([a-f0-9]{32})["'][^>]*>/g` to find HTML img tags with joplin-id URLs
-3. **Resource Metadata**: Fetch `/resources/:id` to get MIME type and validate resource exists
-4. **Binary Data Retrieval**: Fetch `/resources/:id/file` as ArrayBuffer for image data
-5. **Base64 Conversion**: Convert ArrayBuffer to base64 string
-6. **Data URI Construction**: Create `data:{mime_type};base64,{base64_string}` format
-7. **Link Replacement**: Replace original `![alt](:/resource_id)` with `![alt](data:...)` or `<img src="data:...">` for HTML tags
+**Preview Image Processing Flow:**
+1. **Pattern Detection**: Use regex to find Joplin image links in both markdown and HTML formats
+2. **API URL Generation**: Create direct API URLs using `getResourceUrl(resourceId)`
+3. **Link Replacement**: Replace Joplin resource links with API URLs for immediate display
+4. **Simple and Fast**: No base64 conversion or complex processing needed for preview
 
-**Error Handling for Images:**
-- Missing resources: Replace with placeholder text or broken image indicator
-- Network failures: Retry with exponential backoff, fallback to placeholder
-- Invalid MIME types: Skip non-image resources, preserve original link
-- Large images: Consider size limits and compression if needed
+**Import Image Processing Flow:**
+1. **Resource Extraction**: Identify all image resources during import
+2. **File Download**: Download images directly from Joplin API
+3. **Local Storage**: Save to Obsidian's attachments folder with unique filenames
+4. **Link Conversion**: Replace Joplin links with local file references
+5. **Error Handling**: Graceful fallback for failed downloads
 
 ### HTML Image Processing Architecture
 
@@ -425,7 +451,13 @@ graph TB
 6. **Link Conversion**:
    - Replace `![alt](:/resource_id)` with `![alt](local_filename.ext)` for markdown
    - Replace `<img src="joplin-id:resource_id"/>` with `<img src="local_filename.ext"/>` for HTML
-7. **Note Update**: Save the imported note with local image references
+7. **Note Update**: Save the imported note with local image references and source URL in frontmatter
+
+**Frontmatter Enhancement:**
+- Include `joplin-id` for reference back to original note
+- Include `created` and `updated` timestamps
+- Include `source` field with the original Joplin source URL when available
+- Maintain compatibility with existing Obsidian frontmatter standards
 
 **Attachment Management:**
 - Use Obsidian's configured attachments folder (typically `attachments/` or vault root)

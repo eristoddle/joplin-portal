@@ -218,3 +218,35 @@
   - Implement proper image download for import functionality to Obsidian attachments folder
   - Clean up related test files that test the removed functionality
   - _Requirements: 6.1, 6.2, 7.1, 7.2_
+
+- [ ] 32. Fix tag search functionality to return accurate results
+  - Investigate current tag search implementation in JoplinApiService.searchNotesByTags method
+  - Review Joplin API documentation for correct tag search syntax using "tag:" prefix
+  - Update tag search query construction to use proper format: "tag:tagname" for each tag
+  - Test tag search with known tags to verify all matching notes are returned
+  - Add logging to debug tag search API requests and responses
+  - _Requirements: 9.1, 9.2, 9.3, 9.4_
+
+- [ ] 33. Remove combined search functionality and simplify search interface
+  - Remove "Combined" option from search type selector in JoplinPortalView
+  - Update search interface to only show "Text Search" and "Tag Search" options
+  - Remove combined search logic from performSearch method
+  - Update search interface styling and layout for simplified two-option design
+  - Update help text and accessibility labels to reflect simplified interface
+  - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
+
+- [ ] 34. Add source URL to note frontmatter during import
+  - Update ImportService.generateFrontmatter method to include source URL field
+  - Modify frontmatter generation to add "source: [URL]" when source_url is available
+  - Ensure source URL field is properly formatted and escaped in YAML frontmatter
+  - Test import functionality with notes that have source URLs
+  - Verify imported notes display source URL correctly in Obsidian frontmatter
+  - _Requirements: 3.4, 3.5_
+
+- [ ] 35. Test and validate all fixes
+  - Test tag search with various tags to ensure all matching notes are returned
+  - Verify search interface only shows Text Search and Tag Search options
+  - Test note import to confirm source URLs appear in frontmatter
+  - Validate that image processing still works correctly for both preview and import
+  - Run existing test suite to ensure no regressions were introduced
+  - _Requirements: 9.1, 9.2, 9.3, 10.1, 10.2, 3.5_
