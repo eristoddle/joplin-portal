@@ -250,3 +250,67 @@
   - Validate that image processing still works correctly for both preview and import
   - Run existing test suite to ensure no regressions were introduced
   - _Requirements: 9.1, 9.2, 9.3, 10.1, 10.2, 3.5_
+
+- [ ] 36. Remove intrusive tooltips from search results and preview
+  - Audit all tooltip implementations in JoplinPortalView to identify random/intrusive ones
+  - Remove or disable tooltips that appear during scrolling or content viewing
+  - Implement TooltipManager class to control when tooltips should appear
+  - Update search result rendering to minimize tooltip usage
+  - Test scrolling through search results to ensure no random tooltips appear
+  - _Requirements: 11.1, 11.2, 11.3, 11.4_
+
+- [ ] 37. Implement essential-only tooltip strategy
+  - Create shouldShowTooltip method to determine if a tooltip is necessary
+  - Add quick auto-hide functionality for any remaining essential tooltips
+  - Ensure tooltips only appear on intentional user interaction (not hover during scrolling)
+  - Update tooltip styling to be less intrusive when they do appear
+  - Test tooltip behavior to ensure they don't interfere with note reading
+  - _Requirements: 11.5_
+
+- [ ] 38. Redesign drawer interface to show only Import Selected button
+  - Remove all extra fields and configuration options from the main drawer interface
+  - Keep only the search results list and "Import Selected" button visible in drawer
+  - Update drawer layout and styling to maximize space for search results
+  - Ensure Import Selected button is prominently displayed and easily accessible
+  - Test drawer interface at different sizes to ensure optimal space usage
+  - _Requirements: 12.1, 12.4_
+
+- [ ] 39. Create import options modal for secondary functionality
+  - Implement ImportOptionsModal class with clean, focused interface design
+  - Move target folder selection, template options, and conflict resolution to modal
+  - Add advanced settings section within the modal for additional configuration
+  - Create modal trigger from Import Selected button click
+  - Implement proper modal show/hide functionality with keyboard support
+  - _Requirements: 12.2, 12.3_
+
+- [ ] 40. Integrate modal workflow with import process
+  - Update import workflow to open modal when Import Selected is clicked
+  - Implement getImportOptions method to collect all configuration from modal
+  - Add execute import functionality within the modal with progress feedback
+  - Ensure modal provides clear primary/secondary action buttons
+  - Test complete import workflow from drawer button through modal to completion
+  - _Requirements: 12.5_
+
+- [ ] 41. Audit and fix failing unit tests
+  - Run complete test suite to identify all failing tests
+  - Categorize test failures by type (missing imports, outdated assertions, deprecated APIs, broken mocks)
+  - Create TestAuditResult for each failing test with specific issues and recommendations
+  - Document which tests reference code that no longer exists
+  - Prioritize test fixes based on current functionality relevance
+  - _Requirements: 13.1, 13.2, 13.4_
+
+- [ ] 42. Remove obsolete tests and update outdated assertions
+  - Remove unit tests that reference deleted functionality or non-existent code
+  - Update test assertions that use outdated expected values or API responses
+  - Fix tests with incorrect file path assumptions or missing imports
+  - Update mock data structures to match current interfaces and API responses
+  - Ensure all remaining tests align with current plugin functionality
+  - _Requirements: 13.5, 13.6_
+
+- [ ] 43. Validate test suite and CI/CD pipeline
+  - Run complete test suite to ensure all tests pass locally
+  - Verify GitHub Actions workflow runs successfully with updated tests
+  - Test CI/CD pipeline by pushing changes and monitoring action results
+  - Fix any remaining test environment issues or configuration problems
+  - Ensure test coverage remains meaningful for current codebase
+  - _Requirements: 13.3_

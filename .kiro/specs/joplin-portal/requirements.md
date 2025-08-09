@@ -137,3 +137,40 @@ The Joplin Portal plugin enables Obsidian users to access, search, and import no
 4. WHEN the user switches between search types THEN the system SHALL clear previous results and reset the interface
 5. WHEN the user performs a search THEN the system SHALL use only the selected search method without combining different search types
 6. WHEN displaying search results THEN the system SHALL clearly indicate which search method was used
+
+### Requirement 11
+
+**User Story:** As an Obsidian user, I want to view note content without intrusive tooltips appearing randomly, so that I can read notes clearly without visual distractions.
+
+#### Acceptance Criteria
+
+1. WHEN viewing search results THEN the system SHALL NOT display random tooltips that interfere with reading
+2. WHEN scrolling through note previews THEN the system SHALL NOT show tooltips that pop up unexpectedly
+3. WHEN hovering over search results THEN the system SHALL only show tooltips if they provide essential information not already visible
+4. WHEN displaying note content THEN the system SHALL minimize or eliminate tooltips that obstruct the actual note text
+5. IF tooltips are necessary for functionality THEN the system SHALL ensure they appear only on intentional user interaction and disappear quickly
+
+### Requirement 12
+
+**User Story:** As an Obsidian user, I want a clean and spacious drawer interface with only essential actions visible, so that I can focus on the main import functionality without clutter.
+
+#### Acceptance Criteria
+
+1. WHEN the drawer is displayed THEN the system SHALL show only the "Import Selected" button as the primary action
+2. WHEN the user needs access to additional options THEN the system SHALL provide these through a modal interface
+3. WHEN the modal is opened THEN the system SHALL display all extra fields, configuration options, and secondary buttons
+4. WHEN the drawer is resized THEN the system SHALL maintain optimal use of space with the simplified interface
+5. WHEN the user completes an import action THEN the system SHALL provide feedback through the modal rather than cluttering the drawer
+
+### Requirement 13
+
+**User Story:** As a developer, I want all unit tests to pass consistently, so that the codebase maintains quality and CI/CD pipelines run successfully.
+
+#### Acceptance Criteria
+
+1. WHEN running the test suite THEN all unit tests SHALL pass without failures
+2. WHEN tests reference code that no longer exists THEN those tests SHALL be removed or updated to reflect current implementation
+3. WHEN pushing code to GitHub THEN the automated test actions SHALL complete successfully without failures
+4. WHEN tests fail due to outdated assertions THEN they SHALL be updated to match current expected behavior
+5. IF tests are no longer relevant to current functionality THEN they SHALL be removed to maintain a clean test suite
+6. WHEN new code is added THEN existing tests SHALL continue to pass or be updated appropriately

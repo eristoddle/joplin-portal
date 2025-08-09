@@ -323,6 +323,126 @@ describe('JoplinApiService', () => {
 - **Search Filters**: Extensible filtering system
 - **Export Options**: Future support for exporting to Joplin
 
+## UI/UX Improvements
+
+### Tooltip Management
+
+**Problem**: Random tooltips appear while scrolling and viewing notes, creating visual distractions.
+
+**Solution**: Implement a minimal tooltip strategy:
+
+```typescript
+interface TooltipConfig {
+    enabled: boolean;
+    showOnHover: boolean;
+    autoHideDelay: number;
+    essentialOnly: boolean;
+}
+
+class TooltipManager {
+    private config: TooltipConfig;
+
+    shouldShowTooltip(element: HTMLElement, context: string): boolean
+    hideAllTooltips(): void
+    showEssentialTooltip(element: HTMLElement, content: string): void
+}
+```
+
+**Implementation Strategy:**
+- Remove or disable non-essential tooltips throughout the interface
+- Only show tooltips for critical functionality that isn't self-explanatory
+- Implement quick auto-hide for any remaining tooltips
+- Ensure tooltips don't interfere with scrolling or content viewing
+
+### Drawer Interface Redesign
+
+**Problem**: The drawer interface is cluttered with multiple fields and buttons, reducing available space.
+
+**Solution**: Implement a modal-based approach for secondary functionality:
+
+```mermaid
+graph TB
+    A[Simplified Drawer] --> B[Search Results List]
+    A --> C[Import Selected Button]
+    C --> D[Import Options Modal]
+    D --> E[Target Folder Selection]
+    D --> F[Template Options]
+    D --> G[Conflict Resolution]
+    D --> H[Advanced Settings]
+    D --> I[Execute Import Button]
+```
+
+**Drawer Components (Simplified):**
+```typescript
+interface SimplifiedDrawerView {
+    searchResults: SearchResultsList;
+    importButton: ImportSelectedButton;
+
+    openImportModal(): void;
+    executeImport(options: ImportOptions): Promise<void>;
+}
+
+interface ImportOptionsModal {
+    targetFolderInput: FolderSelector;
+    templateToggle: TemplateOptions;
+    conflictResolution: ConflictSelector;
+    advancedSettings: AdvancedOptions;
+
+    show(): void;
+    hide(): void;
+    getImportOptions(): ImportOptions;
+}
+```
+
+**Modal Design:**
+- Clean, focused interface for import configuration
+- Tabbed or sectioned layout for different option categories
+- Clear primary/secondary action buttons
+- Responsive design that works well in different screen sizes
+- Keyboard navigation support
+
+### Test Suite Maintenance
+
+**Problem**: Unit tests are failing and may reference outdated code.
+
+**Solution**: Implement a comprehensive test maintenance strategy:
+
+```typescript
+interface TestMaintenanceStrategy {
+    auditExistingTests(): TestAuditResult[];
+    removeObsoleteTests(testFiles: string[]): void;
+    updateOutdatedAssertions(testFile: string): void;
+    validateTestCoverage(): CoverageReport;
+}
+
+interface TestAuditResult {
+    testFile: string;
+    status: 'passing' | 'failing' | 'obsolete';
+    issues: TestIssue[];
+    recommendations: string[];
+}
+
+interface TestIssue {
+    type: 'missing_import' | 'outdated_assertion' | 'deprecated_api' | 'broken_mock';
+    description: string;
+    suggestedFix: string;
+}
+```
+
+**Test Maintenance Process:**
+1. **Audit Phase**: Run all tests and categorize failures
+2. **Cleanup Phase**: Remove tests for deleted functionality
+3. **Update Phase**: Fix tests with outdated assertions or imports
+4. **Validation Phase**: Ensure all tests pass and provide meaningful coverage
+5. **CI Integration**: Verify GitHub Actions run successfully
+
+**Test Categories to Address:**
+- Tests referencing removed API methods
+- Tests with outdated mock data structures
+- Tests using deprecated Obsidian API patterns
+- Tests with incorrect file path assumptions
+- Tests that no longer align with current functionality
+
 ### Joplin API Integration Details
 
 Based on the Joplin API documentation:
