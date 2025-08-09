@@ -74,7 +74,6 @@ export class ImportService {
 	 */
 	private extractImageResourceIds(noteBody: string): string[] {
     const resourceIds: string[] = [];
-		console.log('notebody', noteBody);
 
     // Matches Markdown: ![alt](:/id)
     const markdownMatches = noteBody.matchAll(/!\[[^\]]*\]\(:\/([a-f0-9]+)\)/gi);
@@ -100,7 +99,6 @@ export class ImportService {
         }
 		}
 
-		console.log('resourceIds', resourceIds)
     return resourceIds;
 }
 
@@ -223,16 +221,25 @@ export class ImportService {
 				const markdownRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${result.resourceId}\\)`, 'g');
 				processedBody = processedBody.replace(markdownRegex, `![$1](${result.localFilename})`);
 
-				// Replace HTML format: <img src="joplin-id:resource_id" ... /> -> <img src="local_filename" ... />
-				const htmlRegex = new RegExp(`(<img[^>]*src=["'])joplin-id:${result.resourceId}(["'][^>]*>)`, 'g');
-				processedBody = processedBody.replace(htmlRegex, `$1${result.localFilename}$2`);
+				// Replace HTML format with :/ prefix: <img src=":/resource_id" ... /> -> <img src="local_filename" ... />
+				const htmlColonRegex = new RegExp(`(<img[^>]*src=["']):\/*${result.resourceId}(["'][^>]*>)`, 'g');
+				processedBody = processedBody.replace(htmlColonRegex, `$1${result.localFilename}$2`);
+
+				// Replace HTML format with joplin-id prefix: <img src="joplin-id:resource_id" ... /> -> <img src="local_filename" ... />
+				const htmlJoplinIdRegex = new RegExp(`(<img[^>]*src=["'])joplin-id:${result.resourceId}(["'][^>]*>)`, 'g');
+				processedBody = processedBody.replace(htmlJoplinIdRegex, `$1${result.localFilename}$2`);
 			} else {
 				// Replace failed images with placeholder text
 				const markdownRegex = new RegExp(`!\\[([^\\]]*)\\]\\(:\/${result.resourceId}\\)`, 'g');
 				processedBody = processedBody.replace(markdownRegex, `[Image failed to download: $1 (${result.resourceId})]`);
 
-				const htmlRegex = new RegExp(`<img[^>]*src=["']joplin-id:${result.resourceId}["'][^>]*>`, 'g');
-				processedBody = processedBody.replace(htmlRegex, `<!-- Image failed to download: ${result.resourceId} -->`);
+				// Replace failed HTML images with :/ prefix
+				const htmlColonRegex = new RegExp(`<img[^>]*src=["']:\/*${result.resourceId}["'][^>]*>`, 'g');
+				processedBody = processedBody.replace(htmlColonRegex, `<!-- Image failed to download: ${result.resourceId} -->`);
+
+				// Replace failed HTML images with joplin-id prefix
+				const htmlJoplinIdRegex = new RegExp(`<img[^>]*src=["']joplin-id:${result.resourceId}["'][^>]*>`, 'g');
+				processedBody = processedBody.replace(htmlJoplinIdRegex, `<!-- Image failed to download: ${result.resourceId} -->`);
 			}
 		}
 
