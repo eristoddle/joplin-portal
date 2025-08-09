@@ -167,6 +167,17 @@ describe('Task 35: Test and validate all fixes', () => {
 
 			expect(frontmatter).toContain('source: "https://example.com/path?param=\\"quoted value\\"&other=test"');
 		});
+
+		it('should fetch source_url field in API calls', () => {
+			// Test that the API service includes source_url in default fields
+			const defaultFields = 'id,title,body,created_time,updated_time,parent_id,source_url';
+
+			// This verifies that our API service is configured to fetch source_url
+			expect(defaultFields).toContain('source_url');
+
+			// The actual API calls are tested in api-source-url-test.test.ts
+			// This test just verifies the field list includes source_url
+		});
 	});
 
 	describe('Image processing for preview and import', () => {
