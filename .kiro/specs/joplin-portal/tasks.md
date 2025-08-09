@@ -243,7 +243,7 @@
   - Verify imported notes display source URL correctly in Obsidian frontmatter
   - _Requirements: 3.4, 3.5_
 
-- [ ] 35. Test and validate all fixes
+- [x] 35. Test and validate all fixes
   - Test tag search with various tags to ensure all matching notes are returned
   - Verify search interface only shows Text Search and Tag Search options
   - Test note import to confirm source URLs appear in frontmatter

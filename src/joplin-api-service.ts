@@ -600,16 +600,25 @@ export class JoplinApiService {
 		// Replace markdown format: ![alt](:/resource_id) -> ![alt](API_URL)
 		processedBody = processedBody.replace(
 			/!\[(.*?)\]\(:\/([a-f0-9]{32})\)/g,
-			(match, altText, resourceId) => {
+			(_, altText, resourceId) => {
 				const apiUrl = this.getResourceUrl(resourceId);
 				return `![${altText}](${apiUrl})`;
 			}
 		);
 
-		// Replace HTML format: <img src="joplin-id:resource_id" ... /> -> <img src="API_URL" ... />
+		// Replace HTML format with :/ prefix: <img src=":/resource_id" ... /> -> <img src="API_URL" ... />
 		processedBody = processedBody.replace(
 			/(<img[^>]*src=["']):\/([a-f0-9]+)(["'][^>]*>)/g,
-			(match, prefix, resourceId, suffix) => {
+			(_, prefix, resourceId, suffix) => {
+				const apiUrl = this.getResourceUrl(resourceId);
+				return `${prefix}${apiUrl}${suffix}`;
+			}
+		);
+
+		// Replace HTML format with joplin-id prefix: <img src="joplin-id:resource_id" ... /> -> <img src="API_URL" ... />
+		processedBody = processedBody.replace(
+			/(<img[^>]*src=["'])joplin-id:([a-f0-9]+)(["'][^>]*>)/g,
+			(_, prefix, resourceId, suffix) => {
 				const apiUrl = this.getResourceUrl(resourceId);
 				return `${prefix}${apiUrl}${suffix}`;
 			}
