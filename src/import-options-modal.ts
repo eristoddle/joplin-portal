@@ -11,6 +11,7 @@ export class ImportOptionsModal extends Modal {
 	private selectedResults: SearchResult[];
 	private onComplete: (success: boolean) => void;
 	private isImporting = false;
+	private pendingOptions: Partial<ImportOptions> | null = null;
 
 	constructor(
 		plugin: JoplinPortalPlugin,
@@ -111,6 +112,12 @@ export class ImportOptionsModal extends Modal {
 
 		// Set up keyboard navigation
 		this.setupKeyboardNavigation();
+
+		// Apply any pending options that were set before the modal opened
+		if (this.pendingOptions) {
+			this.applyOptionsToElements(this.pendingOptions);
+			this.pendingOptions = null;
+		}
 
 		// Focus the target folder input
 		this.targetFolderInput.focus();
@@ -445,6 +452,17 @@ export class ImportOptionsModal extends Modal {
 	 * Public method to set import options (useful for pre-populating the modal)
 	 */
 	public setImportOptions(options: Partial<ImportOptions>): void {
+		// If modal elements aren't created yet, store options for later
+		if (!this.targetFolderInput) {
+			this.pendingOptions = options;
+			return;
+		}
+
+		// Apply options to DOM elements
+		this.applyOptionsToElements(options);
+	}
+
+	private applyOptionsToElements(options: Partial<ImportOptions>): void {
 		if (options.targetFolder !== undefined) {
 			this.targetFolderInput.value = options.targetFolder;
 		}

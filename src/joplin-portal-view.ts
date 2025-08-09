@@ -17,10 +17,6 @@ export class JoplinPortalView extends ItemView {
 	previewContainer: HTMLElement;
 	importOptionsPanel: HTMLElement;
 	currentResults: SearchResult[] = [];
-	importFolderInput: HTMLInputElement;
-	applyTemplateCheckbox: HTMLInputElement;
-	templatePathInput: HTMLInputElement;
-	conflictResolutionSelect: HTMLSelectElement;
 	private searchDebounceTimer: NodeJS.Timeout | null = null;
 	private lastSearchQuery = '';
 	private isSearching = false;
@@ -266,31 +262,7 @@ export class JoplinPortalView extends ItemView {
 		importHelp.id = 'import-button-help';
 		importHelp.textContent = 'Opens import options modal with folder selection and advanced settings';
 
-		// Store references to removed elements for backward compatibility
-		// These will be moved to the modal in the next task
-		this.importFolderInput = document.createElement('input') as HTMLInputElement;
-		this.importFolderInput.value = this.plugin.settings.defaultImportFolder || 'Imported from Joplin';
-		this.applyTemplateCheckbox = document.createElement('input') as HTMLInputElement;
-		this.templatePathInput = document.createElement('input') as HTMLInputElement;
-		this.conflictResolutionSelect = document.createElement('select') as HTMLSelectElement;
-
-		// Create default options for the select element
-		const skipOption = document.createElement('option');
-		skipOption.value = 'skip';
-		skipOption.text = 'Skip';
-		this.conflictResolutionSelect.appendChild(skipOption);
-
-		const overwriteOption = document.createElement('option');
-		overwriteOption.value = 'overwrite';
-		overwriteOption.text = 'Overwrite';
-		this.conflictResolutionSelect.appendChild(overwriteOption);
-
-		const renameOption = document.createElement('option');
-		renameOption.value = 'rename';
-		renameOption.text = 'Rename';
-		this.conflictResolutionSelect.appendChild(renameOption);
-
-		this.conflictResolutionSelect.value = 'skip';
+		// UI elements are now handled by the ImportOptionsModal
 
 		// Event listener for the Import Selected button
 		importBtn.addEventListener('click', () => {
@@ -985,15 +957,15 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
-	 * Get the current import options from the simplified interface
-	 * This method provides default values since the UI elements are no longer visible
+	 * Get current import options from plugin settings
+	 * This method provides default values since the UI elements are now in the modal
 	 */
 	private getCurrentImportOptions(): ImportOptions {
 		return {
-			targetFolder: this.importFolderInput.value.trim() || 'Imported from Joplin',
-			applyTemplate: this.applyTemplateCheckbox.checked,
-			templatePath: this.applyTemplateCheckbox.checked ? this.templatePathInput.value.trim() : undefined,
-			conflictResolution: this.conflictResolutionSelect.value as 'skip' | 'overwrite' | 'rename'
+			targetFolder: this.plugin.settings.defaultImportFolder || 'Imported from Joplin',
+			applyTemplate: false, // Default to false
+			templatePath: undefined,
+			conflictResolution: 'skip' // Default to skip
 		};
 	}
 
@@ -2152,9 +2124,7 @@ export class JoplinPortalView extends ItemView {
 	private isInputFocused(): boolean {
 		const activeElement = document.activeElement;
 		return activeElement === this.searchInput ||
-			   activeElement === this.tagSearchInput ||
-			   activeElement === this.importFolderInput ||
-			   activeElement === this.templatePathInput;
+			   activeElement === this.tagSearchInput;
 	}
 
 	/**
