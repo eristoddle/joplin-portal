@@ -267,7 +267,7 @@
   - Test tooltip behavior to ensure they don't interfere with note reading
   - _Requirements: 11.5_
 
-- [ ] 38. Redesign drawer interface to show only Import Selected button
+- [x] 38. Redesign drawer interface to show only Import Selected button
   - Remove all extra fields and configuration options from the main drawer interface
   - Keep only the search results list and "Import Selected" button visible in drawer
   - Update drawer layout and styling to maximize space for search results

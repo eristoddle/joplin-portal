@@ -242,87 +242,56 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	private createImportOptionsPanel(container: Element): void {
-		const importSection = container.createDiv('joplin-import-section');
+		const importSection = container.createDiv('joplin-import-section-simplified');
 		importSection.style.display = 'none'; // Initially hidden
 
-		// Import header
-		const importHeader = importSection.createDiv('joplin-import-header');
-		importHeader.createEl('h3', { text: 'Import Options' });
+		// Import options container - simplified to only show essential elements
+		this.importOptionsPanel = importSection.createDiv('joplin-import-options-simplified');
 
-		// Import options container
-		this.importOptionsPanel = importSection.createDiv('joplin-import-options');
-
-		// Selected notes count
-		const selectedCountDiv = this.importOptionsPanel.createDiv('joplin-selected-count');
+		// Selected notes count - more prominent display
+		const selectedCountDiv = this.importOptionsPanel.createDiv('joplin-selected-count-prominent');
 		selectedCountDiv.createSpan('joplin-selected-count-text').setText('0 notes selected for import');
 
-		// Import folder selection
-		const folderDiv = this.importOptionsPanel.createDiv('joplin-import-folder');
-		folderDiv.createEl('label', { text: 'Import to folder:' });
-		this.importFolderInput = folderDiv.createEl('input', {
-			type: 'text',
-			placeholder: 'Enter folder path (e.g., "Imported from Joplin")',
-			cls: 'joplin-import-folder-input'
+		// Only the Import Selected button - prominently displayed
+		const importButtonContainer = this.importOptionsPanel.createDiv('joplin-import-button-container');
+		const importBtn = importButtonContainer.createEl('button', {
+			text: 'Import Selected',
+			cls: 'joplin-import-btn-prominent mod-cta'
 		});
+		importBtn.setAttribute('aria-describedby', 'import-button-help');
+
+		// Add help text for screen readers
+		const importHelp = importButtonContainer.createDiv('sr-only');
+		importHelp.id = 'import-button-help';
+		importHelp.textContent = 'Opens import options modal with folder selection and advanced settings';
+
+		// Store references to removed elements for backward compatibility
+		// These will be moved to the modal in the next task
+		this.importFolderInput = document.createElement('input') as HTMLInputElement;
 		this.importFolderInput.value = this.plugin.settings.defaultImportFolder || 'Imported from Joplin';
+		this.applyTemplateCheckbox = document.createElement('input') as HTMLInputElement;
+		this.templatePathInput = document.createElement('input') as HTMLInputElement;
+		this.conflictResolutionSelect = document.createElement('select') as HTMLSelectElement;
 
-		// Template options
-		const templateDiv = this.importOptionsPanel.createDiv('joplin-import-template');
-		const templateCheckboxDiv = templateDiv.createDiv('joplin-template-checkbox-div');
-		this.applyTemplateCheckbox = templateCheckboxDiv.createEl('input', {
-			type: 'checkbox',
-			cls: 'joplin-apply-template-checkbox'
-		});
-		templateCheckboxDiv.createEl('label', { text: 'Apply template' });
+		// Create default options for the select element
+		const skipOption = document.createElement('option');
+		skipOption.value = 'skip';
+		skipOption.text = 'Skip';
+		this.conflictResolutionSelect.appendChild(skipOption);
 
-		const templatePathDiv = templateDiv.createDiv('joplin-template-path-div');
-		templatePathDiv.style.display = 'none'; // Initially hidden
-		templatePathDiv.createEl('label', { text: 'Template path:' });
-		this.templatePathInput = templatePathDiv.createEl('input', {
-			type: 'text',
-			placeholder: 'Path to template file (optional)',
-			cls: 'joplin-template-path-input'
-		});
+		const overwriteOption = document.createElement('option');
+		overwriteOption.value = 'overwrite';
+		overwriteOption.text = 'Overwrite';
+		this.conflictResolutionSelect.appendChild(overwriteOption);
 
-		// Conflict resolution
-		const conflictDiv = this.importOptionsPanel.createDiv('joplin-import-conflict');
-		conflictDiv.createEl('label', { text: 'If file exists:' });
-		this.conflictResolutionSelect = conflictDiv.createEl('select', {
-			cls: 'joplin-conflict-resolution-select'
-		});
-		this.conflictResolutionSelect.createEl('option', { value: 'skip', text: 'Skip' });
-		this.conflictResolutionSelect.createEl('option', { value: 'overwrite', text: 'Overwrite' });
-		this.conflictResolutionSelect.createEl('option', { value: 'rename', text: 'Rename' });
+		const renameOption = document.createElement('option');
+		renameOption.value = 'rename';
+		renameOption.text = 'Rename';
+		this.conflictResolutionSelect.appendChild(renameOption);
+
 		this.conflictResolutionSelect.value = 'skip';
 
-		// Import buttons
-		const buttonsDiv = this.importOptionsPanel.createDiv('joplin-import-buttons');
-		const selectAllBtn = buttonsDiv.createEl('button', {
-			text: 'Select All',
-			cls: 'joplin-select-all-btn'
-		});
-		const clearSelectionBtn = buttonsDiv.createEl('button', {
-			text: 'Clear Selection',
-			cls: 'joplin-clear-selection-btn'
-		});
-		const importBtn = buttonsDiv.createEl('button', {
-			text: 'Import Selected',
-			cls: 'joplin-import-btn mod-cta'
-		});
-
-		// Event listeners
-		this.applyTemplateCheckbox.addEventListener('change', () => {
-			templatePathDiv.style.display = this.applyTemplateCheckbox.checked ? 'block' : 'none';
-		});
-
-		selectAllBtn.addEventListener('click', () => {
-			this.selectAllForImport();
-		});
-
-		clearSelectionBtn.addEventListener('click', () => {
-			this.clearImportSelection();
-		});
-
+		// Event listener for the Import Selected button
 		importBtn.addEventListener('click', () => {
 			this.showImportConfirmationDialog();
 		});
@@ -1000,6 +969,19 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
+	 * Get the current import options from the simplified interface
+	 * This method provides default values since the UI elements are no longer visible
+	 */
+	private getCurrentImportOptions(): ImportOptions {
+		return {
+			targetFolder: this.importFolderInput.value.trim() || 'Imported from Joplin',
+			applyTemplate: this.applyTemplateCheckbox.checked,
+			templatePath: this.applyTemplateCheckbox.checked ? this.templatePathInput.value.trim() : undefined,
+			conflictResolution: this.conflictResolutionSelect.value as 'skip' | 'overwrite' | 'rename'
+		};
+	}
+
+	/**
 	 * Clear all import selections
 	 */
 	private clearImportSelection(): void {
@@ -1026,8 +1008,8 @@ export class JoplinPortalView extends ItemView {
 			countElement.textContent = `${selectedCount} note${selectedCount !== 1 ? 's' : ''} selected for import`;
 		}
 
-		// Enable/disable import button based on selection
-		const importBtn = this.importOptionsPanel.querySelector('.joplin-import-btn') as HTMLButtonElement;
+		// Enable/disable import button based on selection - check both old and new button classes
+		const importBtn = this.importOptionsPanel.querySelector('.joplin-import-btn, .joplin-import-btn-prominent') as HTMLButtonElement;
 		if (importBtn) {
 			importBtn.disabled = selectedCount === 0;
 		}
@@ -1037,7 +1019,8 @@ export class JoplinPortalView extends ItemView {
 	 * Show the import options panel
 	 */
 	private showImportOptionsPanel(): void {
-		const importSection = this.containerEl.querySelector('.joplin-import-section') as HTMLElement;
+		// Check for both old and new import section classes for backward compatibility
+		const importSection = this.containerEl.querySelector('.joplin-import-section, .joplin-import-section-simplified') as HTMLElement;
 		if (importSection) {
 			importSection.style.display = 'block';
 		}
@@ -1047,7 +1030,8 @@ export class JoplinPortalView extends ItemView {
 	 * Hide the import options panel
 	 */
 	private hideImportOptionsPanel(): void {
-		const importSection = this.containerEl.querySelector('.joplin-import-section') as HTMLElement;
+		// Check for both old and new import section classes for backward compatibility
+		const importSection = this.containerEl.querySelector('.joplin-import-section, .joplin-import-section-simplified') as HTMLElement;
 		if (importSection) {
 			importSection.style.display = 'none';
 		}
@@ -1065,13 +1049,8 @@ export class JoplinPortalView extends ItemView {
 			return;
 		}
 
-		// Get import options
-		const importOptions: ImportOptions = {
-			targetFolder: this.importFolderInput.value.trim() || 'Imported from Joplin',
-			applyTemplate: this.applyTemplateCheckbox.checked,
-			templatePath: this.applyTemplateCheckbox.checked ? this.templatePathInput.value.trim() : undefined,
-			conflictResolution: this.conflictResolutionSelect.value as 'skip' | 'overwrite' | 'rename'
-		};
+		// Get import options using the new method
+		const importOptions: ImportOptions = this.getCurrentImportOptions();
 
 		// Check for conflicts before showing confirmation
 		const notesToImport = selectedResults.map(result => result.note);

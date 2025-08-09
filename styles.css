@@ -985,6 +985,85 @@
   margin-top: var(--size-4-2);
 }
 
+/* Simplified Import Section Styles */
+.joplin-import-section-simplified {
+  flex-shrink: 0;
+  border: 1px solid var(--interactive-accent);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  padding: var(--size-4-3);
+  margin-top: var(--size-4-2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  /* Ensure maximum space utilization */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.joplin-import-options-simplified {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  align-items: center;
+}
+
+.joplin-selected-count-prominent {
+  padding: var(--size-4-2) var(--size-4-3);
+  background: var(--background-secondary);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+  width: 100%;
+  text-align: center;
+}
+
+.joplin-selected-count-prominent .joplin-selected-count-text {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+}
+
+.joplin-import-button-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.joplin-import-btn-prominent {
+  padding: var(--size-4-3) var(--size-4-6);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-weight-bold);
+  transition: all 0.15s ease;
+  min-width: 160px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.joplin-import-btn-prominent:hover {
+  background: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.joplin-import-btn-prominent:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.joplin-import-btn-prominent:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.joplin-import-btn-prominent:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--interactive-accent-hover), 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 .joplin-import-header h3 {
   margin: 0 0 var(--size-4-2) 0;
   font-size: var(--font-ui-medium);
@@ -1131,12 +1210,71 @@
   outline-offset: 2px;
 }
 
+/* Responsive adjustments for simplified import interface */
+@media (max-width: 500px) {
+  .joplin-import-section-simplified {
+    padding: var(--size-4-2);
+    margin-top: var(--size-4-1);
+  }
+
+  .joplin-import-options-simplified {
+    gap: var(--size-4-2);
+  }
+
+  .joplin-selected-count-prominent {
+    padding: var(--size-4-1) var(--size-4-2);
+  }
+
+  .joplin-selected-count-prominent .joplin-selected-count-text {
+    font-size: var(--font-ui-small);
+  }
+
+  .joplin-import-btn-prominent {
+    padding: var(--size-4-2) var(--size-4-4);
+    font-size: var(--font-ui-small);
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 300px) {
+  .joplin-import-btn-prominent {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+/* Container queries for simplified import interface */
+@supports (container-type: inline-size) {
+  @container (max-width: 350px) {
+    .joplin-import-section-simplified {
+      padding: var(--size-4-1);
+    }
+
+    .joplin-import-btn-prominent {
+      width: 100%;
+      min-width: unset;
+    }
+  }
+
+  @container (max-width: 250px) {
+    .joplin-selected-count-prominent .joplin-selected-count-text {
+      font-size: var(--font-ui-smaller);
+    }
+
+    .joplin-import-btn-prominent {
+      font-size: var(--font-ui-smaller);
+      padding: var(--size-4-2) var(--size-4-3);
+    }
+  }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .joplin-result-item,
   .joplin-result-selection-indicator,
   .joplin-search-button,
   .joplin-import-btn,
+  .joplin-import-btn-prominent,
   .joplin-select-all-btn,
   .joplin-clear-selection-btn {
     transition: none;
@@ -1156,5 +1294,9 @@
 
   .joplin-loading-skeleton {
     animation: none;
+  }
+
+  .joplin-import-btn-prominent:hover {
+    transform: none;
   }
 }
