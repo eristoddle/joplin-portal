@@ -795,6 +795,43 @@
   margin-top: 12px;
 }
 
+/* Simplified preview metadata styling */
+.joplin-preview-metadata-simplified {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.joplin-metadata-inline {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.joplin-metadata-source-link {
+  color: var(--text-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.joplin-metadata-source-link:hover {
+  text-decoration: underline;
+}
+
+.joplin-metadata-source-link:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.joplin-metadata-separator {
+  color: var(--text-faint);
+}
+
+.joplin-metadata-updated-text {
+  color: var(--text-muted);
+}
+
 .joplin-metadata-item {
   display: flex;
   align-items: center;

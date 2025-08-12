@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Simplify preview panel footer to show only Source and Updated information inline
+- [x] 1. Simplify preview panel footer to show only Source and Updated information inline
   - Modify the `renderNoteMetadata()` method in `src/joplin-portal-view.ts` to create simplified metadata display
   - Replace the current grid layout with inline text format "Source(hyperlinked) - Updated: MM/DD/YYYY"
   - Remove created date, ID, and word count from the footer display

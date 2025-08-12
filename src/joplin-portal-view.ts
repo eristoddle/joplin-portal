@@ -737,66 +737,33 @@ export class JoplinPortalView extends ItemView {
 		// Clear existing content
 		container.empty();
 
-		// Create metadata grid
-		const metadataGrid = container.createDiv('joplin-preview-metadata-grid');
+		// Create simplified metadata container
+		const metadataSimplified = container.createDiv('joplin-preview-metadata-simplified');
 
-		// Created date
-		const createdDiv = metadataGrid.createDiv('joplin-metadata-item');
-		createdDiv.createSpan('joplin-metadata-label').setText('Created:');
-		const createdDate = new Date(note.created_time);
-		createdDiv.createSpan('joplin-metadata-value').setText(
-			createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString()
-		);
-
-		// Updated date (only show if different from created)
+		// Format updated date as MM/DD/YYYY
 		const updatedDate = new Date(note.updated_time);
-		if (Math.abs(updatedDate.getTime() - createdDate.getTime()) > 60000) { // More than 1 minute difference
-			const updatedDiv = metadataGrid.createDiv('joplin-metadata-item');
-			updatedDiv.createSpan('joplin-metadata-label').setText('Updated:');
-			updatedDiv.createSpan('joplin-metadata-value').setText(
-				updatedDate.toLocaleDateString() + ' ' + updatedDate.toLocaleTimeString()
-			);
-		}
+		const formattedDate = `${(updatedDate.getMonth() + 1).toString().padStart(2, '0')}/${updatedDate.getDate().toString().padStart(2, '0')}/${updatedDate.getFullYear()}`;
 
-		// Note ID (for debugging/reference)
-		const idDiv = metadataGrid.createDiv('joplin-metadata-item');
-		idDiv.createSpan('joplin-metadata-label').setText('ID:');
-		const idValue = idDiv.createSpan('joplin-metadata-value');
-		idValue.setText(note.id);
-		idValue.addClass('joplin-metadata-id');
+		// Create inline metadata text with Source and Updated information
+		const metadataText = metadataSimplified.createSpan('joplin-metadata-inline');
 
-		// Source URL if available
+		// Add source URL if available (as clickable link)
 		if (note.source_url) {
-			const sourceDiv = metadataGrid.createDiv('joplin-metadata-item');
-			sourceDiv.createSpan('joplin-metadata-label').setText('Source:');
-			const sourceLink = sourceDiv.createEl('a', {
+			const sourceLink = metadataText.createEl('a', {
 				href: note.source_url,
-				text: 'View Source',
-				cls: 'joplin-metadata-link'
+				text: 'Source',
+				cls: 'joplin-metadata-source-link'
 			});
 			sourceLink.setAttribute('target', '_blank');
 			sourceLink.setAttribute('rel', 'noopener');
+			sourceLink.setAttribute('aria-label', 'View original source in Joplin');
+
+			// Add separator and updated date
+			metadataText.createSpan('joplin-metadata-separator').setText(' - ');
 		}
 
-		// Tags if available
-		if (note.tags && note.tags.length > 0) {
-			const tagsDiv = metadataGrid.createDiv('joplin-metadata-item joplin-metadata-tags');
-			tagsDiv.createSpan('joplin-metadata-label').setText('Tags:');
-			const tagsContainer = tagsDiv.createDiv('joplin-metadata-tags-container');
-
-			note.tags.forEach(tag => {
-				const tagEl = tagsContainer.createSpan('joplin-metadata-tag');
-				tagEl.setText(`#${tag}`);
-			});
-		}
-
-		// Word count
-		const wordCount = this.calculateWordCount(note.body);
-		if (wordCount > 0) {
-			const wordCountDiv = metadataGrid.createDiv('joplin-metadata-item');
-			wordCountDiv.createSpan('joplin-metadata-label').setText('Words:');
-			wordCountDiv.createSpan('joplin-metadata-value').setText(wordCount.toString());
-		}
+		// Add updated date
+		metadataText.createSpan('joplin-metadata-updated-text').setText(`Updated: ${formattedDate}`);
 	}
 
 	private calculateWordCount(text: string): number {
