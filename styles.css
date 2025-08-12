@@ -235,6 +235,9 @@
   flex: 1;
   padding: 12px 16px;
   min-width: 0; /* Allow content to shrink */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .joplin-result-selection-indicator {
@@ -581,6 +584,20 @@
     align-items: flex-start;
     gap: var(--size-2-1);
   }
+
+  /* Ensure inline checkbox layout even at very narrow widths */
+  .joplin-result-item {
+    flex-direction: row !important;
+  }
+
+  .joplin-result-checkbox {
+    padding: var(--size-2-2) var(--size-2-1);
+    min-width: 36px;
+  }
+
+  .joplin-result-content {
+    padding: var(--size-4-1) var(--size-2-3);
+  }
 }
 
 /* Container queries for better responsive behavior */
@@ -594,13 +611,15 @@
       flex-direction: column;
     }
 
+    /* Keep result items in row layout to maintain inline checkboxes */
     .joplin-result-item {
-      flex-direction: column;
+      flex-direction: row;
     }
 
+    /* Optimize checkbox spacing for narrow widths */
     .joplin-result-checkbox {
-      align-self: flex-start;
-      margin-bottom: var(--size-2-1);
+      padding: var(--size-4-1) var(--size-2-3);
+      flex-shrink: 0;
     }
   }
 }
@@ -626,6 +645,17 @@
 
   .joplin-result-snippet {
     font-size: var(--font-ui-smallest);
+  }
+
+  /* Further optimize checkbox spacing for very narrow widths */
+  .joplin-result-checkbox {
+    padding: var(--size-2-3) var(--size-2-2);
+    min-width: 40px;
+  }
+
+  .joplin-import-checkbox {
+    width: 14px;
+    height: 14px;
   }
 }
 
@@ -1231,8 +1261,10 @@
 .joplin-result-checkbox {
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: var(--size-4-2);
   flex-shrink: 0;
+  min-width: 48px; /* Ensure consistent width for touch targets */
 }
 
 .joplin-import-checkbox {

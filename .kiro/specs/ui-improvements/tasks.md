@@ -7,7 +7,7 @@
   - Ensure source URL remains clickable and accessible
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [ ] 2. Position checkboxes inline with result titles to optimize space usage
+- [x] 2. Position checkboxes inline with result titles to optimize space usage
   - Update the result item structure in the `displayResults()` method in `src/joplin-portal-view.ts`
   - Modify CSS for `.joplin-result-item` to maintain flex row layout at all widths
   - Adjust `.joplin-result-checkbox` positioning to stay inline with titles
