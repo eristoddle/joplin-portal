@@ -115,7 +115,9 @@
   font-style: italic;
 }
 
+/* Cache status removed for cleaner UI */
 .joplin-cache-status {
+  display: none; /* Hidden but kept for potential future use */
   font-size: 11px;
   color: var(--text-muted);
   text-align: right;

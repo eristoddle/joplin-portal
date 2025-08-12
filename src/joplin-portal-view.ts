@@ -165,11 +165,11 @@ export class JoplinPortalView extends ItemView {
 		tagSearchHelp.id = 'tag-search-help';
 		tagSearchHelp.textContent = 'Enter comma-separated tags to search for notes with specific tags';
 
-		// Cache status indicator
-		const cacheStatus = searchContainer.createDiv('joplin-cache-status');
-		cacheStatus.style.fontSize = '0.8em';
-		cacheStatus.style.color = 'var(--text-muted)';
-		cacheStatus.style.marginTop = '4px';
+		// Cache status indicator - REMOVED for cleaner UI
+		// const cacheStatus = searchContainer.createDiv('joplin-cache-status');
+		// cacheStatus.style.fontSize = '0.8em';
+		// cacheStatus.style.color = 'var(--text-muted)';
+		// cacheStatus.style.marginTop = '4px';
 
 		// Add event listeners
 		this.searchTypeSelect.addEventListener('change', () => {
@@ -322,18 +322,20 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	/**
-	 * Update cache status display
+	 * Update cache status display - REMOVED for cleaner UI
+	 * Cache functionality remains intact for performance
 	 */
 	private updateCacheStatus(): void {
-		const cacheStatus = this.containerEl.querySelector('.joplin-cache-status');
-		if (cacheStatus) {
-			const stats = this.plugin.joplinService.getCacheStats();
-			const hitRatio = stats.hits + stats.misses > 0
-				? Math.round((stats.hits / (stats.hits + stats.misses)) * 100)
-				: 0;
-
-			cacheStatus.textContent = `Cache: ${stats.size} entries, ${hitRatio}% hit rate`;
-		}
+		// Cache status display removed from UI
+		// Underlying cache functionality remains intact for performance
+		// const cacheStatus = this.containerEl.querySelector('.joplin-cache-status');
+		// if (cacheStatus) {
+		// 	const stats = this.plugin.joplinService.getCacheStats();
+		// 	const hitRatio = stats.hits + stats.misses > 0
+		// 		? Math.round((stats.hits / (stats.hits + stats.misses)) * 100)
+		// 		: 0;
+		// 	cacheStatus.textContent = `Cache: ${stats.size} entries, ${hitRatio}% hit rate`;
+		// }
 	}
 
 	private async performSearch(): Promise<void> {
@@ -414,7 +416,7 @@ export class JoplinPortalView extends ItemView {
 			}
 
 			this.displayResults(results);
-			this.updateCacheStatus();
+			this.updateCacheStatus(); // No-op now, but kept for potential future use
 		} catch (error) {
 			// This should rarely happen as the service handles most errors
 			ErrorHandler.logDetailedError(error, 'Search failed in view layer', {

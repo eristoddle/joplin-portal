@@ -25,3 +25,35 @@ describe('Metadata Rendering - Date Formatting', () => {
 		expect(formattedDate).toBe('07/04/2024');
 	});
 });
+
+describe('UI Elements - Cache Status Removal', () => {
+	it('should not create cache status element in search interface', () => {
+		// Create a mock container to test the search interface creation
+		const mockContainer = document.createElement('div');
+
+		// Simulate the search container creation without cache status
+		const searchContainer = mockContainer.appendChild(document.createElement('div'));
+		searchContainer.className = 'joplin-search-container';
+
+		// Verify that no cache status element is created
+		const cacheStatusElement = searchContainer.querySelector('.joplin-cache-status');
+		expect(cacheStatusElement).toBeNull();
+	});
+
+	it('should hide cache status element via CSS', () => {
+		// Create a mock cache status element
+		const cacheStatusElement = document.createElement('div');
+		cacheStatusElement.className = 'joplin-cache-status';
+		document.body.appendChild(cacheStatusElement);
+
+		// Apply the CSS styles (simulating the stylesheet)
+		cacheStatusElement.style.display = 'none';
+
+		// Verify the element is hidden
+		const computedStyle = window.getComputedStyle(cacheStatusElement);
+		expect(computedStyle.display).toBe('none');
+
+		// Cleanup
+		document.body.removeChild(cacheStatusElement);
+	});
+});

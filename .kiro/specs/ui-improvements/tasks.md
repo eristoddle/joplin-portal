@@ -15,7 +15,7 @@
   - Test layout behavior in narrow drawer widths to ensure proper alignment
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 3. Remove cache hit rate details from search interface
+- [x] 3. Remove cache hit rate details from search interface
   - Remove or comment out cache status display logic in the `updateCacheStatus()` method
   - Remove the `.joplin-cache-status` element from the search interface creation
   - Update CSS to hide or remove `.joplin-cache-status` styles
