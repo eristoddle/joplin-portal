@@ -15,19 +15,49 @@ vi.mock('obsidian', () => ({
 			};
 			this.contentEl = {
 				empty: vi.fn(),
-				createDiv: vi.fn().mockReturnValue({
-					style: {},
-					setText: vi.fn(),
-					createEl: vi.fn().mockReturnValue({
+				createDiv: vi.fn().mockImplementation((cls?: string) => {
+					const div = {
 						style: {},
+						className: cls || '',
 						setText: vi.fn(),
-						addEventListener: vi.fn()
-					}),
-					addEventListener: vi.fn(),
-					querySelector: vi.fn(),
-					querySelectorAll: vi.fn().mockReturnValue([])
+						createEl: vi.fn().mockReturnValue({
+							style: {},
+							setText: vi.fn(),
+							addEventListener: vi.fn()
+						}),
+						createDiv: vi.fn().mockImplementation((cls?: string) => ({
+							style: {},
+							className: cls || '',
+							setText: vi.fn(),
+							addEventListener: vi.fn(),
+							createEl: vi.fn().mockReturnValue({
+								style: {},
+								setText: vi.fn(),
+								addEventListener: vi.fn()
+							}),
+							createSpan: vi.fn().mockReturnValue({
+								style: {},
+								setText: vi.fn(),
+								addEventListener: vi.fn()
+							})
+						})),
+						createSpan: vi.fn().mockReturnValue({
+							style: {},
+							setText: vi.fn(),
+							addEventListener: vi.fn()
+						}),
+						addEventListener: vi.fn(),
+						querySelector: vi.fn(),
+						querySelectorAll: vi.fn().mockReturnValue([])
+					};
+					return div;
 				}),
 				createEl: vi.fn().mockReturnValue({
+					style: {},
+					setText: vi.fn(),
+					addEventListener: vi.fn()
+				}),
+				createSpan: vi.fn().mockReturnValue({
 					style: {},
 					setText: vi.fn(),
 					addEventListener: vi.fn()

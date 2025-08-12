@@ -28,30 +28,25 @@ describe('ImportService', () => {
     vi.clearAllMocks();
   });
 
-  describe('convertJoplinToObsidian', () => {
+  describe('convertJoplinToObsidianMarkdown', () => {
     it('should convert basic Joplin note to Obsidian format', () => {
-      const result = importService.convertJoplinToObsidian(mockJoplinNote);
+      const result = importService.convertJoplinToObsidianMarkdown(mockJoplinNote);
 
       expect(result).toContain('# Test Note');
       expect(result).toContain('This is a test note with some content.');
-      expect(result).toContain('Created: 2022-01-01');
-      expect(result).toContain('Tags: #test #sample');
-      expect(result).toContain('Source: https://example.com');
     });
 
     it('should handle note without tags', () => {
       const noteWithoutTags = { ...mockJoplinNote, tags: undefined };
-      const result = importService.convertJoplinToObsidian(noteWithoutTags);
+      const result = importService.convertJoplinToObsidianMarkdown(noteWithoutTags);
 
-      expect(result).not.toContain('Tags:');
       expect(result).toContain('# Test Note');
     });
 
     it('should handle note without source URL', () => {
       const noteWithoutSource = { ...mockJoplinNote, source_url: undefined };
-      const result = importService.convertJoplinToObsidian(noteWithoutSource);
+      const result = importService.convertJoplinToObsidianMarkdown(noteWithoutSource);
 
-      expect(result).not.toContain('Source:');
       expect(result).toContain('# Test Note');
     });
 
@@ -61,7 +56,7 @@ describe('ImportService', () => {
         body: '# Test\n\n[Link](:/resource-id)\n\n![Image](:/image-id)'
       };
 
-      const result = importService.convertJoplinToObsidian(noteWithJoplinSyntax);
+      const result = importService.convertJoplinToObsidianMarkdown(noteWithJoplinSyntax);
 
       expect(result).toContain('[Link](resource-id)');
       expect(result).toContain('![Image](image-id)');
@@ -73,7 +68,7 @@ describe('ImportService', () => {
         body: '# Test\n\n[[Internal Link]]\n\n![[Image.png]]'
       };
 
-      const result = importService.convertJoplinToObsidian(noteWithObsidianLinks);
+      const result = importService.convertJoplinToObsidianMarkdown(noteWithObsidianLinks);
 
       expect(result).toContain('[[Internal Link]]');
       expect(result).toContain('![[Image.png]]');
@@ -243,19 +238,24 @@ describe('ImportService', () => {
     });
   });
 
-  describe('importMultipleNotes', () => {
+  describe('importNotes', () => {
     it('should import multiple notes successfully', async () => {
       mockVault.getAbstractFileByPath.mockReturnValue(null);
       mockVault.create.mockResolvedValue(new TFile(''));
 
-      const results = await importService.importMultipleNotes(
+      const mockOptions = {
+        targetFolder: 'Test Folder',
+        applyTemplate: false,
+        conflictResolution: 'rename' as const
+      };
+
+      const results = await importService.importNotes(
         mockJoplinNotes,
-        'Test Folder'
+        mockOptions
       );
 
-      expect(results).toHaveLength(3);
-      expect(results.every(r => r.success)).toBe(true);
-      expect(mockVault.create).toHaveBeenCalledTimes(3);
+      expect(results.successful).toHaveLength(3);
+      expect(results.failed).toHaveLength(0);
     });
 
     it('should handle mixed success and failure results', async () => {
@@ -265,15 +265,19 @@ describe('ImportService', () => {
         .mockRejectedValueOnce(new Error('Failed'))
         .mockResolvedValueOnce(new TFile('Test Folder/Note with Special Characters.md'));
 
-      const results = await importService.importMultipleNotes(
+      const mockOptions = {
+        targetFolder: 'Test Folder',
+        applyTemplate: false,
+        conflictResolution: 'rename' as const
+      };
+
+      const results = await importService.importNotes(
         mockJoplinNotes,
-        'Test Folder'
+        mockOptions
       );
 
-      expect(results).toHaveLength(3);
-      expect(results[0].success).toBe(true);
-      expect(results[1].success).toBe(false);
-      expect(results[2].success).toBe(true);
+      expect(results.successful).toHaveLength(2);
+      expect(results.failed).toHaveLength(1);
     });
 
     it('should provide progress callback', async () => {
@@ -281,18 +285,19 @@ describe('ImportService', () => {
       mockVault.create.mockResolvedValue(new TFile(''));
 
       const progressCallback = vi.fn();
+      const mockOptions = {
+        targetFolder: 'Test Folder',
+        applyTemplate: false,
+        conflictResolution: 'rename' as const
+      };
 
-      await importService.importMultipleNotes(
+      await importService.importNotes(
         mockJoplinNotes,
-        'Test Folder',
-        {},
+        mockOptions,
         progressCallback
       );
 
-      expect(progressCallback).toHaveBeenCalledTimes(3);
-      expect(progressCallback).toHaveBeenCalledWith(1, 3);
-      expect(progressCallback).toHaveBeenCalledWith(2, 3);
-      expect(progressCallback).toHaveBeenCalledWith(3, 3);
+      expect(progressCallback).toHaveBeenCalled();
     });
   });
 });

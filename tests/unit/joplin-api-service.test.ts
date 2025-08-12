@@ -18,6 +18,11 @@ describe('JoplinApiService', () => {
   const mockRequestUrl = vi.mocked(requestUrl);
 
   beforeEach(() => {
+    // Clear all mocks and reset call counts
+    vi.clearAllMocks();
+    mockRequestUrl.mockClear();
+    mockRequestUrl.mockReset();
+
     service = new JoplinApiService({
       serverUrl: 'http://localhost:41184',
       apiToken: 'test-token',
@@ -25,11 +30,12 @@ describe('JoplinApiService', () => {
       importTemplate: '',
       searchLimit: 50
     });
-    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
+    mockRequestUrl.mockClear();
+    mockRequestUrl.mockReset();
   });
 
   describe('constructor', () => {
@@ -276,13 +282,17 @@ describe('JoplinApiService', () => {
     });
 
     it('should return empty array for empty tags', async () => {
+      const callCountBefore = mockRequestUrl.mock.calls.length;
+
       const result = await service.searchNotesByTags({
         tags: [],
         operator: 'OR'
       });
 
+      const callCountAfter = mockRequestUrl.mock.calls.length;
+
       expect(result).toEqual([]);
-      expect(mockRequestUrl).not.toHaveBeenCalled();
+      expect(callCountAfter).toBe(callCountBefore); // No new calls should be made
     });
 
     it('should handle API errors gracefully', async () => {

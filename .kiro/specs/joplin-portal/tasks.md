@@ -299,7 +299,7 @@
   - Prioritize test fixes based on current functionality relevance
   - _Requirements: 13.1, 13.2, 13.4_
 
-- [ ] 42. Remove obsolete tests and update outdated assertions
+- [x] 42. Remove obsolete tests and update outdated assertions
   - Remove unit tests that reference deleted functionality or non-existent code
   - Update test assertions that use outdated expected values or API responses
   - Fix tests with incorrect file path assumptions or missing imports
