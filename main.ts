@@ -1,4 +1,4 @@
-import { Plugin, Notice } from 'obsidian';
+import { Plugin, Notice, addIcon } from 'obsidian';
 import { JoplinPortalSettings, DEFAULT_SETTINGS } from './src/types';
 import { JoplinPortalSettingTab } from './src/settings';
 import { JoplinPortalView, VIEW_TYPE_JOPLIN_PORTAL } from './src/joplin-portal-view';
@@ -15,6 +15,12 @@ export default class JoplinPortalPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+
+		// Register the actual Joplin icon
+		addIcon('joplin-icon', `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+			<path d="M38.4317,4.4944l-14.4228,0L24,9.9723h2.4787a.9962.9962,0,0,1,1,.995c.0019,3.7661.0084,17.1686.0084,21.8249,0,2.4608-1.8151,3.4321-3.7911,3.4321-2.4178,0-7.2518-1.9777-7.2518-5.5467a3.9737,3.9737,0,0,1,4.2333-4.2691,6.5168,6.5168,0,0,1,3.2954,1.0568V20.2961a14.6734,14.6734,0,0,0-4.4756-.6537c-5.8628,0-9.929,4.9033-9.929,11.1556,0,6.8972,5.2718,12.7077,14.578,12.7077,8.8284,0,14.8492-5.8107,14.8492-14.2056V4.4944Z"
+				fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+		</svg>`);
 
 		// Initialize services
 		this.joplinService = new JoplinApiService(this.settings);
@@ -33,7 +39,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		);
 
 		// Add ribbon icon to open the view
-		this.addRibbonIcon('search', 'Open Joplin Portal', () => {
+		this.addRibbonIcon('joplin-icon', 'Open Joplin Portal', () => {
 			this.activateView();
 		});
 

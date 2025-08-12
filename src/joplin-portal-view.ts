@@ -47,7 +47,7 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	getIcon(): string {
-		return 'search';
+		return 'joplin-icon';
 	}
 
 	async onOpen(): Promise<void> {
