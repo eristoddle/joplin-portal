@@ -2,8 +2,6 @@
 
 An Obsidian plugin that provides seamless access to your Joplin notes through a dedicated sidebar panel. Search, preview, and selectively import notes from your Joplin server without cluttering your Obsidian vault.
 
-![Joplin Portal Demo](https://via.placeholder.com/800x400/2D3748/FFFFFF?text=Joplin+Portal+Demo)
-
 ## Features
 
 🔍 **Smart Search**: Full-text search across all your Joplin notes with instant results
@@ -15,18 +13,30 @@ An Obsidian plugin that provides seamless access to your Joplin notes through a 
 
 ## Installation
 
-### From Obsidian Community Plugins (Recommended)
+This plugin is not yet available in the Obsidian Community Plugins marketplace. You can install it manually or using the BRAT plugin.
 
-1. Open Obsidian Settings
-2. Navigate to **Community Plugins** and disable **Safe Mode**
-3. Click **Browse** and search for "Joplin Portal"
-4. Click **Install** and then **Enable**
+### Option 1: Manual Installation
 
-### Manual Installation
+1. Download the latest release files (`main.js`, `manifest.json`, and `styles.css`) from the [Releases page](https://github.com/eristoddle/joplin-portal/releases)
+2. Create a new folder in your vault's plugins directory: `VaultFolder/.obsidian/plugins/joplin-portal/`
+3. Copy the downloaded files into this folder
+4. Restart Obsidian or reload the app
+5. Go to Settings → Community Plugins and enable "Joplin Portal"
 
-1. Download the latest release from [GitHub Releases](https://github.com/your-username/joplin-portal/releases)
-2. Extract the files to your vault's plugins folder: `VaultFolder/.obsidian/plugins/joplin-portal/`
-3. Reload Obsidian and enable the plugin in Settings → Community Plugins
+### Option 2: Install with BRAT Plugin (Recommended)
+
+1. Install the [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat) if you haven't already
+2. Open the command palette (`Ctrl/Cmd + P`) and run "BRAT: Add a beta plugin for testing"
+3. Enter this repository URL: `https://github.com/eristoddle/joplin-portal`
+4. Click "Add Plugin" and enable it in Settings → Community Plugins
+
+### Option 3: Build from Source
+
+1. Clone this repository: `git clone https://github.com/eristoddle/joplin-portal.git`
+2. Navigate to the plugin folder: `cd joplin-portal`
+3. Install dependencies: `npm install`
+4. Build the plugin: `npm run build`
+5. Copy the built files to your vault's plugins folder as described in Manual Installation
 
 ## Setup
 
@@ -132,7 +142,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ### Development Setup
 
-1. Clone the repository: `git clone https://github.com/your-username/joplin-portal.git`
+1. Clone the repository: `git clone https://github.com/eristoddle/joplin-portal.git`
 2. Install dependencies: `npm install`
 3. Start development mode: `npm run dev`
 4. Make your changes and test thoroughly
@@ -141,9 +151,8 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## Support
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/your-username/joplin-portal/issues)
-- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/your-username/joplin-portal/discussions)
-- 📖 **Documentation**: [Wiki](https://github.com/your-username/joplin-portal/wiki)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/eristoddle/joplin-portal/issues)
+- 💡 **Feature Requests**: Create a new issue with the "enhancement" label
 
 ## Changelog
 
