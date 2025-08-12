@@ -23,7 +23,7 @@
   - Ensure underlying cache functionality remains intact for performance
   - _Requirements: 3.1, 3.2, 3.3_
 
-- [ ] 4. Integrate import count into button text instead of separate message
+- [x] 4. Integrate import count into button text instead of separate message
   - Modify the `updateImportSelectionCount()` method in `src/joplin-portal-view.ts`
   - Update import button text to format "(X) Import Selected" where X is the selection count
   - Show "Import Selected" without parentheses when no notes are selected

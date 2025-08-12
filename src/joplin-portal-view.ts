@@ -245,8 +245,9 @@ export class JoplinPortalView extends ItemView {
 		// Import options container - simplified to only show essential elements
 		this.importOptionsPanel = importSection.createDiv('joplin-import-options-simplified');
 
-		// Selected notes count - more prominent display
+		// Selected notes count - hidden as count is now integrated into button
 		const selectedCountDiv = this.importOptionsPanel.createDiv('joplin-selected-count-prominent');
+		selectedCountDiv.style.display = 'none'; // Hide the separate count message
 		selectedCountDiv.createSpan('joplin-selected-count-text').setText('0 notes selected for import');
 
 		// Only the Import Selected button - prominently displayed
@@ -960,14 +961,18 @@ export class JoplinPortalView extends ItemView {
 	 */
 	private updateImportSelectionCount(): void {
 		const selectedCount = this.currentResults.filter(result => result.markedForImport).length;
-		const countElement = this.importOptionsPanel.querySelector('.joplin-selected-count-text');
-		if (countElement) {
-			countElement.textContent = `${selectedCount} note${selectedCount !== 1 ? 's' : ''} selected for import`;
-		}
 
-		// Enable/disable import button based on selection - check both old and new button classes
+		// Update import button text to include count
 		const importBtn = this.importOptionsPanel.querySelector('.joplin-import-btn, .joplin-import-btn-prominent') as HTMLButtonElement;
 		if (importBtn) {
+			// Format button text based on selection count
+			if (selectedCount === 0) {
+				importBtn.textContent = 'Import Selected';
+			} else {
+				importBtn.textContent = `(${selectedCount}) Import Selected`;
+			}
+
+			// Enable/disable import button based on selection
 			importBtn.disabled = selectedCount === 0;
 		}
 	}
