@@ -291,7 +291,7 @@
   - Test complete import workflow from drawer button through modal to completion
   - _Requirements: 12.5_
 
-- [ ] 41. Audit and fix failing unit tests
+- [x] 41. Audit and fix failing unit tests
   - Run complete test suite to identify all failing tests
   - Categorize test failures by type (missing imports, outdated assertions, deprecated APIs, broken mocks)
   - Create TestAuditResult for each failing test with specific issues and recommendations
