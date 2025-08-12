@@ -69,62 +69,58 @@ jobs:
         sha256sum styles.css >> checksums.txt
 
     - name: Generate changelog
-      id: changelog
       run: |
         # Generate changelog from git commits since last tag
         previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
 
         if [ -n "$previous_tag" ]; then
-          echo "## Changes since $previous_tag" > CHANGELOG.md
-          git log --pretty=format:"- %s (%h)" $previous_tag..HEAD >> CHANGELOG.md
+          echo "## Changes since $previous_tag" > release-notes.md
+          git log --pretty=format:"- %s (%h)" $previous_tag..HEAD >> release-notes.md
         else
-          echo "## Initial Release" > CHANGELOG.md
-          echo "First release of Joplin Portal plugin" >> CHANGELOG.md
+          echo "## Initial Release" > release-notes.md
+          echo "First release of Joplin Portal plugin" >> release-notes.md
         fi
 
-        # Set output for use in release notes using a unique delimiter
-        delimiter="$(openssl rand -hex 8)"
-        echo "changelog<<${delimiter}" >> $GITHUB_OUTPUT
-        cat CHANGELOG.md >> $GITHUB_OUTPUT
-        echo "${delimiter}" >> $GITHUB_OUTPUT
+        # Add installation instructions
+        cat >> release-notes.md << 'INSTALL_EOF'
+
+        ## Installation
+
+        ### Automatic Installation (Recommended)
+        1. Open Obsidian Settings
+        2. Go to Community Plugins
+        3. Search for "Joplin Portal"
+        4. Install and enable the plugin
+
+        ### Manual Installation
+        1. Download the `joplin-portal-${{ github.ref_name }}.zip` file
+        2. Extract the contents to your Obsidian plugins folder: `<vault>/.obsidian/plugins/joplin-portal/`
+        3. Reload Obsidian and enable the plugin in settings
+
+        ## Configuration
+
+        After installation:
+        1. Open plugin settings
+        2. Enter your Joplin server URL (e.g., `http://localhost:41184`)
+        3. Enter your Joplin API token
+        4. Test the connection
+
+        ## Files Included
+
+        - `main.js` - Plugin code
+        - `manifest.json` - Plugin manifest
+        - `styles.css` - Plugin styles
+
+        ## Verification
+
+        Use the provided checksums to verify file integrity.
+        INSTALL_EOF
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
         name: Joplin Portal ${{ github.ref_name }}
-        body: |
-          ${{ steps.changelog.outputs.changelog }}
-
-          ## Installation
-
-          ### Automatic Installation (Recommended)
-          1. Open Obsidian Settings
-          2. Go to Community Plugins
-          3. Search for "Joplin Portal"
-          4. Install and enable the plugin
-
-          ### Manual Installation
-          1. Download the `joplin-portal-${{ github.ref_name }}.zip` file
-          2. Extract the contents to your Obsidian plugins folder: `<vault>/.obsidian/plugins/joplin-portal/`
-          3. Reload Obsidian and enable the plugin in settings
-
-          ## Configuration
-
-          After installation:
-          1. Open plugin settings
-          2. Enter your Joplin server URL (e.g., `http://localhost:41184`)
-          3. Enter your Joplin API token
-          4. Test the connection
-
-          ## Files Included
-
-          - `main.js` - Plugin code
-          - `manifest.json` - Plugin manifest
-          - `styles.css` - Plugin styles
-
-          ## Verification
-
-          Use the provided checksums to verify file integrity.
+        body_path: release-notes.md
         draft: false
         prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
         files: |
