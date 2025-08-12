@@ -279,8 +279,8 @@ export class ImportService {
 
 		// Convert remaining Joplin resource links to placeholder text
 		// Note: downloadAndStoreImages should have already converted most image resources to local files
-		markdown = markdown.replace(/!\[\]\(:\/([a-f0-9]+)\)/g, '[Joplin Resource: $1]');
-		markdown = markdown.replace(/!\[([^\]]*)\]\(:\/([a-f0-9]+)\)/g, '[Joplin Resource: $1 ($2)]');
+		markdown = markdown.replace(/!\[\]\(:\/([a-zA-Z0-9-]+)\)/g, '[Joplin Resource: $1]');
+		markdown = markdown.replace(/!\[([^\]]*)\]\(:\/([a-zA-Z0-9-]+)\)/g, '[Joplin Resource: $1 ($2)]');
 
 		// Convert Joplin internal links to Obsidian format if needed
 		// This is a placeholder for future enhancement

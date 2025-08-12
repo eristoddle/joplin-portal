@@ -109,7 +109,10 @@ vi.mock('obsidian', () => ({
 					select: vi.fn()
 				},
 				setPlaceholder: vi.fn().mockReturnThis(),
-				setValue: vi.fn().mockReturnThis(),
+				setValue: vi.fn().mockImplementation((value: string) => {
+					mockText.inputEl.value = value;
+					return mockText;
+				}),
 				onChange: vi.fn().mockReturnThis()
 			};
 			callback(mockText);
@@ -122,7 +125,10 @@ vi.mock('obsidian', () => ({
 					checked: false,
 					addEventListener: vi.fn()
 				},
-				setValue: vi.fn().mockReturnThis(),
+				setValue: vi.fn().mockImplementation((value: boolean) => {
+					mockToggle.toggleEl.checked = value;
+					return mockToggle;
+				}),
 				onChange: vi.fn().mockReturnThis()
 			};
 			callback(mockToggle);
@@ -136,7 +142,10 @@ vi.mock('obsidian', () => ({
 					addEventListener: vi.fn()
 				},
 				addOption: vi.fn().mockReturnThis(),
-				setValue: vi.fn().mockReturnThis()
+				setValue: vi.fn().mockImplementation((value: string) => {
+					mockDropdown.selectEl.value = value;
+					return mockDropdown;
+				})
 			};
 			callback(mockDropdown);
 			return this;

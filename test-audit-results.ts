@@ -224,10 +224,9 @@ export const auditSummary = {
     'tests/unit/tooltip-essential-strategy.test.ts',
     'tests/unit/tooltip-integration.test.ts'
   ]
-}
 };
-//
- Detailed breakdown of each failing test with specific fixes
+
+// Detailed breakdown of each failing test with specific fixes
 export const detailedTestAnalysis = {
   'tests/unit/retry-utility.test.ts': {
     totalTests: 15,

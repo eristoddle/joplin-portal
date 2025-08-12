@@ -80,6 +80,50 @@ export class PluginSettingTab {
   display() {}
 }
 
+export class Modal {
+  containerEl: HTMLElement;
+  contentEl: HTMLElement;
+  app: any;
+
+  constructor(app: any) {
+    this.app = app;
+    this.containerEl = document.createElement('div');
+    this.contentEl = document.createElement('div');
+    this.containerEl.appendChild(this.contentEl);
+
+    // Mock common methods
+    this.containerEl.empty = vi.fn();
+    this.contentEl.empty = vi.fn();
+    this.contentEl.createEl = vi.fn().mockImplementation((tag, options) => {
+      const el = document.createElement(tag);
+      if (options && options.text) {
+        el.textContent = options.text;
+      }
+      if (options && options.cls) {
+        el.className = options.cls;
+      }
+      this.contentEl.appendChild(el);
+      return el;
+    });
+    this.contentEl.createDiv = vi.fn().mockImplementation((options) => {
+      const div = document.createElement('div');
+      if (options && options.cls) {
+        div.className = options.cls;
+      }
+      if (options && options.text) {
+        div.textContent = options.text;
+      }
+      this.contentEl.appendChild(div);
+      return div;
+    });
+  }
+
+  open() {}
+  close() {}
+  onOpen() {}
+  onClose() {}
+}
+
 export class TFile {
   path: string;
   name: string;
@@ -130,6 +174,7 @@ export default {
   Plugin,
   ItemView,
   PluginSettingTab,
+  Modal,
   TFile,
   TFolder,
   Notice,
