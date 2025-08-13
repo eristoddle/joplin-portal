@@ -8,7 +8,7 @@
   - Test that commands still work but without default hotkeys
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 2. Add debug mode setting to plugin configuration
+- [x] 2. Add debug mode setting to plugin configuration
   - Update `JoplinPortalSettings` interface in `src/types.ts` to include `debugMode: boolean`
   - Update `DEFAULT_SETTINGS` to include `debugMode: false`
   - Ensure settings persistence works with new field
