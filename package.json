@@ -34,16 +34,16 @@
     "note-taking",
     "integration"
   ],
-  "author": "Your Name",
+  "author": "Stephan Miller",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/joplin-portal.git"
+    "url": "https://github.com/eristoddle/joplin-portal.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/joplin-portal/issues"
+    "url": "https://github.com/eristoddle/joplin-portal/issues"
   },
-  "homepage": "https://github.com/your-username/joplin-portal#readme",
+  "homepage": "https://github.com/eristoddle/joplin-portal#readme",
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "5.29.0",

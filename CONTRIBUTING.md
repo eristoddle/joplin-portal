@@ -17,7 +17,7 @@ Thank you for your interest in contributing to Joplin Portal! This document prov
 1. Fork the repository on GitHub
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/your-username/joplin-portal.git
+   git clone https://github.com/eristoddle/joplin-portal.git
    cd joplin-portal
    ```
 3. Install dependencies:
@@ -51,7 +51,7 @@ Thank you for your interest in contributing to Joplin Portal! This document prov
 
 ### Reporting Bugs
 
-1. Check if the issue already exists in [GitHub Issues](https://github.com/your-username/joplin-portal/issues)
+1. Check if the issue already exists in [GitHub Issues](https://github.com/eristoddle/joplin-portal/issues)
 2. If not, create a new issue with:
    - Clear description of the problem
    - Steps to reproduce
@@ -61,7 +61,7 @@ Thank you for your interest in contributing to Joplin Portal! This document prov
 
 ### Suggesting Features
 
-1. Check [GitHub Discussions](https://github.com/your-username/joplin-portal/discussions) for existing suggestions
+1. Check [GitHub Discussions](https://github.com/eristoddle/joplin-portal/discussions) for existing suggestions
 2. Create a new discussion with:
    - Clear description of the feature
    - Use case and benefits
@@ -152,8 +152,8 @@ Releases are handled by maintainers:
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/your-username/joplin-portal/discussions) for general questions
-- Create an [Issue](https://github.com/your-username/joplin-portal/issues) for bugs
-- Check the [Wiki](https://github.com/your-username/joplin-portal/wiki) for documentation
+- Open a [Discussion](https://github.com/eristoddle/joplin-portal/discussions) for general questions
+- Create an [Issue](https://github.com/eristoddle/joplin-portal/issues) for bugs
+- Check the [Wiki](https://github.com/eristoddle/joplin-portal/wiki) for documentation
 
 Thank you for contributing to Joplin Portal! 🎉

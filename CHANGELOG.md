@@ -112,4 +112,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-*For detailed technical changes, see the [commit history](https://github.com/your-username/joplin-portal/commits/main).*
+*For detailed technical changes, see the [commit history](https://github.com/eristoddle/joplin-portal/commits/main).*

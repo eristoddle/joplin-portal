@@ -4,8 +4,8 @@
 	"version": "1.0.2",
 	"minAppVersion": "0.15.0",
 	"description": "Search, preview, and selectively import notes from your Joplin server. Seamlessly bridge your Joplin archive with your Obsidian workflow through a dedicated sidebar panel.",
-	"author": "Your Name",
-	"authorUrl": "https://github.com/your-username",
-	"fundingUrl": "https://github.com/sponsors/your-username",
+	"author": "Stephan Miller",
+	"authorUrl": "https://github.com/eristoddle",
+	"fundingUrl": "https://github.com/sponsors/eristoddle",
 	"isDesktopOnly": false
 }

@@ -30,7 +30,7 @@ This document contains information and materials for submitting Joplin Portal to
 - **Plugin ID**: `joplin-portal`
 - **Plugin Name**: Joplin Portal
 - **Version**: 1.0.0
-- **Author**: [Your Name]
+- **Author**: [Stephan Miller]
 - **License**: MIT
 - **Minimum Obsidian Version**: 0.15.0
 
@@ -117,7 +117,7 @@ Search, preview, and selectively import notes from your Joplin server. Seamlessl
 {
   "id": "joplin-portal",
   "name": "Joplin Portal",
-  "author": "Your Name",
+  "author": "Stephan Miller",
   "description": "Search, preview, and selectively import notes from your Joplin server. Seamlessly bridge your Joplin archive with your Obsidian workflow through a dedicated sidebar panel.",
   "repo": "your-username/joplin-portal"
 }
@@ -166,9 +166,9 @@ The Obsidian team will review the plugin based on:
 
 ## Contact Information
 
-- **GitHub Repository**: https://github.com/your-username/joplin-portal
-- **Issues**: https://github.com/your-username/joplin-portal/issues
-- **Discussions**: https://github.com/your-username/joplin-portal/discussions
+- **GitHub Repository**: https://github.com/eristoddle/joplin-portal
+- **Issues**: https://github.com/eristoddle/joplin-portal/issues
+- **Discussions**: https://github.com/eristoddle/joplin-portal/discussions
 - **Email**: your-email@example.com (for urgent matters only)
 
 ---
