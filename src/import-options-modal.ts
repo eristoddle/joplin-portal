@@ -47,12 +47,12 @@ export class ImportOptionsModal extends Modal {
 		new Setting(settingsContainer)
 			.setName('Target folder')
 			.setDesc('The folder where imported notes will be saved')
-			.addText(text => {
+			.addText((text: any) => {
 				this.targetFolderInput = text.inputEl;
 				text
 					.setPlaceholder('Imported from Joplin')
 					.setValue(this.plugin.settings.defaultImportFolder || 'Imported from Joplin')
-					.onChange(value => {
+					.onChange((value: any) => {
 						// Auto-create folder path as user types
 						if (value.trim()) {
 							this.validateFolderPath(value.trim());
@@ -64,11 +64,11 @@ export class ImportOptionsModal extends Modal {
 		new Setting(settingsContainer)
 			.setName('Apply template')
 			.setDesc('Apply a template to imported notes')
-			.addToggle(toggle => {
+			.addToggle((toggle: any) => {
 				this.applyTemplateCheckbox = toggle.toggleEl;
 				toggle
 					.setValue(false)
-					.onChange(value => {
+					.onChange((value: any) => {
 						this.updateTemplatePathVisibility(value);
 					});
 			});
@@ -77,12 +77,12 @@ export class ImportOptionsModal extends Modal {
 		const templatePathSetting = new Setting(settingsContainer)
 			.setName('Template path')
 			.setDesc('Path to the template file to apply to imported notes')
-			.addText(text => {
+			.addText((text: any) => {
 				this.templatePathInput = text.inputEl;
 				text
 					.setPlaceholder('Templates/Note Template.md')
 					.setValue('')
-					.onChange(value => {
+					.onChange((value: any) => {
 						this.validateTemplatePath(value.trim());
 					});
 			});
@@ -95,7 +95,7 @@ export class ImportOptionsModal extends Modal {
 		new Setting(settingsContainer)
 			.setName('If file exists')
 			.setDesc('How to handle files that already exist in the target folder')
-			.addDropdown(dropdown => {
+			.addDropdown((dropdown: any) => {
 				this.conflictResolutionSelect = dropdown.selectEl;
 				dropdown
 					.addOption('skip', 'Skip - Don\'t import if file exists')
@@ -659,5 +659,17 @@ export class ImportOptionsModal extends Modal {
 			`;
 			listItem.setText(`${failure.note.title || 'Untitled'}: ${failure.error}`);
 		});
+	}
+
+	private handleImportConfirm(): void {
+		// This method is called when the import is confirmed
+		// The actual import logic is handled by the import button click handler
+		this.importButton.click();
+	}
+
+	private onCancel(): void {
+		// This method is called when the modal is cancelled
+		// The modal is already closed by the time this is called
+		console.log('Import options modal cancelled');
 	}
 }

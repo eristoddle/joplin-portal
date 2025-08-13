@@ -121,7 +121,7 @@ describe('Tooltip View Integration', () => {
 		expect(buttonElement.getAttribute('data-context')).toBe('action-required');
 	});
 
-	it('should auto-hide tooltips quickly (within 1 second)', (done) => {
+	it('should auto-hide tooltips quickly (within 1 second)', async () => {
 		const errorElement = container.appendChild(document.createElement('div'));
 		errorElement.textContent = 'Error';
 
@@ -129,11 +129,9 @@ describe('Tooltip View Integration', () => {
 		expect(errorElement.getAttribute('title')).toBeTruthy();
 
 		// Should hide within 1 second
-		setTimeout(() => {
-			expect(errorElement.getAttribute('title')).toBeNull();
-			expect(errorElement.classList.contains('joplin-tooltip-element')).toBe(false);
-			done();
-		}, 1100); // Test at 1.1 seconds (should be hidden by then)
+		await new Promise(resolve => setTimeout(resolve, 1100));
+		expect(errorElement.getAttribute('title')).toBeNull();
+		expect(errorElement.classList.contains('joplin-tooltip-element')).toBe(false);
 	});
 
 	it('should demonstrate the CSS-based approach for text handling', () => {

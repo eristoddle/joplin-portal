@@ -23,9 +23,9 @@ interface ValidationState {
 export class JoplinPortalSettingTab extends PluginSettingTab {
 	plugin: JoplinPortalPlugin;
 	private validationState: ValidationState;
-	private serverUrlSetting: Setting;
-	private apiTokenSetting: Setting;
-	private connectionTestSetting: Setting;
+	private serverUrlSetting: any;
+	private apiTokenSetting: any;
+	private connectionTestSetting: any;
 	private validationStatusEl: HTMLElement;
 	private debouncedValidateUrl: (url: string) => void;
 	private debouncedValidateToken: (token: string) => void;
@@ -42,8 +42,8 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		};
 
 		// Create debounced validation functions
-		this.debouncedValidateUrl = debounce(this.validateServerUrl.bind(this), 500, true);
-		this.debouncedValidateToken = debounce(this.validateApiToken.bind(this), 500, true);
+		this.debouncedValidateUrl = debounce(this.validateServerUrl.bind(this), 500);
+		this.debouncedValidateToken = debounce(this.validateApiToken.bind(this), 500);
 	}
 
 	display(): void {
@@ -60,10 +60,10 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		this.serverUrlSetting = new Setting(containerEl)
 			.setName('Joplin Server URL')
 			.setDesc('The URL of your Joplin server (e.g., http://localhost:41184)')
-			.addText(text => text
+			.addText((text: any) => text
 				.setPlaceholder('http://localhost:41184')
 				.setValue(this.plugin.settings.serverUrl)
-				.onChange(async (value) => {
+				.onChange(async (value: any) => {
 					this.plugin.settings.serverUrl = value.trim();
 					await this.plugin.saveSettings();
 					this.debouncedValidateUrl(value.trim());
@@ -73,10 +73,10 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		this.apiTokenSetting = new Setting(containerEl)
 			.setName('API Token')
 			.setDesc('Your Joplin API token (found in Joplin > Tools > Options > Web Clipper)')
-			.addText(text => text
+			.addText((text: any) => text
 				.setPlaceholder('Enter your API token')
 				.setValue(this.plugin.settings.apiToken)
-				.onChange(async (value) => {
+				.onChange(async (value: any) => {
 					this.plugin.settings.apiToken = value.trim();
 					await this.plugin.saveSettings();
 					this.debouncedValidateToken(value.trim());
@@ -86,7 +86,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		this.connectionTestSetting = new Setting(containerEl)
 			.setName('Test Connection')
 			.setDesc('Verify that your Joplin server is accessible with the provided credentials')
-			.addButton(button => button
+			.addButton((button: any) => button
 				.setButtonText('Test Connection')
 				.setCta()
 				.onClick(async () => {
@@ -100,10 +100,10 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Default Import Folder')
 			.setDesc('The folder where imported Joplin notes will be saved')
-			.addText(text => text
+			.addText((text: any) => text
 				.setPlaceholder('Imported from Joplin')
 				.setValue(this.plugin.settings.defaultImportFolder)
-				.onChange(async (value) => {
+				.onChange(async (value: any) => {
 					this.plugin.settings.defaultImportFolder = value.trim();
 					await this.plugin.saveSettings();
 				}));
@@ -112,11 +112,11 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Search Results Limit')
 			.setDesc('Maximum number of search results to display (1-100)')
-			.addSlider(slider => slider
+			.addSlider((slider: any) => slider
 				.setLimits(1, 100, 1)
 				.setValue(this.plugin.settings.searchLimit)
 				.setDynamicTooltip()
-				.onChange(async (value) => {
+				.onChange(async (value: any) => {
 					this.plugin.settings.searchLimit = value;
 					await this.plugin.saveSettings();
 				}));
@@ -125,10 +125,10 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Import Template')
 			.setDesc('Optional template to apply when importing notes (leave empty for no template)')
-			.addText(text => text
+			.addText((text: any) => text
 				.setPlaceholder('Template name (optional)')
 				.setValue(this.plugin.settings.importTemplate)
-				.onChange(async (value) => {
+				.onChange(async (value: any) => {
 					this.plugin.settings.importTemplate = value.trim();
 					await this.plugin.saveSettings();
 				}));

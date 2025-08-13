@@ -23,7 +23,8 @@
     ]
   },
   "include": [
-    "**/*.ts"
+    "**/*.ts",
+    "src/obsidian-extensions.d.ts"
   ],
   "exclude": [
     "node_modules",

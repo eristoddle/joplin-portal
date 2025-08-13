@@ -140,6 +140,9 @@ export interface ImportProgress {
 	stage: string;
 	current?: number;
 	total?: number;
+	noteIndex?: number;
+	totalNotes?: number;
+	currentNote?: string;
 	imageProgress?: ImageDownloadProgress;
 }
 

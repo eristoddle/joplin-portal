@@ -101,7 +101,7 @@ vi.mock('obsidian', () => ({
 		}
 
 		addText(callback: (text: any) => void) {
-			const mockText = {
+			const mockText: any = {
 				inputEl: {
 					value: '',
 					addEventListener: vi.fn(),
@@ -120,7 +120,7 @@ vi.mock('obsidian', () => ({
 		}
 
 		addToggle(callback: (toggle: any) => void) {
-			const mockToggle = {
+			const mockToggle: any = {
 				toggleEl: {
 					checked: false,
 					addEventListener: vi.fn()
@@ -136,7 +136,7 @@ vi.mock('obsidian', () => ({
 		}
 
 		addDropdown(callback: (dropdown: any) => void) {
-			const mockDropdown = {
+			const mockDropdown: any = {
 				selectEl: {
 					value: 'skip',
 					addEventListener: vi.fn()
@@ -160,7 +160,7 @@ import { ImportOptions } from '../../src/types';
 describe('ImportOptionsModal', () => {
 	let mockPlugin: any;
 	let mockApp: any;
-	let onComplete: vi.Mock;
+	let onComplete: any;
 	let modal: ImportOptionsModal;
 
 	beforeEach(() => {
@@ -192,8 +192,13 @@ describe('ImportOptionsModal', () => {
 					title: 'Test Note 1',
 					body: 'Test content',
 					created_time: Date.now(),
-					updated_time: Date.now()
-				}
+					updated_time: Date.now(),
+					parent_id: ''
+				},
+				snippet: 'Test snippet',
+				relevance: 1.0,
+				selected: true,
+				markedForImport: true
 			}
 		];
 

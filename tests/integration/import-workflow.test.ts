@@ -38,7 +38,7 @@ describe.skip('Import Workflow Integration', () => {
       importService: mockImportService
     };
 
-    view = new JoplinPortalView(mockPlugin);
+    view = new JoplinPortalView({} as any, mockPlugin);
     view.containerEl = mockContainerEl;
 
     vi.clearAllMocks();
@@ -155,11 +155,11 @@ describe.skip('Import Workflow Integration', () => {
 
       // Check mid progress
       await new Promise(resolve => setTimeout(resolve, 100));
-      expect(progressBar.style.width).toBe('50%');
+      expect((progressBar as HTMLElement).style.width).toBe('50%');
 
       // Check completion
       await new Promise(resolve => setTimeout(resolve, 150));
-      expect(progressBar.style.width).toBe('100%');
+      expect((progressBar as HTMLElement).style.width).toBe('100%');
     });
   });
 
@@ -295,7 +295,7 @@ describe.skip('Import Workflow Integration', () => {
       expect(mockImportService.importMultipleNotes).not.toHaveBeenCalled();
 
       const confirmDialog = mockContainerEl.querySelector('.import-confirmation');
-      expect(confirmDialog?.style.display).toBe('none');
+      expect((confirmDialog as HTMLElement)?.style.display).toBe('none');
     });
   });
 

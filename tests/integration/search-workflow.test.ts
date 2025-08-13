@@ -31,7 +31,7 @@ describe.skip('Search Workflow Integration', () => {
       joplinService: mockJoplinService
     };
 
-    view = new JoplinPortalView(mockPlugin);
+    view = new JoplinPortalView({} as any, mockPlugin);
     view.containerEl = mockContainerEl;
 
     vi.clearAllMocks();
@@ -225,7 +225,7 @@ describe.skip('Search Workflow Integration', () => {
 
       const importOptions = mockContainerEl.querySelector('.import-options');
       expect(importOptions).toBeTruthy();
-      expect(importOptions?.style.display).not.toBe('none');
+      expect((importOptions as HTMLElement)?.style.display).not.toBe('none');
     });
   });
 
@@ -259,12 +259,12 @@ describe.skip('Search Workflow Integration', () => {
 
       // Simulate arrow down key
       mockContainerEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-      expect(resultItems[0]).toHaveClass('selected');
+      expect(resultItems[0].classList.contains('selected')).toBe(true);
 
       // Simulate another arrow down key
       mockContainerEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-      expect(resultItems[1]).toHaveClass('selected');
-      expect(resultItems[0]).not.toHaveClass('selected');
+      expect(resultItems[1].classList.contains('selected')).toBe(true);
+      expect(resultItems[0].classList.contains('selected')).toBe(false);
     });
   });
 

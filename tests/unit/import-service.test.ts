@@ -43,14 +43,14 @@ describe('ImportService', () => {
     });
 
     it('should handle note without tags', () => {
-      const noteWithoutTags = { ...mockJoplinNote, tags: undefined };
+      const noteWithoutTags = { ...mockJoplinNote, tags: undefined as any };
       const result = importService.convertJoplinToObsidianMarkdown(noteWithoutTags);
 
       expect(result).toContain('# Test Note');
     });
 
     it('should handle note without source URL', () => {
-      const noteWithoutSource = { ...mockJoplinNote, source_url: undefined };
+      const noteWithoutSource = { ...mockJoplinNote, source_url: undefined as any };
       const result = importService.convertJoplinToObsidianMarkdown(noteWithoutSource);
 
       expect(result).toContain('# Test Note');
@@ -96,7 +96,7 @@ describe('ImportService', () => {
     });
 
     it('should generate frontmatter without source URL when not available', () => {
-      const noteWithoutSource = { ...mockJoplinNote, source_url: undefined };
+      const noteWithoutSource = { ...mockJoplinNote, source_url: undefined as any };
       const result = importService.generateFrontmatter(noteWithoutSource);
 
       expect(result).toContain('---');

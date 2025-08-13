@@ -152,16 +152,14 @@ describe('Essential-Only Tooltip Strategy', () => {
 	});
 
 	describe('quick auto-hide functionality', () => {
-		it('should auto-hide tooltips quickly (max 2 seconds)', (done) => {
+		it('should auto-hide tooltips quickly (max 2 seconds)', async () => {
 			tooltipManager.showEssentialTooltip(mockElement, 'This is a much longer error message that should be shown', 'error');
 
 			expect(mockElement.getAttribute('title')).toBeTruthy();
 
 			// Should hide within 2 seconds (our max quick hide delay)
-			setTimeout(() => {
-				expect(mockElement.getAttribute('title')).toBeNull();
-				done();
-			}, 1100); // Test at 1.1 seconds (should be hidden by then)
+			await new Promise(resolve => setTimeout(resolve, 1100));
+			expect(mockElement.getAttribute('title')).toBeNull();
 		});
 	});
 });

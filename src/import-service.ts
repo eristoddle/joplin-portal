@@ -405,12 +405,12 @@ export class ImportService {
 			case 'rename':
 			default:
 				// Generate new filename with counter
-				const folder = existingFile.parent;
+				const folder = (existingFile as any).parent;
 				if (!folder) {
 					throw new Error('Could not determine parent folder for conflict resolution');
 				}
 
-				const baseFilename = existingFile.basename + '.md';
+				const baseFilename = (existingFile as any).basename + '.md';
 				const uniqueFilename = await this.generateUniqueNoteFilename(baseFilename, folder);
 				const uniquePath = normalizePath(`${folder.path}/${uniqueFilename}`);
 

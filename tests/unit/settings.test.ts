@@ -112,7 +112,7 @@ vi.mock('obsidian', () => ({
       textInput.type = 'text';
       this.controlEl.appendChild(textInput);
 
-      const mockTextComponent = {
+      const mockTextComponent: any = {
         setPlaceholder: vi.fn((placeholder: string) => {
           textInput.placeholder = placeholder;
           return mockTextComponent;
@@ -137,7 +137,7 @@ vi.mock('obsidian', () => ({
       const buttonEl = document.createElement('button');
       this.controlEl.appendChild(buttonEl);
 
-      const mockButtonComponent = {
+      const mockButtonComponent: any = {
         setButtonText: vi.fn((text: string) => {
           buttonEl.textContent = text;
           return mockButtonComponent;
@@ -161,7 +161,7 @@ vi.mock('obsidian', () => ({
       sliderInput.type = 'range';
       this.controlEl.appendChild(sliderInput);
 
-      const mockSliderComponent = {
+      const mockSliderComponent: any = {
         setLimits: vi.fn((min: number, max: number, step: number) => {
           sliderInput.min = min.toString();
           sliderInput.max = max.toString();

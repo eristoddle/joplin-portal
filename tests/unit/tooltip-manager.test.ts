@@ -80,7 +80,7 @@ describe('TooltipManager', () => {
 			expect(mockElement.getAttribute('title')).toBeNull();
 		});
 
-		it('should auto-hide tooltip after delay', (done) => {
+		it('should auto-hide tooltip after delay', async () => {
 			tooltipManager.updateConfig({
 				essentialOnly: true,
 				autoHideDelay: 100
@@ -90,10 +90,8 @@ describe('TooltipManager', () => {
 
 			expect(mockElement.getAttribute('title')).toBe('This is a much longer tooltip content that should be shown');
 
-			setTimeout(() => {
-				expect(mockElement.getAttribute('title')).toBeNull();
-				done();
-			}, 150);
+			await new Promise(resolve => setTimeout(resolve, 150));
+			expect(mockElement.getAttribute('title')).toBeNull();
 		});
 	});
 

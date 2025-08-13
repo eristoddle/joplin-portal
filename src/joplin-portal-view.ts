@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf, Notice, MarkdownRenderer } from 'obsidian';
 import JoplinPortalPlugin from '../main';
-import { SearchResult, JoplinNote, ImportOptions } from './types';
+import { SearchResult, JoplinNote, ImportOptions, ImageImportResult } from './types';
 import { ErrorHandler } from './error-handler';
 import { TooltipManager } from './tooltip-manager';
 import { ImportOptionsModal } from './import-options-modal';
@@ -26,6 +26,7 @@ export class JoplinPortalView extends ItemView {
 	private tooltipManager: TooltipManager;
 
 	constructor(leaf: WorkspaceLeaf, plugin: JoplinPortalPlugin) {
+		// @ts-ignore - Obsidian ItemView constructor expects a leaf parameter
 		super(leaf);
 		this.plugin = plugin;
 

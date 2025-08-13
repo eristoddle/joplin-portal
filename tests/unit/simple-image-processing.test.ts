@@ -7,7 +7,10 @@ describe('Simple Image Processing', () => {
 	beforeEach(() => {
 		const mockSettings = {
 			serverUrl: 'http://127.0.0.1:41184',
-			apiToken: 'test-token'
+			apiToken: 'test-token',
+			defaultImportFolder: 'Imported from Joplin',
+			importTemplate: '',
+			searchLimit: 50
 		};
 		joplinApiService = new JoplinApiService(mockSettings);
 	});
@@ -71,7 +74,10 @@ describe('Simple Image Processing', () => {
 		it('should return empty string if no base URL or token', () => {
 			const mockSettings = {
 				serverUrl: '',
-				apiToken: ''
+				apiToken: '',
+				defaultImportFolder: 'Imported from Joplin',
+				importTemplate: '',
+				searchLimit: 50
 			};
 			const service = new JoplinApiService(mockSettings);
 			const result = service.getResourceUrl('abc123def45678901234567890123456');
