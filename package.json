@@ -2,7 +2,6 @@
   "name": "joplin-portal",
   "version": "1.0.5",
   "description": "Access and import notes from Joplin server within Obsidian",
-  "type": "module",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
