@@ -92,7 +92,6 @@ export default class JoplinPortalPlugin extends Plugin {
 		this.addCommand({
 			id: 'focus-joplin-search',
 			name: 'Focus Joplin Search',
-			hotkeys: [{ modifiers: ['Mod'], key: 'f' }],
 			callback: () => {
 				this.focusSearchInput();
 			}
@@ -102,7 +101,6 @@ export default class JoplinPortalPlugin extends Plugin {
 		this.addCommand({
 			id: 'select-all-joplin-import',
 			name: 'Select All Notes for Import',
-			hotkeys: [{ modifiers: ['Mod'], key: 'a' }],
 			callback: () => {
 				this.selectAllForImport();
 			}
@@ -112,7 +110,6 @@ export default class JoplinPortalPlugin extends Plugin {
 		this.addCommand({
 			id: 'import-selected-joplin-notes',
 			name: 'Import Selected Joplin Notes',
-			hotkeys: [{ modifiers: ['Mod'], key: 'Enter' }],
 			callback: () => {
 				this.importSelectedNotes();
 			}

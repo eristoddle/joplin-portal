@@ -2,7 +2,7 @@
 
 ## Phase 1: Critical Fixes (High Priority)
 
-- [ ] 1. Remove default hotkeys from command definitions
+- [x] 1. Remove default hotkeys from command definitions
   - Remove `hotkeys` property from all command definitions in `main.ts`
   - Update commands: 'focus-joplin-search', 'select-all-joplin-import', 'import-selected-joplin-notes'
   - Test that commands still work but without default hotkeys
