@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-08-13
+
+### ✨ New Features
+
+- Add Asset Icon ([3a67d7b])
+
+### 🐛 Bug Fixes
+
+- Fix tests ([4840806])
+- Fix Tests? ([8cbd2cd])
+- Fix Lint ([163dac7])
+
+### 📝 Other Changes
+
+- Remove Node 20 Tests ([3467713])
+- Lint Fix? ([e4d2593])
+
+### 👥 Contributors
+
+- eristoddle
+
 ## [1.0.5] - 2025-08-13
 
 ### 🚀 Improvements

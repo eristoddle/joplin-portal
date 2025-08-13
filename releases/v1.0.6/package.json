@@ -1,0 +1,19 @@
+{
+  "pluginId": "joplin-portal",
+  "name": "Joplin Portal",
+  "version": "1.0.6",
+  "description": "Search, preview, and selectively import notes from Joplin. Seamlessly bridge your Joplin archive with your Obsidian workflow through a dedicated sidebar panel.",
+  "author": "Stephan Miller",
+  "minAppVersion": "0.15.0",
+  "releaseDate": "2025-08-13T01:47:17.367Z",
+  "files": [
+    "main.js",
+    "manifest.json",
+    "styles.css"
+  ],
+  "checksums": {
+    "main.js": "7987336379b75878164a3728c5991e245c34a82dad653764c96bed81137fd414",
+    "manifest.json": "1eb73a7c7122e9cbeb6406b8dae8f8d08e52c395188d7b4dc119f17c82dd3782",
+    "styles.css": "f27c45d425ba80857a0d4889f845477bd163ac4e5538f0487193a13fedebf138"
+  }
+}
