@@ -14,7 +14,7 @@
   - Ensure settings persistence works with new field
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 3. Create centralized logging utility
+- [x] 3. Create centralized logging utility
   - Create new `src/logger.ts` file with Logger class
   - Implement debug(), warn(), and error() methods with conditional logging
   - Logger should accept settings object to check debug mode
