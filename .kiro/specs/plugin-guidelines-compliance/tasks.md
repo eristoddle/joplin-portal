@@ -21,7 +21,7 @@
   - Add proper TypeScript types and JSDoc documentation
   - _Requirements: 2.1, 2.2, 2.3, 5.2, 5.3_
 
-- [ ] 4. Replace console logging in main plugin file
+- [x] 4. Replace console logging in main plugin file
   - Update `main.ts` to use new Logger utility instead of direct console calls
   - Replace console.log statements in onload(), onunload(), and offline detection methods
   - Ensure critical errors are still logged appropriately

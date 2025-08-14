@@ -5,16 +5,21 @@ import { JoplinPortalView, VIEW_TYPE_JOPLIN_PORTAL } from './src/joplin-portal-v
 import { JoplinApiService } from './src/joplin-api-service';
 import { ImportService } from './src/import-service';
 import { ErrorHandler } from './src/error-handler';
+import { Logger } from './src/logger';
 
 export default class JoplinPortalPlugin extends Plugin {
 	settings: JoplinPortalSettings;
 	joplinService: JoplinApiService;
 	importService: ImportService;
+	private logger: Logger;
 	private onlineStatusListener: () => void;
 	private offlineStatusListener: () => void;
 
 	async onload() {
 		await this.loadSettings();
+
+		// Initialize logger with current settings
+		this.logger = new Logger(this.settings);
 
 		// Register the actual Joplin icon
 		(this.app as any).addIcon?.('joplin-icon', `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
@@ -118,7 +123,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Add settings tab
 		this.addSettingTab(new JoplinPortalSettingTab(this.app, this));
 
-		console.log('Joplin Portal plugin loaded');
+		this.logger.debug('Joplin Portal plugin loaded');
 	}
 
 	async onunload() {
@@ -130,7 +135,7 @@ export default class JoplinPortalPlugin extends Plugin {
 			this.joplinService.clearQueue();
 		}
 
-		console.log('Joplin Portal plugin unloaded');
+		this.logger.debug('Joplin Portal plugin unloaded');
 	}
 
 	async activateView() {
@@ -167,6 +172,10 @@ export default class JoplinPortalPlugin extends Plugin {
 		if (this.joplinService) {
 			this.joplinService.updateSettings(this.settings);
 		}
+		// Update logger with new settings
+		if (this.logger) {
+			this.logger.updateSettings(this.settings);
+		}
 	}
 
 	/**
@@ -174,12 +183,12 @@ export default class JoplinPortalPlugin extends Plugin {
 	 */
 	private setupOfflineDetection(): void {
 		this.onlineStatusListener = () => {
-			console.log('Joplin Portal: System came online');
+			this.logger.debug('System came online');
 			new Notice('🌐 Connection restored - Joplin Portal is now available', 3000);
 		};
 
 		this.offlineStatusListener = () => {
-			console.log('Joplin Portal: System went offline');
+			this.logger.debug('System went offline');
 			const offlineError = ErrorHandler.createOfflineError();
 			ErrorHandler.showErrorNotice(offlineError, 5000);
 		};
@@ -189,7 +198,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		window.addEventListener('offline', this.offlineStatusListener);
 
 		// Log initial status
-		console.log(`Joplin Portal: Initial connection status - ${ErrorHandler.isOnline() ? 'Online' : 'Offline'}`);
+		this.logger.debug(`Initial connection status - ${ErrorHandler.isOnline() ? 'Online' : 'Offline'}`);
 	}
 
 	/**
