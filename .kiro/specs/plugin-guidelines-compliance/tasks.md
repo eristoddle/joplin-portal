@@ -62,7 +62,7 @@
   - Prevent saving invalid URLs with clear user guidance
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 10. Enhance error message specificity in API service
+- [x] 10. Enhance error message specificity in API service
   - Update error handling in `src/joplin-api-service.ts`
   - Differentiate between network, authentication, and server errors
   - Provide specific user-friendly messages for each error type

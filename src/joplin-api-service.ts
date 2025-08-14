@@ -116,7 +116,8 @@ export class JoplinApiService {
 
 			return await this.connectionTestWithRetry();
 		} catch (error) {
-			const userError = ErrorHandler.handleApiError(error, 'Connection test', this.logger);
+			const userError = this.createEnhancedApiError(error, 'connection test');
+			ErrorHandler.showErrorNotice(userError);
 			ErrorHandler.logDetailedError(error, 'Connection test failed', {
 				baseUrl: this.baseUrl,
 				hasToken: !!this.token
@@ -232,7 +233,7 @@ export class JoplinApiService {
 
 			return results;
 		} catch (error) {
-			const userError = ErrorHandler.handleApiError(error, 'Search notes', this.logger);
+			const userError = this.createEnhancedApiError(error, 'search notes', { query: normalizedQuery });
 			ErrorHandler.showErrorNotice(userError);
 			ErrorHandler.logDetailedError(error, 'Search notes failed', {
 				query: normalizedQuery,
@@ -327,7 +328,7 @@ export class JoplinApiService {
 
 			return results;
 		} catch (error) {
-			const userError = ErrorHandler.handleApiError(error, 'Search notes by tags', this.logger);
+			const userError = this.createEnhancedApiError(error, 'tag search', { tags: tagOptions.tags });
 			ErrorHandler.showErrorNotice(userError);
 			ErrorHandler.logDetailedError(error, 'Tag search failed', { tagOptions }, this.logger);
 			return [];
@@ -544,7 +545,7 @@ export class JoplinApiService {
 
 			return results;
 		} catch (error) {
-			const userError = ErrorHandler.handleApiError(error, 'Search notes with pagination', this.logger);
+			const userError = this.createEnhancedApiError(error, 'paginated search', { query, page: options?.page });
 			ErrorHandler.showErrorNotice(userError);
 			ErrorHandler.logDetailedError(error, 'Search notes with pagination failed', {
 				query,
@@ -576,7 +577,7 @@ export class JoplinApiService {
 				return null;
 			}
 
-			const userError = ErrorHandler.handleApiError(error, `Get note ${id}`, this.logger);
+			const userError = this.createEnhancedApiError(error, 'note retrieval', { noteId: id });
 			ErrorHandler.showErrorNotice(userError);
 			ErrorHandler.logDetailedError(error, 'Get note failed', { noteId: id }, this.logger);
 			return null;
@@ -989,5 +990,249 @@ export class JoplinApiService {
 				error: error instanceof Error ? error.message : 'Unknown error'
 			};
 		}
+	}
+
+	/**
+	 * Create enhanced API error with specific user-friendly messages and troubleshooting suggestions
+	 * @param error - The original error
+	 * @param context - Context of the operation (e.g., 'connection test', 'search notes')
+	 * @param additionalInfo - Additional context information
+	 * @returns UserFriendlyError with specific guidance
+	 */
+	private createEnhancedApiError(error: unknown, context: string, additionalInfo?: Record<string, any>): UserFriendlyError {
+		// Log the original error for debugging
+		this.logger.error(`Enhanced API Error Handler: ${context}`, error);
+
+		// Handle network errors first
+		if (this.isNetworkError(error)) {
+			return this.createNetworkError(context, additionalInfo);
+		}
+
+		// Handle HTTP errors with specific status codes
+		if (error instanceof Error && 'status' in error) {
+			const apiError = error as JoplinApiError;
+			return this.createHttpError(apiError, context, additionalInfo);
+		}
+
+		// Handle generic errors
+		if (error instanceof Error) {
+			return this.createGenericError(error, context, additionalInfo);
+		}
+
+		// Unknown error type
+		return {
+			message: `Failed to ${context}`,
+			details: 'An unexpected error occurred',
+			action: 'Please try again or check your connection settings',
+			severity: 'error'
+		};
+	}
+
+	/**
+	 * Create network-specific error messages
+	 */
+	private createNetworkError(context: string, additionalInfo?: Record<string, any>): UserFriendlyError {
+		const baseMessage = `Unable to ${context}`;
+
+		switch (context) {
+			case 'connection test':
+				return {
+					message: 'Cannot connect to Joplin server',
+					details: 'The server appears to be unreachable',
+					action: '• Check if Joplin is running\n• Verify the server URL in settings\n• Ensure Web Clipper is enabled in Joplin\n• Check your internet connection',
+					severity: 'error'
+				};
+
+			case 'search notes':
+			case 'tag search':
+			case 'paginated search':
+				return {
+					message: `${baseMessage} - connection failed`,
+					details: 'Lost connection to Joplin server during search',
+					action: '• Check if Joplin is still running\n• Verify your network connection\n• Try searching again',
+					severity: 'error'
+				};
+
+			case 'note retrieval':
+				return {
+					message: `${baseMessage} - connection failed`,
+					details: 'Lost connection to Joplin server while fetching note',
+					action: '• Check if Joplin is still running\n• Verify your network connection\n• Try again',
+					severity: 'error'
+				};
+
+			default:
+				return {
+					message: `${baseMessage} - network error`,
+					details: 'Unable to reach Joplin server',
+					action: '• Check your internet connection\n• Verify Joplin server is running\n• Check server URL in settings',
+					severity: 'error'
+				};
+		}
+	}
+
+	/**
+	 * Create HTTP status-specific error messages
+	 */
+	private createHttpError(error: JoplinApiError, context: string, additionalInfo?: Record<string, any>): UserFriendlyError {
+		const status = error.status || 0;
+
+		switch (status) {
+			case 401:
+				return {
+					message: `Authentication failed during ${context}`,
+					details: 'Your API token is invalid or has expired',
+					action: '• Check your API token in plugin settings\n• Generate a new token in Joplin (Tools → Options → Web Clipper)\n• Ensure the token is copied correctly',
+					severity: 'error'
+				};
+
+			case 403:
+				return {
+					message: `Access denied during ${context}`,
+					details: 'Your API token does not have sufficient permissions',
+					action: '• Verify your API token is correct\n• Check if Web Clipper is enabled in Joplin\n• Try generating a new API token',
+					severity: 'error'
+				};
+
+			case 404:
+				if (context === 'note retrieval' && additionalInfo?.noteId) {
+					return {
+						message: 'Note not found',
+						details: `The note "${additionalInfo.noteId}" may have been deleted or moved`,
+						action: '• Refresh your search results\n• Check if the note exists in Joplin\n• Try searching for the note again',
+						severity: 'warning'
+					};
+				}
+				return {
+					message: `Resource not found during ${context}`,
+					details: 'The requested resource was not found on the server',
+					action: '• Check your server URL\n• Verify the resource exists\n• Try refreshing',
+					severity: 'warning'
+				};
+
+			case 429:
+				return {
+					message: `Rate limit exceeded during ${context}`,
+					details: 'You are making requests too quickly',
+					action: '• Wait a moment before trying again\n• Reduce search frequency\n• The plugin will automatically retry',
+					severity: 'warning'
+				};
+
+			case 500:
+			case 502:
+			case 503:
+			case 504:
+				return {
+					message: `Joplin server error during ${context}`,
+					details: `Server returned error ${status} - this is a server-side issue`,
+					action: '• Wait a moment and try again\n• Check if Joplin needs to be restarted\n• Check Joplin logs for server errors',
+					severity: 'error'
+				};
+
+			default:
+				return {
+					message: `Request failed during ${context}`,
+					details: `HTTP ${status}: ${error.message || 'Unknown server error'}`,
+					action: '• Check your connection and settings\n• Try again in a moment\n• Contact support if the problem persists',
+					severity: 'error'
+				};
+		}
+	}
+
+	/**
+	 * Create generic error messages with context-specific guidance
+	 */
+	private createGenericError(error: Error, context: string, additionalInfo?: Record<string, any>): UserFriendlyError {
+		// Check for timeout errors
+		if (this.isTimeoutError(error)) {
+			return {
+				message: `Timeout during ${context}`,
+				details: 'The server took too long to respond',
+				action: '• Check if Joplin server is running slowly\n• Try again with a smaller search\n• Check your network connection',
+				severity: 'warning'
+			};
+		}
+
+		// Context-specific error handling
+		switch (context) {
+			case 'search notes':
+				if (additionalInfo?.query) {
+					return {
+						message: `Search failed for "${additionalInfo.query}"`,
+						details: error.message,
+						action: '• Try a simpler search query\n• Check if Joplin is running\n• Verify your connection settings',
+						severity: 'error'
+					};
+				}
+				break;
+
+			case 'tag search':
+				if (additionalInfo?.tags) {
+					const tagList = Array.isArray(additionalInfo.tags) ? additionalInfo.tags.join(', ') : additionalInfo.tags;
+					return {
+						message: `Tag search failed for: ${tagList}`,
+						details: error.message,
+						action: '• Check if the tags exist in Joplin\n• Try searching for individual tags\n• Verify your connection to Joplin',
+						severity: 'error'
+					};
+				}
+				break;
+
+			case 'connection test':
+				return {
+					message: 'Connection test failed',
+					details: error.message,
+					action: '• Check if Joplin is running\n• Verify server URL and port\n• Ensure Web Clipper is enabled\n• Check firewall settings',
+					severity: 'error'
+				};
+		}
+
+		// Generic fallback
+		return {
+			message: `Failed to ${context}`,
+			details: error.message,
+			action: '• Check your connection settings\n• Verify Joplin is running\n• Try again',
+			severity: 'error'
+		};
+	}
+
+	/**
+	 * Check if error is network-related
+	 */
+	private isNetworkError(error: unknown): boolean {
+		if (!(error instanceof Error)) return false;
+
+		const networkErrorPatterns = [
+			'network error',
+			'connection failed',
+			'connection refused',
+			'connection timeout',
+			'dns',
+			'enotfound',
+			'econnrefused',
+			'econnreset',
+			'etimedout',
+			'fetch failed',
+			'network request failed'
+		];
+
+		const errorMessage = error.message.toLowerCase();
+		return networkErrorPatterns.some(pattern => errorMessage.includes(pattern));
+	}
+
+	/**
+	 * Check if error is timeout-related
+	 */
+	private isTimeoutError(error: Error): boolean {
+		const timeoutPatterns = [
+			'timeout',
+			'timed out',
+			'etimedout',
+			'request timeout',
+			'response timeout'
+		];
+
+		const errorMessage = error.message.toLowerCase();
+		return timeoutPatterns.some(pattern => errorMessage.includes(pattern));
 	}
 }
