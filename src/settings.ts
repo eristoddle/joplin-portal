@@ -133,6 +133,26 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		// Debug mode setting with warning
+		containerEl.createEl('h3', { text: 'Advanced Settings' });
+
+		new Setting(containerEl)
+			.setName('Debug Mode')
+			.setDesc(this.createDebugModeDescription())
+			.addToggle((toggle: any) => toggle
+				.setValue(this.plugin.settings.debugMode)
+				.onChange(async (value: any) => {
+					this.plugin.settings.debugMode = value;
+					await this.plugin.saveSettings();
+
+					// Show notice about the change
+					if (value) {
+						new Notice('⚠️ Debug mode enabled. Sensitive information may be logged to console.', 5000);
+					} else {
+						new Notice('✅ Debug mode disabled. Console logging minimized.', 3000);
+					}
+				}));
+
 		// Perform initial validation
 		this.performInitialValidation();
 	}
@@ -524,6 +544,17 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		} finally {
 			this.updateValidationDisplay();
 		}
+	}
+
+	/**
+	 * Create debug mode description with warning
+	 */
+	private createDebugModeDescription(): string {
+		return `Enable detailed logging to the browser console for troubleshooting purposes.
+
+⚠️ Warning: Debug mode may expose sensitive information
+
+When enabled, debug logs may include API tokens, server URLs, and other sensitive data in the browser console. Only enable this when troubleshooting issues and disable it when done.`;
 	}
 
 	/**

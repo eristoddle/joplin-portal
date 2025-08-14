@@ -184,6 +184,28 @@ vi.mock('obsidian', () => ({
       callback(mockSliderComponent);
       return this;
     }
+
+    addToggle(callback: (toggle: any) => void) {
+      const toggleInput = document.createElement('input');
+      toggleInput.type = 'checkbox';
+      this.controlEl.appendChild(toggleInput);
+
+      const mockToggleComponent: any = {
+        setValue: vi.fn((value: boolean) => {
+          toggleInput.checked = value;
+          return mockToggleComponent;
+        }),
+        onChange: vi.fn((callback: (value: boolean) => void) => {
+          toggleInput.addEventListener('change', (e) => {
+            callback((e.target as HTMLInputElement).checked);
+          });
+          return mockToggleComponent;
+        })
+      };
+
+      callback(mockToggleComponent);
+      return this;
+    }
   },
   Notice: vi.fn(),
   debounce: vi.fn((fn: Function, delay: number) => fn)

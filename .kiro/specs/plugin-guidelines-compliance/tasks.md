@@ -41,7 +41,7 @@
 
 ## Phase 2: Enhanced Validation & UI (Medium Priority)
 
-- [ ] 7. Add debug mode toggle to settings UI
+- [x] 7. Add debug mode toggle to settings UI
   - Add debug mode setting to `src/settings.ts` settings tab
   - Include clear description about what debug mode does
   - Add warning about potential sensitive information exposure
