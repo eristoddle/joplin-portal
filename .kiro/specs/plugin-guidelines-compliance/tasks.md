@@ -48,7 +48,7 @@
   - Test toggle functionality and settings persistence
   - _Requirements: 5.1, 5.4_
 
-- [ ] 8. Implement enhanced URL validation
+- [x] 8. Implement enhanced URL validation
   - Create URL validation utility in `src/url-validator.ts`
   - Add specific validation for http/https protocols
   - Validate URL format and provide specific error messages
