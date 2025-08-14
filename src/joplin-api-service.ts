@@ -15,6 +15,7 @@ import {
 import { SearchCache } from './search-cache';
 import { ErrorHandler } from './error-handler';
 import { RetryUtility } from './retry-utility';
+import { Logger } from './logger';
 
 /**
  * Service class for communicating with Joplin API
@@ -30,6 +31,7 @@ export class JoplinApiService {
 	private requestTimestamps: number[] = [];
 	private isProcessingQueue = false;
 	private searchCache: SearchCache;
+	private logger: Logger;
 	private connectionTestWithRetry: (...args: any[]) => Promise<boolean>;
 	private searchNotesWithRetry: (...args: any[]) => Promise<SearchResult[]>;
 	private getNoteWithRetry: (...args: any[]) => Promise<JoplinNote | null>;
@@ -37,6 +39,9 @@ export class JoplinApiService {
 	constructor(settings: JoplinPortalSettings) {
 		this.baseUrl = settings.serverUrl.replace(/\/$/, ''); // Remove trailing slash
 		this.token = settings.apiToken;
+
+		// Initialize logger
+		this.logger = new Logger(settings);
 
 		// Initialize search cache
 		this.searchCache = new SearchCache(50, 10); // 50 entries, 10 minutes TTL
@@ -85,6 +90,9 @@ export class JoplinApiService {
 		this.baseUrl = settings.serverUrl.replace(/\/$/, '');
 		this.token = settings.apiToken;
 
+		// Update logger with new settings
+		this.logger.updateSettings(settings);
+
 		// Clear request history and cache when settings change
 		this.requestTimestamps = [];
 		this.requestQueue = [];
@@ -99,7 +107,7 @@ export class JoplinApiService {
 		try {
 			// Check if offline first
 			if (!ErrorHandler.isOnline()) {
-				console.log('Joplin Portal: System is offline, skipping connection test');
+				this.logger.debug('System is offline, skipping connection test');
 				return false;
 			}
 
@@ -188,13 +196,13 @@ export class JoplinApiService {
 		// Validate query first
 		const validation = this.validateSearchQuery(query, options);
 		if (!validation.isValid) {
-			console.warn('Joplin Portal: Invalid search query:', validation.errors);
+			this.logger.warn('Invalid search query:', validation.errors);
 			return [];
 		}
 
 		// Show warnings if any
 		if (validation.warnings.length > 0) {
-			console.warn('Joplin Portal: Search warnings:', validation.warnings);
+			this.logger.warn('Search warnings:', validation.warnings);
 		}
 
 		const normalizedQuery = validation.normalizedQuery || query.trim();
@@ -202,7 +210,7 @@ export class JoplinApiService {
 		// Check cache first
 		const cachedResults = this.searchCache.get(normalizedQuery, options);
 		if (cachedResults) {
-			console.log('Joplin Portal: Using cached search results');
+			this.logger.debug('Using cached search results');
 			return cachedResults;
 		}
 
@@ -282,7 +290,7 @@ export class JoplinApiService {
 			}
 
 			// Add detailed logging for debugging tag search
-			console.log('Joplin Portal: Tag search debug info:', {
+			this.logger.debug('Tag search debug info:', {
 				originalTags: tagOptions.tags,
 				cleanedTagQueries: tagQueries,
 				finalSearchQuery: searchQuery,
@@ -295,7 +303,7 @@ export class JoplinApiService {
 			const cacheKey = `tags:${JSON.stringify(tagOptions)}`;
 			const cachedResults = this.searchCache.get(cacheKey);
 			if (cachedResults) {
-				console.log('Joplin Portal: Using cached tag search results');
+				this.logger.debug('Using cached tag search results');
 				return cachedResults;
 			}
 
@@ -305,7 +313,7 @@ export class JoplinApiService {
 			});
 
 			// Log the API response for debugging
-			console.log('Joplin Portal: Tag search API response:', {
+			this.logger.debug('Tag search API response:', {
 				searchQuery,
 				resultCount: results.length,
 				resultTitles: results.map(r => r.note.title).slice(0, 5) // First 5 titles for debugging
@@ -344,7 +352,7 @@ export class JoplinApiService {
 		const fullUrl = `/search?${params.toString()}`;
 
 		// Add detailed logging for debugging API requests
-		console.log('Joplin Portal: API request debug info:', {
+		this.logger.debug('API request debug info:', {
 			endpoint: fullUrl,
 			query: query.trim(),
 			searchType: options?.searchType,
@@ -356,7 +364,7 @@ export class JoplinApiService {
 		const data: JoplinSearchResponse = await response.json;
 
 		// Log API response details
-		console.log('Joplin Portal: API response debug info:', {
+		this.logger.debug('API response debug info:', {
 			query: query.trim(),
 			itemCount: data.items?.length || 0,
 			hasMore: data.has_more,
@@ -561,7 +569,7 @@ export class JoplinApiService {
 		} catch (error) {
 			// Handle 404 errors gracefully (note not found)
 			if (error instanceof Error && 'status' in error && (error as JoplinApiError).status === 404) {
-				console.log(`Joplin Portal: Note not found: ${id}`);
+				this.logger.debug(`Note not found: ${id}`);
 				return null;
 			}
 
@@ -954,7 +962,7 @@ export class JoplinApiService {
 		error?: string;
 	}> {
 		try {
-			console.log(`Joplin Portal: Testing tag search for tag "${tagName}"`);
+			this.logger.debug(`Testing tag search for tag "${tagName}"`);
 
 			const results = await this.searchNotesByTags({
 				tags: [tagName],
