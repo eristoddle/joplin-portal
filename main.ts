@@ -28,8 +28,8 @@ export default class JoplinPortalPlugin extends Plugin {
 		</svg>`);
 
 		// Initialize services
-		this.joplinService = new JoplinApiService(this.settings);
-		this.importService = new ImportService(this.app, this.joplinService, () => {
+		this.joplinService = new JoplinApiService(this.settings, this.logger);
+		this.importService = new ImportService(this.app, this.logger, this.joplinService, () => {
 			// Callback for when import is complete - can be used for cache invalidation
 			// Note: This callback is currently not used but kept for future functionality
 		});

@@ -36,12 +36,12 @@ export class JoplinApiService {
 	private searchNotesWithRetry: (...args: any[]) => Promise<SearchResult[]>;
 	private getNoteWithRetry: (...args: any[]) => Promise<JoplinNote | null>;
 
-	constructor(settings: JoplinPortalSettings) {
+	constructor(settings: JoplinPortalSettings, logger: Logger) {
 		this.baseUrl = settings.serverUrl.replace(/\/$/, ''); // Remove trailing slash
 		this.token = settings.apiToken;
 
-		// Initialize logger
-		this.logger = new Logger(settings);
+		// Use provided logger
+		this.logger = logger;
 
 		// Initialize search cache
 		this.searchCache = new SearchCache(50, 10); // 50 entries, 10 minutes TTL
@@ -64,19 +64,22 @@ export class JoplinApiService {
 		this.connectionTestWithRetry = RetryUtility.createRetryWrapper(
 			this.testConnectionInternal.bind(this),
 			this.retryConfig,
-			'Connection test'
+			'Connection test',
+			this.logger
 		);
 
 		this.searchNotesWithRetry = RetryUtility.createRetryWrapper(
 			this.searchNotesInternal.bind(this),
 			this.retryConfig,
-			'Search notes'
+			'Search notes',
+			this.logger
 		);
 
 		this.getNoteWithRetry = RetryUtility.createRetryWrapper(
 			this.getNoteInternal.bind(this),
 			this.retryConfig,
-			'Get note'
+			'Get note',
+			this.logger
 		);
 
 		// Start processing request queue
@@ -113,11 +116,11 @@ export class JoplinApiService {
 
 			return await this.connectionTestWithRetry();
 		} catch (error) {
-			const userError = ErrorHandler.handleApiError(error, 'Connection test');
+			const userError = ErrorHandler.handleApiError(error, 'Connection test', this.logger);
 			ErrorHandler.logDetailedError(error, 'Connection test failed', {
 				baseUrl: this.baseUrl,
 				hasToken: !!this.token
-			});
+			}, this.logger);
 			return false;
 		}
 	}
@@ -229,12 +232,12 @@ export class JoplinApiService {
 
 			return results;
 		} catch (error) {
-			const userError = ErrorHandler.handleApiError(error, 'Search notes');
+			const userError = ErrorHandler.handleApiError(error, 'Search notes', this.logger);
 			ErrorHandler.showErrorNotice(userError);
 			ErrorHandler.logDetailedError(error, 'Search notes failed', {
 				query: normalizedQuery,
 				options
-			});
+			}, this.logger);
 			return [];
 		}
 	}
@@ -324,9 +327,9 @@ export class JoplinApiService {
 
 			return results;
 		} catch (error) {
-			const userError = ErrorHandler.handleApiError(error, 'Search notes by tags');
+			const userError = ErrorHandler.handleApiError(error, 'Search notes by tags', this.logger);
 			ErrorHandler.showErrorNotice(userError);
-			ErrorHandler.logDetailedError(error, 'Tag search failed', { tagOptions });
+			ErrorHandler.logDetailedError(error, 'Tag search failed', { tagOptions }, this.logger);
 			return [];
 		}
 	}
@@ -541,12 +544,12 @@ export class JoplinApiService {
 
 			return results;
 		} catch (error) {
-			const userError = ErrorHandler.handleApiError(error, 'Search notes with pagination');
+			const userError = ErrorHandler.handleApiError(error, 'Search notes with pagination', this.logger);
 			ErrorHandler.showErrorNotice(userError);
 			ErrorHandler.logDetailedError(error, 'Search notes with pagination failed', {
 				query,
 				options
-			});
+			}, this.logger);
 			return { results: [], hasMore: false };
 		}
 	}
@@ -573,9 +576,9 @@ export class JoplinApiService {
 				return null;
 			}
 
-			const userError = ErrorHandler.handleApiError(error, `Get note ${id}`);
+			const userError = ErrorHandler.handleApiError(error, `Get note ${id}`, this.logger);
 			ErrorHandler.showErrorNotice(userError);
-			ErrorHandler.logDetailedError(error, 'Get note failed', { noteId: id });
+			ErrorHandler.logDetailedError(error, 'Get note failed', { noteId: id }, this.logger);
 			return null;
 		}
 	}

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { JoplinApiService } from '../../src/joplin-api-service';
 import { requestUrl } from 'obsidian';
+import { Logger } from '../../src/logger';
 
 vi.mock('obsidian', () => ({
   requestUrl: vi.fn()
@@ -9,17 +10,28 @@ vi.mock('obsidian', () => ({
 describe('API Source URL Test', () => {
   let joplinApiService: JoplinApiService;
   let mockRequestUrl: any;
+  let mockLogger: Logger;
 
   beforeEach(() => {
+    // Create mock logger
+    mockLogger = {
+      debug: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      isDebugEnabled: vi.fn().mockReturnValue(false),
+      updateSettings: vi.fn()
+    } as any;
+
     const mockSettings = {
       serverUrl: 'http://localhost:41184',
       apiToken: 'test-token',
       defaultImportFolder: 'Imported from Joplin',
       importTemplate: '',
-      searchLimit: 50
+      searchLimit: 50,
+      debugMode: false
     };
 
-    joplinApiService = new JoplinApiService(mockSettings);
+    joplinApiService = new JoplinApiService(mockSettings, mockLogger);
 
     // Get the mocked requestUrl function
     mockRequestUrl = vi.mocked(requestUrl);

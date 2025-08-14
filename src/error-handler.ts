@@ -1,5 +1,6 @@
 import { Notice } from 'obsidian';
 import { JoplinApiError, UserFriendlyError } from './types';
+import { Logger } from './logger';
 
 /**
  * Comprehensive error handling utility for Joplin Portal plugin
@@ -19,11 +20,11 @@ export class ErrorHandler {
 	/**
 	 * Handle API errors and convert to user-friendly format
 	 */
-	static handleApiError(error: unknown, context: string = ''): UserFriendlyError {
-		const logPrefix = 'Joplin Portal Error Handler';
-
+	static handleApiError(error: unknown, context: string = '', logger?: Logger): UserFriendlyError {
 		// Log the original error for debugging
-		console.error(`${logPrefix}: ${context}`, error);
+		if (logger) {
+			logger.error(`Error Handler: ${context}`, error);
+		}
 
 		if (error instanceof Error && 'status' in error) {
 			const apiError = error as JoplinApiError;
@@ -152,8 +153,10 @@ export class ErrorHandler {
 	/**
 	 * Handle import-specific errors
 	 */
-	static handleImportError(error: unknown, noteTitle: string = 'Unknown'): UserFriendlyError {
-		console.error('Joplin Portal Import Error:', error);
+	static handleImportError(error: unknown, noteTitle: string = 'Unknown', logger?: Logger): UserFriendlyError {
+		if (logger) {
+			logger.error('Import Error:', error);
+		}
 
 		if (error instanceof Error) {
 			// Check for file system errors
@@ -214,7 +217,7 @@ export class ErrorHandler {
 	/**
 	 * Log detailed error information for debugging
 	 */
-	static logDetailedError(error: unknown, context: string, additionalInfo?: Record<string, any>): void {
+	static logDetailedError(error: unknown, context: string, additionalInfo?: Record<string, any>, logger?: Logger): void {
 		const timestamp = new Date().toISOString();
 		const logEntry = {
 			timestamp,
@@ -229,7 +232,12 @@ export class ErrorHandler {
 			additionalInfo
 		};
 
-		console.error('Joplin Portal Detailed Error:', logEntry);
+		if (logger) {
+			logger.error('Detailed Error:', logEntry);
+		} else {
+			// Fallback to console.error if no logger provided (for backward compatibility)
+			console.error('Joplin Portal Detailed Error:', logEntry);
+		}
 
 		// In a production environment, you might want to send this to a logging service
 		// this.sendToLoggingService(logEntry);

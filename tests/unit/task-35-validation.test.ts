@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { JoplinApiService } from '../../src/joplin-api-service';
 import { ImportService } from '../../src/import-service';
 import { JoplinNote } from '../../src/types';
+import { Logger } from '../../src/logger';
 
 vi.mock('obsidian');
 
@@ -9,17 +10,28 @@ describe('Task 35: Test and validate all fixes', () => {
 	let joplinApiService: JoplinApiService;
 	let importService: ImportService;
 	let mockApp: any;
+	let mockLogger: Logger;
 
 	beforeEach(() => {
+		// Create mock logger
+		mockLogger = {
+			debug: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			isDebugEnabled: vi.fn().mockReturnValue(false),
+			updateSettings: vi.fn()
+		} as any;
+
 		// Mock Joplin API Service
 		const mockSettings = {
 			serverUrl: 'http://127.0.0.1:41184',
 			apiToken: 'test-token',
 			defaultImportFolder: 'Imported from Joplin',
 			importTemplate: '',
-			searchLimit: 50
+			searchLimit: 50,
+			debugMode: false
 		};
-		joplinApiService = new JoplinApiService(mockSettings);
+		joplinApiService = new JoplinApiService(mockSettings, mockLogger);
 
 		// Mock Obsidian App for Import Service
 		const mockVault = {
@@ -36,7 +48,7 @@ describe('Task 35: Test and validate all fixes', () => {
 			vault: mockVault
 		};
 
-		importService = new ImportService(mockApp);
+		importService = new ImportService(mockApp, mockLogger);
 		vi.clearAllMocks();
 	});
 
@@ -270,9 +282,10 @@ describe('Task 35: Test and validate all fixes', () => {
 				apiToken: '',
 				defaultImportFolder: '',
 				importTemplate: '',
-				searchLimit: 50
+				searchLimit: 50,
+				debugMode: false
 			};
-			const service = new JoplinApiService(mockSettings);
+			const service = new JoplinApiService(mockSettings, mockLogger);
 			const result = service.getResourceUrl('abc123def45678901234567890123456');
 
 			expect(result).toBe('');
@@ -295,9 +308,10 @@ describe('Task 35: Test and validate all fixes', () => {
 				apiToken: '',
 				defaultImportFolder: '',
 				importTemplate: '',
-				searchLimit: 50
+				searchLimit: 50,
+				debugMode: false
 			};
-			const service = new JoplinApiService(mockSettings);
+			const service = new JoplinApiService(mockSettings, mockLogger);
 
 			expect(service.isConfigured()).toBe(false);
 

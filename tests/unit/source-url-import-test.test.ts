@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ImportService } from '../../src/import-service';
 import { JoplinNote } from '../../src/types';
+import { Logger } from '../../src/logger';
 
 vi.mock('obsidian');
 
 describe('Source URL Import Test', () => {
   let importService: ImportService;
   let mockApp: any;
+  let mockLogger: Logger;
 
   beforeEach(() => {
     const mockVault = {
@@ -23,7 +25,16 @@ describe('Source URL Import Test', () => {
       vault: mockVault
     };
 
-    importService = new ImportService(mockApp);
+    // Create mock logger
+    mockLogger = {
+      debug: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      isDebugEnabled: vi.fn().mockReturnValue(false),
+      updateSettings: vi.fn()
+    } as any;
+
+    importService = new ImportService(mockApp, mockLogger);
     vi.clearAllMocks();
   });
 

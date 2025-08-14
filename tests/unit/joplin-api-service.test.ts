@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { requestUrl } from 'obsidian';
 import { JoplinApiService } from '../../src/joplin-api-service';
+import { Logger } from '../../src/logger';
 import {
   mockJoplinNote,
   mockJoplinNotes,
@@ -15,6 +16,7 @@ vi.mock('obsidian');
 
 describe('JoplinApiService', () => {
   let service: JoplinApiService;
+  let mockLogger: Logger;
   const mockRequestUrl = vi.mocked(requestUrl);
 
   beforeEach(() => {
@@ -23,13 +25,23 @@ describe('JoplinApiService', () => {
     mockRequestUrl.mockClear();
     mockRequestUrl.mockReset();
 
+    // Create mock logger
+    mockLogger = {
+      debug: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      isDebugEnabled: vi.fn().mockReturnValue(false),
+      updateSettings: vi.fn()
+    } as any;
+
     service = new JoplinApiService({
       serverUrl: 'http://localhost:41184',
       apiToken: 'test-token',
       defaultImportFolder: 'Imported from Joplin',
       importTemplate: '',
-      searchLimit: 50
-    });
+      searchLimit: 50,
+      debugMode: false
+    }, mockLogger);
   });
 
   afterEach(() => {
@@ -51,8 +63,9 @@ describe('JoplinApiService', () => {
         apiToken: 'test-token',
         defaultImportFolder: 'Imported from Joplin',
         importTemplate: '',
-        searchLimit: 50
-      });
+        searchLimit: 50,
+        debugMode: false
+      }, mockLogger);
       expect(serviceWithTrailingSlash['baseUrl']).toBe('http://localhost:41184');
     });
   });

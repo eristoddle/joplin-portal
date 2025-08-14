@@ -2,18 +2,22 @@ import { App, TFile, TFolder, normalizePath, requestUrl } from 'obsidian';
 import { JoplinNote, ImportOptions, ImportProgress, ImageImportResult, ImageDownloadProgress } from './types';
 import { JoplinApiService } from './joplin-api-service';
 import { ErrorHandler } from './error-handler';
+import { Logger } from './logger';
 
 export class ImportService {
 	private app: App;
 	private joplinApiService: JoplinApiService | null = null;
 	private onImportComplete?: () => void;
+	private logger: Logger;
 
 	constructor(
 		app: App,
+		logger: Logger,
 		joplinApiServiceOrCallback?: JoplinApiService | (() => void),
 		onImportComplete?: () => void
 	) {
 		this.app = app;
+		this.logger = logger;
 		if (joplinApiServiceOrCallback instanceof JoplinApiService) {
 			this.joplinApiService = joplinApiServiceOrCallback;
 			this.onImportComplete = onImportComplete;
@@ -43,7 +47,7 @@ export class ImportService {
 			// Return the configured path, removing leading slash if present
 			return attachmentFolderPath.replace(/^\//, '');
 		} catch (error) {
-			console.warn('Joplin Portal: Failed to get attachments folder config, using default:', error);
+			this.logger.warn('Failed to get attachments folder config, using default:', error);
 			return 'attachments';
 		}
 	}
@@ -116,7 +120,7 @@ export class ImportService {
 		const imageResults: ImageImportResult[] = [];
 		let processedBody = noteBody;
 
-		console.log(`Joplin Portal: Found ${resourceIds.length} image resources for import`);
+		this.logger.debug(`Found ${resourceIds.length} image resources for import`);
 
 		if (resourceIds.length === 0) {
 			return { processedBody, imageResults };
@@ -182,7 +186,7 @@ export class ImportService {
 				});
 
 				progress.downloaded++;
-				console.log(`Joplin Portal: Downloaded image ${resourceId} -> ${uniqueFilename}`);
+				this.logger.debug(`Downloaded image ${resourceId} -> ${uniqueFilename}`);
 
 			} catch (error) {
 				// Track failed download
@@ -197,14 +201,14 @@ export class ImportService {
 				});
 
 				progress.failed++;
-				console.warn(`Joplin Portal: Failed to download image ${resourceId}:`, errorMessage);
+				this.logger.warn(`Failed to download image ${resourceId}:`, errorMessage);
 			}
 		}
 
 		// Replace image references in note body
 		processedBody = this.replaceImageReferences(processedBody, imageResults);
 
-		console.log(`Joplin Portal: Image processing complete. Downloaded: ${progress.downloaded}, Failed: ${progress.failed}`);
+		this.logger.debug(`Image processing complete. Downloaded: ${progress.downloaded}, Failed: ${progress.failed}`);
 
 		return { processedBody, imageResults };
 	}
@@ -395,11 +399,11 @@ export class ImportService {
 		// File exists - handle based on conflict resolution strategy
 		switch (options.conflictResolution) {
 			case 'skip':
-				console.log(`Joplin Portal: Skipping existing file: ${filePath}`);
+				this.logger.debug(`Skipping existing file: ${filePath}`);
 				return { shouldProceed: false };
 
 			case 'overwrite':
-				console.log(`Joplin Portal: Overwriting existing file: ${filePath}`);
+				this.logger.debug(`Overwriting existing file: ${filePath}`);
 				return { shouldProceed: true, finalPath: filePath, existingFile };
 
 			case 'rename':
@@ -414,7 +418,7 @@ export class ImportService {
 				const uniqueFilename = await this.generateUniqueNoteFilename(baseFilename, folder);
 				const uniquePath = normalizePath(`${folder.path}/${uniqueFilename}`);
 
-				console.log(`Joplin Portal: Renaming to avoid conflict: ${filePath} -> ${uniquePath}`);
+				this.logger.debug(`Renaming to avoid conflict: ${filePath} -> ${uniquePath}`);
 				return { shouldProceed: true, finalPath: uniquePath };
 		}
 	}
@@ -504,7 +508,7 @@ export class ImportService {
 				}
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
-				console.error(`Joplin Portal: Failed to import note "${note.title}":`, error);
+				this.logger.error(`Failed to import note "${note.title}":`, error);
 
 				failed.push({
 					note,
@@ -568,7 +572,7 @@ export class ImportService {
 				processedNoteBody = imageProcessingResult.processedBody;
 				imageResults = imageProcessingResult.imageResults;
 
-				console.log(`Joplin Portal: Processed ${imageResults.length} images for note "${joplinNote.title}"`);
+				this.logger.debug(`Processed ${imageResults.length} images for note "${joplinNote.title}"`);
 
 			} catch (imageError) {
 				// Log image processing error but continue with import
@@ -576,13 +580,13 @@ export class ImportService {
 					noteId: joplinNote.id,
 					noteTitle: joplinNote.title,
 					targetFolder: options.targetFolder
-				});
+				}, this.logger);
 
 				// Add warning comment to note about image processing failure
 				const warningComment = `<!-- Warning: Image processing failed during import: ${imageError instanceof Error ? imageError.message : String(imageError)} -->\n\n`;
 				processedNoteBody = warningComment + joplinNote.body;
 
-				console.warn(`Joplin Portal: Image processing failed for note "${joplinNote.title}", continuing with original content`);
+				this.logger.warn(`Image processing failed for note "${joplinNote.title}", continuing with original content`);
 			}
 
 			// Report progress: Converting markdown
@@ -614,7 +618,7 @@ export class ImportService {
 				await this.app.vault.create(finalPath, finalContent);
 			}
 
-			console.log(`Joplin Portal: Successfully imported note "${joplinNote.title}" to ${finalPath}`);
+			this.logger.debug(`Successfully imported note "${joplinNote.title}" to ${finalPath}`);
 
 			// Note: onImportComplete callback removed to avoid issues with undefined data
 			// The UI will handle completion through the return value
@@ -623,13 +627,13 @@ export class ImportService {
 
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			console.error(`Joplin Portal: Failed to import note "${joplinNote.title}":`, error);
+			this.logger.error(`Failed to import note "${joplinNote.title}":`, error);
 
 			ErrorHandler.logDetailedError(error, 'Note import failed', {
 				noteId: joplinNote.id,
 				noteTitle: joplinNote.title,
 				targetFolder: options.targetFolder
-			});
+			}, this.logger);
 
 			return { success: false, error: errorMessage };
 		}

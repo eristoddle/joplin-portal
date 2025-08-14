@@ -1,5 +1,6 @@
 import { RetryConfig } from './types';
 import { ErrorHandler } from './error-handler';
+import { Logger } from './logger';
 
 /**
  * Retry utility with exponential backoff for API requests
@@ -19,7 +20,8 @@ export class RetryUtility {
 	static async executeWithRetry<T>(
 		operation: () => Promise<T>,
 		config: Partial<RetryConfig> = {},
-		context: string = 'API request'
+		context: string = 'API request',
+		logger?: Logger
 	): Promise<T> {
 		const finalConfig = { ...this.DEFAULT_CONFIG, ...config };
 		let lastError: unknown;
@@ -39,8 +41,8 @@ export class RetryUtility {
 				const result = await operation();
 
 				// Log successful retry if this wasn't the first attempt
-				if (attempt > 0) {
-					console.log(`Joplin Portal: ${context} succeeded after ${attempt} retries`);
+				if (attempt > 0 && logger) {
+					logger.debug(`${context} succeeded after ${attempt} retries`);
 				}
 
 				return result;
@@ -54,17 +56,21 @@ export class RetryUtility {
 
 				// Check if error is retryable
 				if (!ErrorHandler.isRetryableError(error)) {
-					console.log(`Joplin Portal: ${context} failed with non-retryable error, not retrying`);
+					if (logger) {
+						logger.debug(`${context} failed with non-retryable error, not retrying`);
+					}
 					break;
 				}
 
 				// Calculate delay for next attempt
 				const delay = this.calculateDelay(attempt, finalConfig, error);
 
-				console.log(
-					`Joplin Portal: ${context} failed (attempt ${attempt + 1}/${finalConfig.maxRetries + 1}), ` +
-					`retrying in ${delay}ms. Error: ${error instanceof Error ? error.message : String(error)}`
-				);
+				if (logger) {
+					logger.debug(
+						`${context} failed (attempt ${attempt + 1}/${finalConfig.maxRetries + 1}), ` +
+						`retrying in ${delay}ms. Error: ${error instanceof Error ? error.message : String(error)}`
+					);
+				}
 
 				// Wait before retrying
 				await this.sleep(delay);
@@ -75,7 +81,7 @@ export class RetryUtility {
 		ErrorHandler.logDetailedError(lastError, `${context} - All retries exhausted`, {
 			maxRetries: finalConfig.maxRetries,
 			config: finalConfig
-		});
+		}, logger);
 
 		throw lastError;
 	}
@@ -115,13 +121,15 @@ export class RetryUtility {
 	static createRetryWrapper<T extends any[], R>(
 		fn: (...args: T) => Promise<R>,
 		config: Partial<RetryConfig> = {},
-		context: string = 'Operation'
+		context: string = 'Operation',
+		logger?: Logger
 	): (...args: T) => Promise<R> {
 		return async (...args: T): Promise<R> => {
 			return this.executeWithRetry(
 				() => fn(...args),
 				config,
-				context
+				context,
+				logger
 			);
 		};
 	}
@@ -134,7 +142,8 @@ export class RetryUtility {
 		operation: (item: T) => Promise<R>,
 		config: Partial<RetryConfig> = {},
 		maxConcurrency: number = 3,
-		context: string = 'Batch operation'
+		context: string = 'Batch operation',
+		logger?: Logger
 	): Promise<{ successful: R[]; failed: { item: T; error: unknown }[] }> {
 		const successful: R[] = [];
 		const failed: { item: T; error: unknown }[] = [];
@@ -148,7 +157,8 @@ export class RetryUtility {
 					const result = await this.executeWithRetry(
 						() => operation(item),
 						config,
-						`${context} - Item ${i + batch.indexOf(item) + 1}`
+						`${context} - Item ${i + batch.indexOf(item) + 1}`,
+						logger
 					);
 					return { success: true, result, item };
 				} catch (error) {
@@ -178,7 +188,8 @@ export class RetryUtility {
 		fn: (...args: T) => Promise<R>,
 		failureThreshold: number = 5,
 		resetTimeout: number = 60000, // 1 minute
-		context: string = 'Circuit breaker operation'
+		context: string = 'Circuit breaker operation',
+		logger?: Logger
 	): (...args: T) => Promise<R> {
 		let failureCount = 0;
 		let lastFailureTime = 0;
@@ -189,7 +200,9 @@ export class RetryUtility {
 
 			// Check if circuit should be reset
 			if (isOpen && now - lastFailureTime > resetTimeout) {
-				console.log(`Joplin Portal: Circuit breaker reset for ${context}`);
+				if (logger) {
+					logger.debug(`Circuit breaker reset for ${context}`);
+				}
 				isOpen = false;
 				failureCount = 0;
 			}
@@ -208,8 +221,8 @@ export class RetryUtility {
 				const result = await fn(...args);
 
 				// Reset failure count on success
-				if (failureCount > 0) {
-					console.log(`Joplin Portal: Circuit breaker success, resetting failure count for ${context}`);
+				if (failureCount > 0 && logger) {
+					logger.debug(`Circuit breaker success, resetting failure count for ${context}`);
 					failureCount = 0;
 				}
 
@@ -218,12 +231,16 @@ export class RetryUtility {
 				failureCount++;
 				lastFailureTime = now;
 
-				console.log(`Joplin Portal: Circuit breaker failure ${failureCount}/${failureThreshold} for ${context}`);
+				if (logger) {
+					logger.debug(`Circuit breaker failure ${failureCount}/${failureThreshold} for ${context}`);
+				}
 
 				// Open circuit if threshold reached
 				if (failureCount >= failureThreshold) {
 					isOpen = true;
-					console.log(`Joplin Portal: Circuit breaker opened for ${context}`);
+					if (logger) {
+						logger.debug(`Circuit breaker opened for ${context}`);
+					}
 				}
 
 				throw error;

@@ -33,7 +33,7 @@
   - Maintain error logging for debugging while cleaning up debug noise
   - _Requirements: 2.1, 2.2, 2.4_
 
-- [ ] 6. Replace console logging in remaining service files
+- [x] 6. Replace console logging in remaining service files
   - Update `src/import-service.ts`, `src/error-handler.ts`, `src/retry-utility.ts`
   - Replace console statements with Logger utility calls
   - Ensure import progress and error information is still available in debug mode

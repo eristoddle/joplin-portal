@@ -1,18 +1,30 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { JoplinApiService } from '../../src/joplin-api-service';
+import { Logger } from '../../src/logger';
 
 describe('Simple Image Processing', () => {
 	let joplinApiService: JoplinApiService;
+	let mockLogger: Logger;
 
 	beforeEach(() => {
+		// Create mock logger
+		mockLogger = {
+			debug: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			isDebugEnabled: vi.fn().mockReturnValue(false),
+			updateSettings: vi.fn()
+		} as any;
+
 		const mockSettings = {
 			serverUrl: 'http://127.0.0.1:41184',
 			apiToken: 'test-token',
 			defaultImportFolder: 'Imported from Joplin',
 			importTemplate: '',
-			searchLimit: 50
+			searchLimit: 50,
+			debugMode: false
 		};
-		joplinApiService = new JoplinApiService(mockSettings);
+		joplinApiService = new JoplinApiService(mockSettings, mockLogger);
 	});
 
 	describe('processNoteBodyForPreview', () => {
@@ -79,7 +91,7 @@ describe('Simple Image Processing', () => {
 				importTemplate: '',
 				searchLimit: 50
 			};
-			const service = new JoplinApiService(mockSettings);
+			const service = new JoplinApiService(mockSettings, mockLogger);
 			const result = service.getResourceUrl('abc123def45678901234567890123456');
 
 			expect(result).toBe('');

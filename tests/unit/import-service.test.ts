@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ImportService } from '../../src/import-service';
 import { mockJoplinNote, mockJoplinNotes } from '../mocks/joplin-api-mocks';
 import { TFile, TFolder } from 'obsidian';
+import { Logger } from '../../src/logger';
 
 vi.mock('obsidian');
 
@@ -9,6 +10,7 @@ describe('ImportService', () => {
   let importService: ImportService;
   let mockApp: any;
   let mockVault: any;
+  let mockLogger: Logger;
 
   beforeEach(() => {
     mockVault = {
@@ -30,7 +32,16 @@ describe('ImportService', () => {
       vault: mockVault
     };
 
-    importService = new ImportService(mockApp);
+    // Create mock logger
+    mockLogger = {
+      debug: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      isDebugEnabled: vi.fn().mockReturnValue(false),
+      updateSettings: vi.fn()
+    } as any;
+
+    importService = new ImportService(mockApp, mockLogger);
     vi.clearAllMocks();
   });
 
