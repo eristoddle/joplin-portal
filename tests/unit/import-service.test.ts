@@ -351,4 +351,78 @@ describe('ImportService', () => {
       expect(progressCallback).toHaveBeenCalled();
     });
   });
+
+  describe('Enhanced Error Messages', () => {
+    it('should provide specific error message for file system errors', async () => {
+      const targetFolder = new TFolder('Test Folder');
+      mockVault.getAbstractFileByPath.mockReturnValue(targetFolder);
+      mockVault.create.mockRejectedValue(new Error('ENOSPC: no space left on device'));
+
+      const options = {
+        targetFolder: 'Test Folder',
+        applyTemplate: false,
+        conflictResolution: 'rename' as const
+      };
+
+      const result = await importService.importNote(mockJoplinNote, options);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Insufficient disk space');
+      expect(result.error).toContain('Free up storage space');
+    });
+
+    it('should provide specific error message for permission errors', async () => {
+      const targetFolder = new TFolder('Test Folder');
+      mockVault.getAbstractFileByPath.mockReturnValue(targetFolder);
+      mockVault.create.mockRejectedValue(new Error('EACCES: permission denied'));
+
+      const options = {
+        targetFolder: 'Test Folder',
+        applyTemplate: false,
+        conflictResolution: 'rename' as const
+      };
+
+      const result = await importService.importNote(mockJoplinNote, options);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Permission denied');
+      expect(result.error).toContain('write permissions');
+    });
+
+    it('should provide specific error message for network errors', async () => {
+      const targetFolder = new TFolder('Test Folder');
+      mockVault.getAbstractFileByPath.mockReturnValue(targetFolder);
+      mockVault.create.mockRejectedValue(new Error('Network connection failed'));
+
+      const options = {
+        targetFolder: 'Test Folder',
+        applyTemplate: false,
+        conflictResolution: 'rename' as const
+      };
+
+      const result = await importService.importNote(mockJoplinNote, options);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Network error');
+      expect(result.error).toContain('Joplin server');
+    });
+
+    it('should provide context about what was being imported', async () => {
+      const targetFolder = new TFolder('Test Folder');
+      mockVault.getAbstractFileByPath.mockReturnValue(targetFolder);
+      mockVault.create.mockRejectedValue(new Error('Generic error'));
+
+      const options = {
+        targetFolder: 'Test Folder',
+        applyTemplate: false,
+        conflictResolution: 'rename' as const
+      };
+
+      const result = await importService.importNote(mockJoplinNote, options);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain(`"${mockJoplinNote.title}"`);
+      expect(result.error).toContain('Import failed');
+    });
+  });
 });

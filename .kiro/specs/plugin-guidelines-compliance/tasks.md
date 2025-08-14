@@ -69,7 +69,7 @@
   - Include troubleshooting suggestions in error messages
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 11. Enhance error messages in import service
+- [x] 11. Enhance error messages in import service
   - Update error handling in `src/import-service.ts`
   - Provide specific error messages for import failures
   - Include context about what was being imported when error occurred

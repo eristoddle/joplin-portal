@@ -189,19 +189,19 @@ export class ImportService {
 				this.logger.debug(`Downloaded image ${resourceId} -> ${uniqueFilename}`);
 
 			} catch (error) {
-				// Track failed download
-				const errorMessage = error instanceof Error ? error.message : String(error);
+				// Track failed download with enhanced error message
+				const enhancedErrorMessage = this.buildImageDownloadErrorMessage(error, resourceId);
 				imageResults.push({
 					resourceId,
 					originalFilename: `${resourceId}.jpg`,
 					localFilename: '',
 					localPath: '',
 					success: false,
-					error: errorMessage
+					error: enhancedErrorMessage
 				});
 
 				progress.failed++;
-				this.logger.warn(`Failed to download image ${resourceId}:`, errorMessage);
+				this.logger.warn(`Failed to download image ${resourceId}:`, enhancedErrorMessage);
 			}
 		}
 
@@ -360,7 +360,20 @@ export class ImportService {
 			if (folder instanceof TFolder) {
 				return folder;
 			}
-			throw error;
+
+			// Enhance error message for folder creation failures
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			if (errorMessage.includes('permission') || errorMessage.includes('EACCES')) {
+				throw new Error(`Permission denied creating folder "${normalizedPath}". Check that Obsidian has write permissions to the parent directory.`);
+			}
+			if (errorMessage.includes('ENOSPC')) {
+				throw new Error(`Insufficient disk space to create folder "${normalizedPath}". Free up storage space and try again.`);
+			}
+			if (errorMessage.includes('invalid') || errorMessage.includes('illegal')) {
+				throw new Error(`Invalid folder name "${normalizedPath}". The folder name contains invalid characters for the file system.`);
+			}
+
+			throw new Error(`Failed to create folder "${normalizedPath}": ${errorMessage}. Check folder permissions and available disk space.`);
 		}
 	}
 
@@ -501,23 +514,222 @@ export class ImportService {
 						imageResults: [] // Could be enhanced to track image results
 					});
 				} else {
+					const enhancedError = this.buildImportErrorMessage(result.error || 'Unknown error', note, 'import_failure');
 					failed.push({
 						note,
-						error: result.error || 'Unknown error'
+						error: enhancedError
 					});
 				}
 			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
+				const enhancedError = this.buildImportErrorMessage(error, note, 'import_exception');
 				this.logger.error(`Failed to import note "${note.title}":`, error);
 
 				failed.push({
 					note,
-					error: errorMessage
+					error: enhancedError
 				});
 			}
 		}
 
 		return { successful, failed };
+	}
+
+	/**
+	 * Build enhanced error message with context and suggestions for import failures
+	 */
+	private buildImportErrorMessage(error: unknown, note: JoplinNote, context: string): string {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		const noteTitle = note.title || 'Untitled Note';
+
+		// Categorize the error and provide specific guidance
+		// Check permission errors first as they can be more specific
+		if (this.isPermissionError(error)) {
+			return this.buildPermissionErrorMessage(errorMessage, noteTitle, context);
+		}
+
+		if (this.isNetworkError(error)) {
+			return this.buildNetworkErrorMessage(errorMessage, noteTitle, context);
+		}
+
+		if (this.isImageProcessingError(error)) {
+			return this.buildImageProcessingErrorMessage(errorMessage, noteTitle, context);
+		}
+
+		if (this.isContentProcessingError(error)) {
+			return this.buildContentProcessingErrorMessage(errorMessage, noteTitle, context);
+		}
+
+		if (this.isFileSystemError(error)) {
+			return this.buildFileSystemErrorMessage(errorMessage, noteTitle, context);
+		}
+
+		// Generic error with context
+		return this.buildGenericImportErrorMessage(errorMessage, noteTitle, context);
+	}
+
+	/**
+	 * Check if error is related to file system operations
+	 */
+	private isFileSystemError(error: unknown): boolean {
+		if (!(error instanceof Error)) return false;
+		const message = error.message.toLowerCase();
+		// Exclude permission errors as they are handled separately
+		if (this.isPermissionError(error)) return false;
+
+		return message.includes('already exists') ||
+			   message.includes('enospc') ||
+			   message.includes('disk space') ||
+			   message.includes('file system') ||
+			   message.includes('invalid filename') ||
+			   message.includes('path too long');
+	}
+
+	/**
+	 * Check if error is network-related
+	 */
+	private isNetworkError(error: unknown): boolean {
+		if (!(error instanceof Error)) return false;
+		const message = error.message.toLowerCase();
+		return message.includes('network') ||
+			   message.includes('connection') ||
+			   message.includes('timeout') ||
+			   message.includes('dns') ||
+			   message.includes('enotfound') ||
+			   message.includes('econnrefused');
+	}
+
+	/**
+	 * Check if error is related to image processing
+	 */
+	private isImageProcessingError(error: unknown): boolean {
+		if (!(error instanceof Error)) return false;
+		const message = error.message.toLowerCase();
+		return message.includes('image') ||
+			   message.includes('resource') ||
+			   message.includes('download') ||
+			   message.includes('attachment');
+	}
+
+	/**
+	 * Check if error is related to content processing
+	 */
+	private isContentProcessingError(error: unknown): boolean {
+		if (!(error instanceof Error)) return false;
+		const message = error.message.toLowerCase();
+		return message.includes('markdown') ||
+			   message.includes('frontmatter') ||
+			   message.includes('content') ||
+			   message.includes('encoding') ||
+			   message.includes('parse');
+	}
+
+	/**
+	 * Check if error is permission-related
+	 */
+	private isPermissionError(error: unknown): boolean {
+		if (!(error instanceof Error)) return false;
+		const message = error.message.toLowerCase();
+		return message.includes('permission') ||
+			   message.includes('eacces') ||
+			   message.includes('access denied') ||
+			   message.includes('unauthorized');
+	}
+
+	/**
+	 * Build file system error message with specific guidance
+	 */
+	private buildFileSystemErrorMessage(errorMessage: string, noteTitle: string, context: string): string {
+		if (errorMessage.toLowerCase().includes('already exists')) {
+			return `Import skipped for "${noteTitle}": File already exists. Try changing the conflict resolution setting to "overwrite" or "rename" in import options.`;
+		}
+
+		if (errorMessage.toLowerCase().includes('enospc') || errorMessage.toLowerCase().includes('disk space')) {
+			return `Import failed for "${noteTitle}": Insufficient disk space. Free up storage space and try importing again.`;
+		}
+
+		if (errorMessage.toLowerCase().includes('invalid filename') || errorMessage.toLowerCase().includes('path too long')) {
+			return `Import failed for "${noteTitle}": Invalid filename or path too long. The note title may contain invalid characters or be too long for the file system.`;
+		}
+
+		return `Import failed for "${noteTitle}": File system error (${errorMessage}). Check that the target folder is writable and has sufficient space.`;
+	}
+
+	/**
+	 * Build network error message with specific guidance
+	 */
+	private buildNetworkErrorMessage(errorMessage: string, noteTitle: string, context: string): string {
+		if (context === 'image_download') {
+			return `Import partially failed for "${noteTitle}": Could not download images due to network error (${errorMessage}). The note was imported but images may be missing. Check your connection to the Joplin server.`;
+		}
+
+		return `Import failed for "${noteTitle}": Network error while accessing Joplin server (${errorMessage}). Check your server URL and ensure Joplin is running with Web Clipper enabled.`;
+	}
+
+	/**
+	 * Build image processing error message with specific guidance
+	 */
+	private buildImageProcessingErrorMessage(errorMessage: string, noteTitle: string, context: string): string {
+		return `Import completed for "${noteTitle}" but image processing failed: ${errorMessage}. The note was imported but some images may not display correctly. Check that the Joplin server is accessible and images exist.`;
+	}
+
+	/**
+	 * Build content processing error message with specific guidance
+	 */
+	private buildContentProcessingErrorMessage(errorMessage: string, noteTitle: string, context: string): string {
+		return `Import failed for "${noteTitle}": Content processing error (${errorMessage}). The note content may contain unsupported formatting or characters. Try importing the note again or check the original note in Joplin.`;
+	}
+
+	/**
+	 * Build permission error message with specific guidance
+	 */
+	private buildPermissionErrorMessage(errorMessage: string, noteTitle: string, context: string): string {
+		return `Import failed for "${noteTitle}": Permission denied (${errorMessage}). Check that Obsidian has write permissions to the target folder, or try selecting a different import folder.`;
+	}
+
+	/**
+	 * Build generic error message with context
+	 */
+	private buildGenericImportErrorMessage(errorMessage: string, noteTitle: string, context: string): string {
+		const contextDescriptions: Record<string, string> = {
+			'import_failure': 'during import process',
+			'import_exception': 'during import execution',
+			'single_import_failure': 'while importing individual note',
+			'file_creation': 'while creating file',
+			'content_processing': 'while processing content',
+			'image_download': 'while downloading images'
+		};
+
+		const contextDesc = contextDescriptions[context] || 'during import';
+		return `Import failed for "${noteTitle}": Error occurred ${contextDesc} (${errorMessage}). Please try importing the note again, or check the note content in Joplin for any issues.`;
+	}
+
+	/**
+	 * Build enhanced error message for image download failures
+	 */
+	private buildImageDownloadErrorMessage(error: unknown, resourceId: string): string {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+
+		if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+			return `Image ${resourceId} not found on Joplin server. The image may have been deleted or moved.`;
+		}
+
+		if (errorMessage.includes('401') || errorMessage.includes('403') || errorMessage.includes('unauthorized')) {
+			return `Access denied for image ${resourceId}. Check your API token permissions.`;
+		}
+
+		if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
+			return `Network timeout downloading image ${resourceId}. Check your connection to the Joplin server.`;
+		}
+
+		if (errorMessage.includes('500') || errorMessage.includes('server error')) {
+			return `Joplin server error downloading image ${resourceId}. The server may be experiencing issues.`;
+		}
+
+		if (errorMessage.includes('disk space') || errorMessage.includes('enospc')) {
+			return `Insufficient disk space to save image ${resourceId}. Free up storage space and try again.`;
+		}
+
+		return `Failed to download image ${resourceId}: ${errorMessage}. Check that the image exists in Joplin and the server is accessible.`;
 	}
 
 	/**
@@ -582,8 +794,11 @@ export class ImportService {
 					targetFolder: options.targetFolder
 				}, this.logger);
 
-				// Add warning comment to note about image processing failure
-				const warningComment = `<!-- Warning: Image processing failed during import: ${imageError instanceof Error ? imageError.message : String(imageError)} -->\n\n`;
+				// Build enhanced error message for image processing failure
+				const enhancedImageError = this.buildImportErrorMessage(imageError, joplinNote, 'image_download');
+
+				// Add warning comment to note about image processing failure with specific guidance
+				const warningComment = `<!-- Warning: ${enhancedImageError} -->\n\n`;
 				processedNoteBody = warningComment + joplinNote.body;
 
 				this.logger.warn(`Image processing failed for note "${joplinNote.title}", continuing with original content`);
@@ -626,7 +841,7 @@ export class ImportService {
 			return { success: true, filePath: finalPath };
 
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const enhancedError = this.buildImportErrorMessage(error, joplinNote, 'single_import_failure');
 			this.logger.error(`Failed to import note "${joplinNote.title}":`, error);
 
 			ErrorHandler.logDetailedError(error, 'Note import failed', {
@@ -635,7 +850,7 @@ export class ImportService {
 				targetFolder: options.targetFolder
 			}, this.logger);
 
-			return { success: false, error: errorMessage };
+			return { success: false, error: enhancedError };
 		}
 	}
 }
