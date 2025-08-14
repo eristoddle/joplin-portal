@@ -1,12 +1,14 @@
 import { App, PluginSettingTab, Setting, Notice, debounce } from 'obsidian';
 import JoplinPortalPlugin from '../main';
 import { JoplinPortalSettings } from './types';
+import { URLValidator, URLValidationResult } from './url-validator';
 
 interface ValidationState {
 	serverUrl: {
 		isValid: boolean;
 		message: string;
 		isValidating: boolean;
+		suggestions?: string[];
 	};
 	apiToken: {
 		isValid: boolean;
@@ -36,7 +38,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 
 		// Initialize validation state
 		this.validationState = {
-			serverUrl: { isValid: false, message: '', isValidating: false },
+			serverUrl: { isValid: false, message: '', isValidating: false, suggestions: [] },
 			apiToken: { isValid: false, message: '', isValidating: false },
 			connection: { isValid: false, message: '', isTesting: false }
 		};
@@ -56,7 +58,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		// Add validation status section
 		this.createValidationStatusSection(containerEl);
 
-		// Server URL setting with real-time validation
+		// Server URL setting with real-time validation and save prevention
 		this.serverUrlSetting = new Setting(containerEl)
 			.setName('Joplin Server URL')
 			.setDesc('The URL of your Joplin server (e.g., http://localhost:41184)')
@@ -64,9 +66,22 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 				.setPlaceholder('http://localhost:41184')
 				.setValue(this.plugin.settings.serverUrl)
 				.onChange(async (value: any) => {
-					this.plugin.settings.serverUrl = value.trim();
-					await this.plugin.saveSettings();
-					this.debouncedValidateUrl(value.trim());
+					const trimmedValue = value.trim();
+
+					// Validate URL before saving
+					const validationResult = URLValidator.validateJoplinServerUrl(trimmedValue);
+
+					if (validationResult.isValid || trimmedValue === '') {
+						// Save valid URLs or empty string (to allow clearing)
+						this.plugin.settings.serverUrl = trimmedValue;
+						await this.plugin.saveSettings();
+					} else {
+						// Don't save invalid URLs, but still show validation feedback
+						// Keep the current valid value in settings
+					}
+
+					// Always run validation for UI feedback
+					this.debouncedValidateUrl(trimmedValue);
 				}));
 
 		// API Token setting with real-time validation
@@ -234,7 +249,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 	}
 
 	/**
-	 * Validate server URL format and reachability
+	 * Validate server URL format and reachability using enhanced URL validator
 	 */
 	private async validateServerUrl(url: string): Promise<void> {
 		if (this.validationState.serverUrl.isValidating) {
@@ -245,105 +260,107 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		this.updateValidationDisplay();
 
 		try {
-			// Basic URL format validation
-			if (!url) {
+			// Use enhanced URL validator for format validation
+			const validationResult: URLValidationResult = URLValidator.validateJoplinServerUrl(url);
+
+			if (!validationResult.isValid) {
+				// URL format is invalid
 				this.validationState.serverUrl = {
 					isValid: false,
-					message: 'Server URL is required',
+					message: validationResult.message,
+					suggestions: validationResult.suggestions,
 					isValidating: false
 				};
 				this.updateValidationDisplay();
 				return;
 			}
 
-			let normalizedUrl: URL;
-			try {
-				normalizedUrl = new URL(url);
-			} catch {
+			// URL format is valid, now test reachability
+			if (validationResult.suggestions && validationResult.suggestions.length > 0) {
+				// URL is valid but has suggestions - show them
 				this.validationState.serverUrl = {
-					isValid: false,
-					message: 'Invalid URL format. Use format: http://localhost:41184',
+					isValid: true,
+					message: validationResult.message,
+					suggestions: validationResult.suggestions,
 					isValidating: false
 				};
-				this.updateValidationDisplay();
-				return;
-			}
-
-			// Check protocol
-			if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-				this.validationState.serverUrl = {
-					isValid: false,
-					message: 'URL must use HTTP or HTTPS protocol',
-					isValidating: false
-				};
-				this.updateValidationDisplay();
-				return;
-			}
-
-			// Check if it looks like a Joplin server URL
-			if (normalizedUrl.pathname !== '/' && normalizedUrl.pathname !== '') {
-				this.validationState.serverUrl = {
-					isValid: false,
-					message: 'URL should not include a path (e.g., use http://localhost:41184, not http://localhost:41184/api)',
-					isValidating: false
-				};
-				this.updateValidationDisplay();
-				return;
-			}
-
-			// Try to reach the server (basic connectivity test)
-			try {
-				const testUrl = `${url.replace(/\/$/, '')}/ping`;
-				const controller = new AbortController();
-				const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-				const response = await fetch(testUrl, {
-					method: 'GET',
-					signal: controller.signal,
-					headers: { 'Accept': 'text/plain' }
-				});
-
-				clearTimeout(timeoutId);
-
-				if (response.status === 401) {
-					// 401 means server is reachable but needs authentication
-					this.validationState.serverUrl = {
-						isValid: true,
-						message: 'Server is reachable (authentication required)',
-						isValidating: false
-					};
-				} else if (response.status === 200) {
-					// Server responded successfully
-					this.validationState.serverUrl = {
-						isValid: true,
-						message: 'Server is reachable',
-						isValidating: false
-					};
-				} else {
-					this.validationState.serverUrl = {
-						isValid: false,
-						message: `Server responded with status ${response.status}. Check if Joplin Web Clipper is enabled.`,
-						isValidating: false
-					};
-				}
-			} catch (error) {
-				if (error instanceof Error && error.name === 'AbortError') {
-					this.validationState.serverUrl = {
-						isValid: false,
-						message: 'Connection timeout. Check if Joplin is running and the URL is correct.',
-						isValidating: false
-					};
-				} else {
-					this.validationState.serverUrl = {
-						isValid: false,
-						message: 'Cannot reach server. Ensure Joplin is running and Web Clipper is enabled.',
-						isValidating: false
-					};
-				}
+			} else {
+				// URL is perfectly valid, test connectivity
+				await this.testServerConnectivity(url);
 			}
 		} finally {
 			this.validationState.serverUrl.isValidating = false;
 			this.updateValidationDisplay();
+		}
+	}
+
+	/**
+	 * Test server connectivity after URL format validation passes
+	 */
+	private async testServerConnectivity(url: string): Promise<void> {
+		try {
+			const testUrl = `${url.replace(/\/$/, '')}/ping`;
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+			const response = await fetch(testUrl, {
+				method: 'GET',
+				signal: controller.signal,
+				headers: { 'Accept': 'text/plain' }
+			});
+
+			clearTimeout(timeoutId);
+
+			if (response.status === 401) {
+				// 401 means server is reachable but needs authentication
+				this.validationState.serverUrl = {
+					isValid: true,
+					message: 'Server is reachable (authentication required)',
+					isValidating: false
+				};
+			} else if (response.status === 200) {
+				// Server responded successfully
+				this.validationState.serverUrl = {
+					isValid: true,
+					message: 'Server is reachable and responding',
+					isValidating: false
+				};
+			} else {
+				this.validationState.serverUrl = {
+					isValid: false,
+					message: `Server responded with status ${response.status}. Check if Joplin Web Clipper is enabled.`,
+					suggestions: [
+						'Ensure Joplin desktop app is running',
+						'Enable Web Clipper service in Joplin (Tools → Options → Web Clipper)',
+						'Check if the port number is correct (default: 41184)'
+					],
+					isValidating: false
+				};
+			}
+		} catch (error) {
+			if (error instanceof Error && error.name === 'AbortError') {
+				this.validationState.serverUrl = {
+					isValid: false,
+					message: 'Connection timeout. Server is not responding.',
+					suggestions: [
+						'Check if Joplin is running',
+						'Verify the server URL is correct',
+						'Check firewall settings for port 41184'
+					],
+					isValidating: false
+				};
+			} else {
+				this.validationState.serverUrl = {
+					isValid: false,
+					message: 'Cannot reach server. Connection failed.',
+					suggestions: [
+						'Ensure Joplin is running and Web Clipper is enabled',
+						'Check if the URL and port are correct',
+						'Verify network connectivity'
+					],
+					isValidating: false
+				};
+			}
 		}
 	}
 
@@ -413,10 +430,21 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 
 		this.validationStatusEl.empty();
 
-		// Server URL status
+		// Server URL status with suggestions
 		const urlStatus = this.validationStatusEl.createDiv('validation-item');
 		const urlIcon = this.getValidationIcon(this.validationState.serverUrl);
 		urlStatus.innerHTML = `${urlIcon} <strong>Server URL:</strong> ${this.validationState.serverUrl.message || 'Not validated'}`;
+
+		// Add suggestions for server URL if available
+		if (this.validationState.serverUrl.suggestions && this.validationState.serverUrl.suggestions.length > 0) {
+			const suggestionsContainer = this.validationStatusEl.createDiv('validation-suggestions');
+			suggestionsContainer.createEl('div', { text: 'Suggestions:', cls: 'suggestions-header' });
+
+			const suggestionsList = suggestionsContainer.createEl('ul', { cls: 'suggestions-list' });
+			this.validationState.serverUrl.suggestions.forEach(suggestion => {
+				suggestionsList.createEl('li', { text: suggestion });
+			});
+		}
 
 		// API Token status
 		const tokenStatus = this.validationStatusEl.createDiv('validation-item');
@@ -439,8 +467,52 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		overallStatus.innerHTML = `${overallIcon} <strong>${overallMessage}</strong>`;
 		overallStatus.addClass(isFullyValid ? 'validation-success' : 'validation-error');
 
+		// Update input field styling based on validation state
+		this.updateInputFieldStyling();
+
 		// Update connection test button state
 		this.updateConnectionTestButton();
+	}
+
+	/**
+	 * Update input field styling based on validation state
+	 */
+	private updateInputFieldStyling(): void {
+		// Update server URL input styling
+		if (this.serverUrlSetting) {
+			const urlInput = this.serverUrlSetting.controlEl.querySelector('input');
+			if (urlInput) {
+				// Remove existing validation classes
+				urlInput.classList.remove('validation-valid', 'validation-invalid', 'validation-validating');
+
+				if (this.validationState.serverUrl.isValidating) {
+					urlInput.classList.add('validation-validating');
+				} else if (this.validationState.serverUrl.isValid) {
+					urlInput.classList.add('validation-valid');
+				} else if (this.validationState.serverUrl.message) {
+					// Only add invalid class if there's a validation message (user has entered something)
+					urlInput.classList.add('validation-invalid');
+				}
+			}
+		}
+
+		// Update API token input styling
+		if (this.apiTokenSetting) {
+			const tokenInput = this.apiTokenSetting.controlEl.querySelector('input');
+			if (tokenInput) {
+				// Remove existing validation classes
+				tokenInput.classList.remove('validation-valid', 'validation-invalid', 'validation-validating');
+
+				if (this.validationState.apiToken.isValidating) {
+					tokenInput.classList.add('validation-validating');
+				} else if (this.validationState.apiToken.isValid) {
+					tokenInput.classList.add('validation-valid');
+				} else if (this.validationState.apiToken.message) {
+					// Only add invalid class if there's a validation message (user has entered something)
+					tokenInput.classList.add('validation-invalid');
+				}
+			}
+		}
 	}
 
 	/**

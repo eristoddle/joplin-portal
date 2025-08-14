@@ -948,6 +948,39 @@
   color: var(--text-normal);
 }
 
+.validation-suggestions {
+  margin-left: 24px;
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--background-primary);
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.suggestions-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-accent);
+  margin-bottom: 6px;
+}
+
+.suggestions-list {
+  margin: 0;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.suggestions-list li {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.suggestions-list li:last-child {
+  margin-bottom: 0;
+}
+
 .validation-overall {
   margin-top: 12px;
   padding: 12px;
@@ -1028,6 +1061,37 @@
   animation: spin 1s linear infinite;
 }
 
+/* Input field validation styling */
+.setting-item input.validation-valid {
+  border-color: var(--color-green);
+  box-shadow: 0 0 0 1px var(--color-green);
+}
+
+.setting-item input.validation-invalid {
+  border-color: var(--color-red);
+  box-shadow: 0 0 0 1px var(--color-red);
+}
+
+.setting-item input.validation-validating {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.setting-item input.validation-valid:focus {
+  border-color: var(--color-green);
+  box-shadow: 0 0 0 2px var(--color-green);
+}
+
+.setting-item input.validation-invalid:focus {
+  border-color: var(--color-red);
+  box-shadow: 0 0 0 2px var(--color-red);
+}
+
+.setting-item input.validation-validating:focus {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
 /* High contrast mode support for validation */
 @media (prefers-contrast: high) {
   .validation-success {
@@ -1041,6 +1105,18 @@
   .joplin-portal-validation-status,
   .joplin-portal-troubleshooting {
     border-width: 2px;
+  }
+
+  .setting-item input.validation-valid,
+  .setting-item input.validation-invalid,
+  .setting-item input.validation-validating {
+    border-width: 2px;
+  }
+
+  .setting-item input.validation-valid:focus,
+  .setting-item input.validation-invalid:focus,
+  .setting-item input.validation-validating:focus {
+    box-shadow: 0 0 0 3px var(--color-green);
   }
 }
 
