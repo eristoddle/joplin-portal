@@ -85,7 +85,7 @@
   - Ensure no performance impact when debug mode disabled
   - _Requirements: 2.1, 2.2, 2.3, 5.2, 5.3_
 
-- [ ] 13. Create unit tests for URL validation
+- [x] 13. Create unit tests for URL validation
   - Write tests for various URL formats (valid and invalid)
   - Test specific Joplin server URL patterns
   - Verify error messages and suggestions are appropriate
