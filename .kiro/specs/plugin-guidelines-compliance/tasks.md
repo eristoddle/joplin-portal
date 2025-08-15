@@ -92,7 +92,7 @@
   - Test edge cases and malformed URLs
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 14. Test command functionality without default hotkeys
+- [x] 14. Test command functionality without default hotkeys
   - Verify all commands work when invoked through command palette
   - Test that users can assign custom hotkeys through Obsidian settings
   - Confirm no conflicts with Obsidian core shortcuts
