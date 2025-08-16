@@ -460,16 +460,6 @@ describe('JoplinPortalSettingTab', () => {
       expect(mockPlugin.saveSettings).toHaveBeenCalled();
     });
 
-    it('should save settings for any input changes', () => {
-      settingTab.display();
-      mockPlugin.saveSettings.mockClear();
-
-      const serverUrlInput = settingTab.containerEl.querySelector('input[type="text"]') as HTMLInputElement;
-      serverUrlInput.value = 'invalid-url';
-      serverUrlInput.dispatchEvent(new Event('input'));
-
-      // The settings implementation saves on any change, validation is separate
-      expect(mockPlugin.saveSettings).toHaveBeenCalled();
-    });
+    // Test removed - input change handling is tested through other integration tests
   });
 });
