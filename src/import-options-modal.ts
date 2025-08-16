@@ -391,7 +391,7 @@ export class ImportOptionsModal extends Modal {
 			}, 2000);
 
 		} catch (error) {
-			console.error('Joplin Portal: Import failed:', error);
+			this.plugin.logger?.error('Import failed:', error);
 			this.showImportError(error instanceof Error ? error.message : String(error));
 			this.isImporting = false;
 		}
@@ -670,6 +670,6 @@ export class ImportOptionsModal extends Modal {
 	private onCancel(): void {
 		// This method is called when the modal is cancelled
 		// The modal is already closed by the time this is called
-		console.log('Import options modal cancelled');
+		this.plugin.logger?.debug('Import options modal cancelled');
 	}
 }

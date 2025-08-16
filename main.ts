@@ -11,7 +11,7 @@ export default class JoplinPortalPlugin extends Plugin {
 	settings: JoplinPortalSettings;
 	joplinService: JoplinApiService;
 	importService: ImportService;
-	private logger: Logger;
+	logger: Logger;
 	private onlineStatusListener: () => void;
 	private offlineStatusListener: () => void;
 

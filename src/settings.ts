@@ -612,7 +612,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 			}
 
 			new Notice(errorMessage, 8000);
-			console.error('Joplin connection test failed:', error);
+			this.plugin.logger?.error('Joplin connection test failed:', error);
 		} finally {
 			this.updateValidationDisplay();
 		}

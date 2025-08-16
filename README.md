@@ -67,6 +67,7 @@ This plugin is not yet available in the Obsidian Community Plugins marketplace. 
 5. Configure optional settings:
    - **Default Import Folder**: Where imported notes will be saved
    - **Search Limit**: Maximum number of search results to display
+   - **Debug Mode**: Enable detailed logging for troubleshooting (disabled by default)
 
 ## Usage
 
@@ -128,6 +129,14 @@ This plugin is not yet available in the Obsidian Community Plugins marketplace. 
 - Reduce the search limit in settings
 - Use more specific search terms
 - Check your Joplin server performance
+
+### Debug Mode
+
+**When to enable debug mode**
+- Enable debug mode in plugin settings when troubleshooting issues
+- Debug mode provides detailed console logging for developers and advanced users
+- **Warning**: Debug mode may expose sensitive information in console logs
+- Always disable debug mode in normal usage to keep console clean
 
 ## Privacy & Security
 

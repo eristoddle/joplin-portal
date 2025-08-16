@@ -731,7 +731,7 @@ export class JoplinPortalView extends ItemView {
 					e.preventDefault();
 					// In a real Obsidian plugin, you would use:
 					// window.open(href, '_blank');
-					console.log('Would open external link:', href);
+					this.plugin.logger?.debug('Would open external link:', href);
 				});
 			}
 		});
@@ -1536,7 +1536,7 @@ export class JoplinPortalView extends ItemView {
 			// Remove progress indicator on error
 			this.removeProgressIndicator(progressContainer);
 
-			console.error('Import error:', error);
+			this.plugin.logger?.error('Import error:', error);
 			this.showNotice('Import failed. Please check your settings and try again.');
 		}
 	}
@@ -1607,7 +1607,7 @@ export class JoplinPortalView extends ItemView {
 
 			// Log detailed results for user reference
 			if (actionCounts.renamed > 0 || actionCounts.overwritten > 0) {
-				console.log('Import details:', result.successful.map(s => ({
+				this.plugin.logger?.debug('Import details:', result.successful.map(s => ({
 					title: s.note.title,
 					action: s.action,
 					originalFilename: s.originalFilename,
@@ -1619,7 +1619,7 @@ export class JoplinPortalView extends ItemView {
 		} else if (successCount === 0) {
 			// All imports failed
 			this.showNotice(`Failed to import ${failureCount} note${failureCount !== 1 ? 's' : ''}. Check console for details.`);
-			console.error('Import failures:', result.failed);
+			this.plugin.logger?.error('Import failures:', result.failed);
 		} else {
 			// Mixed results
 			let message = `Imported ${successCount} of ${totalCount} notes. ${failureCount} failed.`;
@@ -1628,10 +1628,10 @@ export class JoplinPortalView extends ItemView {
 			}
 			message += ' Check console for details.';
 			this.showNotice(message);
-			console.error('Import failures:', result.failed);
+			this.plugin.logger?.error('Import failures:', result.failed);
 
 			// Also log successful imports with actions
-			console.log('Successful imports:', result.successful.map(s => ({
+			this.plugin.logger?.debug('Successful imports:', result.successful.map(s => ({
 				title: s.note.title,
 				action: s.action,
 				originalFilename: s.originalFilename,
