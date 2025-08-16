@@ -41,7 +41,7 @@ describe('ImportService', () => {
       updateSettings: vi.fn()
     } as any;
 
-    importService = new ImportService(mockApp, mockLogger);
+    importService = new ImportService(mockApp, mockLogger, { includeMetadataInFrontmatter: true } as any);
     vi.clearAllMocks();
   });
 
@@ -133,6 +133,29 @@ describe('ImportService', () => {
       const result = importService.generateFrontmatter(noteWithEmptySource);
 
       expect(result).not.toContain('source:');
+    });
+
+    it('should not generate frontmatter when includeMetadata is false', () => {
+      const result = importService.generateFrontmatter(mockJoplinNote, false);
+
+      expect(result).toBe('');
+    });
+
+    it('should generate frontmatter when includeMetadata is true', () => {
+      const result = importService.generateFrontmatter(mockJoplinNote, true);
+
+      expect(result).toContain('---');
+      expect(result).toContain('joplin-id:');
+      expect(result).toContain('created:');
+      expect(result).toContain('updated:');
+      expect(result).toContain('source:');
+    });
+
+    it('should use default includeMetadata value of true when not specified', () => {
+      const result = importService.generateFrontmatter(mockJoplinNote);
+
+      expect(result).toContain('---');
+      expect(result).toContain('joplin-id:');
     });
   });
 

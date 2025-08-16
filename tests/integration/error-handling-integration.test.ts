@@ -79,7 +79,7 @@ describe('Error Handling Integration Tests', () => {
 
 		// Create services
 		joplinApiService = new JoplinApiService(settings, logger);
-		importService = new ImportService(mockApp, logger, joplinApiService);
+		importService = new ImportService(mockApp, logger, { includeMetadataInFrontmatter: true } as any, joplinApiService);
 
 		// Clear all mocks
 		vi.clearAllMocks();

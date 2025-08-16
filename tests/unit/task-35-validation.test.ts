@@ -48,7 +48,7 @@ describe('Task 35: Test and validate all fixes', () => {
 			vault: mockVault
 		};
 
-		importService = new ImportService(mockApp, mockLogger);
+		importService = new ImportService(mockApp, mockLogger, { includeMetadataInFrontmatter: true } as any);
 		vi.clearAllMocks();
 	});
 

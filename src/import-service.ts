@@ -1,5 +1,5 @@
 import { App, TFile, TFolder, normalizePath, requestUrl } from 'obsidian';
-import { JoplinNote, ImportOptions, ImportProgress, ImageImportResult, ImageDownloadProgress } from './types';
+import { JoplinNote, ImportOptions, ImportProgress, ImageImportResult, ImageDownloadProgress, JoplinPortalSettings } from './types';
 import { JoplinApiService } from './joplin-api-service';
 import { ErrorHandler } from './error-handler';
 import { Logger } from './logger';
@@ -9,21 +9,31 @@ export class ImportService {
 	private joplinApiService: JoplinApiService | null = null;
 	private onImportComplete?: () => void;
 	private logger: Logger;
+	private settings: JoplinPortalSettings;
 
 	constructor(
 		app: App,
 		logger: Logger,
+		settings: JoplinPortalSettings,
 		joplinApiServiceOrCallback?: JoplinApiService | (() => void),
 		onImportComplete?: () => void
 	) {
 		this.app = app;
 		this.logger = logger;
+		this.settings = settings;
 		if (joplinApiServiceOrCallback instanceof JoplinApiService) {
 			this.joplinApiService = joplinApiServiceOrCallback;
 			this.onImportComplete = onImportComplete;
 		} else {
 			this.onImportComplete = joplinApiServiceOrCallback;
 		}
+	}
+
+	/**
+	 * Update settings when they change
+	 */
+	updateSettings(settings: JoplinPortalSettings): void {
+		this.settings = settings;
 	}
 
 	/**
@@ -295,7 +305,11 @@ export class ImportService {
 	/**
 	 * Generate frontmatter for imported note
 	 */
-	generateFrontmatter(joplinNote: JoplinNote): string {
+	generateFrontmatter(joplinNote: JoplinNote, includeMetadata: boolean = true): string {
+		if (!includeMetadata) {
+			return '';
+		}
+
 		let frontmatter = '---\n';
 		frontmatter += `joplin-id: ${joplinNote.id}\n`;
 		frontmatter += `created: ${new Date(joplinNote.created_time).toISOString()}\n`;
@@ -814,7 +828,7 @@ export class ImportService {
 			const convertedMarkdown = this.convertJoplinToObsidianMarkdown(noteWithProcessedImages);
 
 			// Generate frontmatter
-			const frontmatter = this.generateFrontmatter(joplinNote);
+			const frontmatter = this.generateFrontmatter(joplinNote, this.settings.includeMetadataInFrontmatter);
 
 			// Combine frontmatter and content
 			const finalContent = frontmatter + convertedMarkdown;

@@ -148,6 +148,17 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		// Include metadata in frontmatter setting
+		new Setting(containerEl)
+			.setName('Include Metadata in Frontmatter')
+			.setDesc('Add Joplin metadata (ID, creation date, update date, source URL) to imported notes as YAML frontmatter')
+			.addToggle((toggle: any) => toggle
+				.setValue(this.plugin.settings.includeMetadataInFrontmatter)
+				.onChange(async (value: any) => {
+					this.plugin.settings.includeMetadataInFrontmatter = value;
+					await this.plugin.saveSettings();
+				}));
+
 		// Debug mode setting with warning
 		containerEl.createEl('h3', { text: 'Advanced Settings' });
 

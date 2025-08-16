@@ -9,6 +9,7 @@ export interface JoplinPortalSettings {
 	importTemplate: string;
 	searchLimit: number;
 	debugMode: boolean;
+	includeMetadataInFrontmatter: boolean;
 }
 
 export interface JoplinNote {
@@ -153,5 +154,6 @@ export const DEFAULT_SETTINGS: JoplinPortalSettings = {
 	defaultImportFolder: 'Imported from Joplin',
 	importTemplate: '',
 	searchLimit: 50,
-	debugMode: false
+	debugMode: false,
+	includeMetadataInFrontmatter: true
 };

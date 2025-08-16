@@ -29,7 +29,7 @@ export default class JoplinPortalPlugin extends Plugin {
 
 		// Initialize services
 		this.joplinService = new JoplinApiService(this.settings, this.logger);
-		this.importService = new ImportService(this.app, this.logger, this.joplinService, () => {
+		this.importService = new ImportService(this.app, this.logger, this.settings, this.joplinService, () => {
 			// Callback for when import is complete - can be used for cache invalidation
 			// Note: This callback is currently not used but kept for future functionality
 		});
@@ -171,6 +171,10 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Update API service with new settings
 		if (this.joplinService) {
 			this.joplinService.updateSettings(this.settings);
+		}
+		// Update import service with new settings
+		if (this.importService) {
+			this.importService.updateSettings(this.settings);
 		}
 		// Update logger with new settings
 		if (this.logger) {

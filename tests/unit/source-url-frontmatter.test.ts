@@ -34,7 +34,7 @@ describe('Source URL Frontmatter Implementation', () => {
       updateSettings: vi.fn()
     } as any;
 
-    importService = new ImportService(mockApp, mockLogger);
+    importService = new ImportService(mockApp, mockLogger, { includeMetadataInFrontmatter: true } as any);
     vi.clearAllMocks();
   });
 
