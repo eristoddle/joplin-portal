@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2025-08-16
+
+### ✨ New Features
+
+- Add debug mode toggle to settings UI ([d72cf95])
+- Add debug mode setting to plugin configuration ([e53a8b1])
+- Add Plugin Cleanup Tasks ([8405e22])
+
+### 🐛 Bug Fixes
+
+- Fix Tests ([e17ab33])
+- Fix Tests Again? ([13146fe])
+- Fix Lint ([154f465])
+- Integration testing of enhanced error handling ([2d2f0f7])
+- Enhance error messages in import service ([208c010])
+- Enhance error message specificity in API service ([64c0e8f])
+
+### 📝 Other Changes
+
+- Optional Frontmatter ([3ba4bf9])
+- Final compliance validation and cleanup ([6827b6a])
+- Create unit tests for URL validation ([9423c8b])
+- Create unit tests for logging utility ([83d0c2f])
+-  Integrate enhanced URL validation in settings ([7943b72])
+- Implement enhanced URL validation ([ac17122])
+- Replace console logging in remaining service files ([95c120f])
+- Replace console logging in API service ([467a334])
+- Replace console logging in main plugin file ([5cd609a])
+- Create centralized logging utility ([3324991])
+- Remove default hotkeys from command definitions ([4945fac])
+- Remove Release Notes ([68d3768])
+
+### 👥 Contributors
+
+- eristoddle
+
 ## [1.0.6] - 2025-08-13
 
 ### ✨ New Features
