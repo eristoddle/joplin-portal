@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import JoplinPortalPlugin from '../../main.js';
+import JoplinPortalPlugin from '../../main';
 import { JoplinPortalView } from '../../src/joplin-portal-view';
 
 // Mock the dependencies

@@ -232,7 +232,8 @@ describe('JoplinPortalSettingTab', () => {
         apiToken: 'test-token',
         defaultImportFolder: 'Joplin Notes',
         importTemplate: '',
-        searchLimit: 50
+        searchLimit: 50,
+        debugMode: false
       },
       saveSettings: vi.fn(),
       joplinService: {

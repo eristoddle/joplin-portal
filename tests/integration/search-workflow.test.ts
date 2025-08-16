@@ -26,7 +26,10 @@ describe.skip('Search Workflow Integration', () => {
       settings: {
         serverUrl: 'http://localhost:41184',
         apiToken: 'test-token',
-        searchLimit: 50
+        defaultImportFolder: 'Imported from Joplin',
+        importTemplate: '',
+        searchLimit: 50,
+        debugMode: false
       },
       joplinService: mockJoplinService
     };

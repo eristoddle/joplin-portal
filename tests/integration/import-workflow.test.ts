@@ -32,7 +32,9 @@ describe.skip('Import Workflow Integration', () => {
         serverUrl: 'http://localhost:41184',
         apiToken: 'test-token',
         defaultImportFolder: 'Joplin Notes',
-        searchLimit: 50
+        importTemplate: '',
+        searchLimit: 50,
+        debugMode: false
       },
       joplinService: mockJoplinService,
       importService: mockImportService

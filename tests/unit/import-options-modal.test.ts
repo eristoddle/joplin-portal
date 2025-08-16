@@ -173,9 +173,12 @@ describe('ImportOptionsModal', () => {
 		mockPlugin = {
 			app: mockApp,
 			settings: {
+				serverUrl: 'http://localhost:41184',
+				apiToken: 'test-token',
 				defaultImportFolder: 'Test Folder',
 				importTemplate: '',
-				searchLimit: 50
+				searchLimit: 50,
+				debugMode: false
 			},
 			importService: {
 				importNotes: vi.fn().mockResolvedValue({
