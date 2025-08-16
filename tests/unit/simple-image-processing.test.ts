@@ -89,7 +89,8 @@ describe('Simple Image Processing', () => {
 				apiToken: '',
 				defaultImportFolder: 'Imported from Joplin',
 				importTemplate: '',
-				searchLimit: 50
+				searchLimit: 50,
+				debugMode: false
 			};
 			const service = new JoplinApiService(mockSettings, mockLogger);
 			const result = service.getResourceUrl('abc123def45678901234567890123456');

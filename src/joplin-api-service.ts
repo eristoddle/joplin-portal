@@ -10,7 +10,8 @@ import {
 	RateLimitConfig,
 	RequestQueueItem,
 	SearchValidationResult,
-	TagSearchOptions
+	TagSearchOptions,
+	UserFriendlyError
 } from './types';
 import { SearchCache } from './search-cache';
 import { ErrorHandler } from './error-handler';
