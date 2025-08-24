@@ -1447,3 +1447,99 @@
     transform: none;
   }
 }
+/* J
+oplin Portal Icon Fixes */
+/* Fix for yellow flash and icon disappearing issues */
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon {
+  /* Prevent flash during icon loading */
+  background-color: transparent !important;
+  transition: none !important;
+
+  /* Ensure icon is properly sized and positioned */
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Prevent any background color changes */
+  background: none !important;
+}
+
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon.iconic-icon {
+  /* Ensure the icon SVG is properly displayed */
+  opacity: 1;
+  visibility: visible;
+}
+
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+  /* Ensure SVG icon is properly sized and colored */
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  /* Prevent any color flashing */
+  transition: none !important;
+}
+
+/* Ensure icon persists during tab state changes */
+.workspace-tab-header[data-type="joplin-portal-view"].is-active .workspace-tab-header-inner-icon,
+.workspace-tab-header[data-type="joplin-portal-view"].mod-active .workspace-tab-header-inner-icon {
+  background: none !important;
+  background-color: transparent !important;
+}
+
+/* Fix for ribbon icon to ensure consistency */
+.side-dock-ribbon-action[aria-label="Open Joplin Portal"] {
+  /* Ensure ribbon icon is stable */
+  background: none !important;
+}
+
+.side-dock-ribbon-action[aria-label="Open Joplin Portal"] svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Prevent any loading states from affecting the icon */
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon::before,
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon::after {
+  display: none !important;
+}
+
+/* High contrast mode support for icon */
+@media (prefers-contrast: high) {
+  .workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+    stroke-width: 2.5;
+  }
+}
+
+/* Dark mode icon adjustments */
+.theme-dark .workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+  stroke: var(--icon-color, currentColor);
+}
+
+/* Light mode icon adjustments */
+.theme-light .workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+  stroke: var(--icon-color, currentColor);
+}
+/* J
+oplin Portal Icon Fixes - Prevent yellow flash */
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon {
+  background-color: transparent !important;
+}
+
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+}

@@ -149,16 +149,18 @@ export default class JoplinPortalPlugin extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			this.registerJoplinIcon();
 
-			// Also try to force refresh any existing tabs after a short delay
-			setTimeout(() => {
-				this.refreshIconInExistingTabs();
-			}, 100);
+			// Set up a periodic check to ensure icon stays registered
+			this.setupIconPersistenceCheck();
 		});
 
-		// Also register on file-open events in case tabs are restored later
+		// Register on workspace change events (less frequent than file-open)
 		this.registerEvent(
-			this.app.workspace.on('file-open', () => {
-				this.registerJoplinIcon();
+			this.app.workspace.on('layout-change', () => {
+				// Only re-register if we have Joplin Portal tabs open
+				const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL);
+				if (leaves.length > 0) {
+					this.registerJoplinIcon();
+				}
 			})
 		);
 
@@ -174,13 +176,15 @@ export default class JoplinPortalPlugin extends Plugin {
 			this.joplinService.clearQueue();
 		}
 
+		// Clear icon persistence check interval
+		if ((this as any).iconPersistenceInterval) {
+			clearInterval((this as any).iconPersistenceInterval);
+		}
+
 		this.logger.debug('Joplin Portal plugin unloaded');
 	}
 
 	async activateView() {
-		// Ensure icon is registered before activating view
-		this.registerJoplinIcon();
-
 		// Check if plugin is properly configured before activating view
 		if (!this.isPluginConfigured()) {
 			new Notice('⚠️ Joplin Portal is not configured. Please check your settings first.', 5000);
@@ -392,45 +396,23 @@ export default class JoplinPortalPlugin extends Plugin {
 			addIcon('joplin-icon', iconSvg);
 			this.logger?.debug('Registered joplin-icon successfully');
 
-			// Verify registration worked
-			const iconRegistry = (this.app as any).iconRegistry;
-			if (iconRegistry && iconRegistry['joplin-icon']) {
-				this.logger?.debug('Icon verified in registry');
-			} else {
-				this.logger?.warn('Icon registration may have failed - not found in registry');
-			}
+			// Note: Registry check removed as it's unreliable due to timing issues
+			// The addIcon function handles registration internally
 		} catch (error) {
 			this.logger?.error('Failed to register joplin-icon:', error);
 		}
 
-		// Force refresh of existing tabs using this icon
-		this.refreshIconInExistingTabs();
+		// Let Obsidian handle icon display naturally - no forced refresh needed
 	}
 
 	/**
 	 * Refresh icon display in existing tabs
 	 */
 	private refreshIconInExistingTabs(): void {
+		// Simplified approach - just log existing tabs, let Obsidian handle icon display
 		this.app.workspace.iterateAllLeaves((leaf) => {
 			if (leaf.view.getViewType() === VIEW_TYPE_JOPLIN_PORTAL) {
-				// Force a refresh of the tab header icon
-				const iconEl = leaf.tabHeaderEl?.querySelector('.workspace-tab-header-inner-icon');
-				if (iconEl) {
-					this.logger?.debug('Found existing tab icon element, refreshing...');
-
-					// Try multiple approaches to refresh the icon
-					iconEl.removeClass('iconic-icon');
-					iconEl.empty(); // Clear any existing content
-
-					// Force re-render by updating the leaf
-					setTimeout(() => {
-						iconEl.addClass('iconic-icon');
-						// Trigger a view update
-						leaf.view.onResize?.();
-					}, 50);
-				} else {
-					this.logger?.debug('No icon element found in existing tab');
-				}
+				this.logger?.debug('Found existing Joplin Portal tab - icon should display automatically');
 			}
 		});
 	}
@@ -507,6 +489,23 @@ export default class JoplinPortalPlugin extends Plugin {
 		} else {
 			new Notice('Joplin Portal view is not open');
 		}
+	}
+
+	/**
+	 * Set up periodic check to ensure icon persistence
+	 */
+	private setupIconPersistenceCheck(): void {
+		// Check every 30 seconds if we have active tabs and re-register icon if needed
+		const checkInterval = setInterval(() => {
+			const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL);
+			if (leaves.length > 0) {
+				// Only re-register if we have active tabs
+				this.registerJoplinIcon();
+			}
+		}, 30000); // 30 seconds
+
+		// Store the interval so we can clear it on unload
+		(this as any).iconPersistenceInterval = checkInterval;
 	}
 
 	/**
