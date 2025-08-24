@@ -1,4 +1,4 @@
-import { Plugin, Notice, WorkspaceLeaf } from 'obsidian';
+import { Plugin, Notice, WorkspaceLeaf, addIcon } from 'obsidian';
 import { JoplinPortalSettings, DEFAULT_SETTINGS } from './src/types';
 import { JoplinPortalSettingTab } from './src/settings';
 import { JoplinPortalView, VIEW_TYPE_JOPLIN_PORTAL } from './src/joplin-portal-view';
@@ -375,7 +375,8 @@ export default class JoplinPortalPlugin extends Plugin {
 		</svg>`;
 
 		try {
-			(this.app as any).addIcon('joplin-icon', iconSvg);
+			// Use the correct Obsidian API - addIcon is a standalone function
+			addIcon('joplin-icon', iconSvg);
 			console.log('Joplin Portal: Early icon registration completed');
 		} catch (error) {
 			console.error('Joplin Portal: Early icon registration failed:', error);
@@ -393,16 +394,12 @@ export default class JoplinPortalPlugin extends Plugin {
 
 		// Always register/re-register the icon - this is more reliable than checking registry
 		try {
-			(this.app as any).addIcon('joplin-icon', iconSvg);
+			// Use the correct Obsidian API - addIcon is a standalone function
+			addIcon('joplin-icon', iconSvg);
 			this.logger?.debug('Registered joplin-icon successfully');
-
-			// Note: Registry check removed as it's unreliable due to timing issues
-			// The addIcon function handles registration internally
 		} catch (error) {
 			this.logger?.error('Failed to register joplin-icon:', error);
 		}
-
-		// Let Obsidian handle icon display naturally - no forced refresh needed
 	}
 
 
