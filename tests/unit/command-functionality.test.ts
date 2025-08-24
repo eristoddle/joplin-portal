@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import JoplinPortalPlugin from '../../main';
+import JoplinPortalPlugin from '../../main.ts';
 import { Plugin } from '../mocks/obsidian-mock';
 
 // Mock the dependencies
@@ -67,7 +67,7 @@ describe('Command Functionality Without Default Hotkeys', () => {
   describe('Command Registration Without Default Hotkeys', () => {
     it('should register all commands without hotkeys property', () => {
       // Verify addCommand was called for each expected command
-      expect(plugin.addCommand).toHaveBeenCalledTimes(8);
+      expect(plugin.addCommand).toHaveBeenCalledTimes(10);
 
       // Get all command registration calls
       const commandCalls = (plugin.addCommand as any).mock.calls;

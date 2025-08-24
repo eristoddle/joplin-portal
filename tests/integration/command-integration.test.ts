@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import JoplinPortalPlugin from '../../main';
+import JoplinPortalPlugin from '../../main.ts';
 import { JoplinPortalView } from '../../src/joplin-portal-view';
 
 // Mock the dependencies
@@ -235,7 +235,7 @@ describe('Command Integration Tests', () => {
       await freshPlugin.onload();
 
       // Verify commands were registered
-      expect(freshPlugin.addCommand).toHaveBeenCalledTimes(8);
+      expect(freshPlugin.addCommand).toHaveBeenCalledTimes(10);
 
       // Clean up
       await freshPlugin.onunload();

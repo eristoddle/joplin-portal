@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import JoplinPortalPlugin from '../../main';
+import JoplinPortalPlugin from '../../main.ts';
 
 // Mock the dependencies
 vi.mock('obsidian', () => import('../mocks/obsidian-mock'));

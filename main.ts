@@ -146,23 +146,31 @@ export default class JoplinPortalPlugin extends Plugin {
 		this.addSettingTab(new JoplinPortalSettingTab(this.app, this));
 
 		// Register icon again when workspace is ready (ensures it's available after full load)
-		this.app.workspace.onLayoutReady(() => {
-			this.registerJoplinIcon();
+		if (this.app.workspace && typeof this.app.workspace.onLayoutReady === 'function') {
+			this.app.workspace.onLayoutReady(() => {
+				this.registerJoplinIcon();
 
-			// Set up a periodic check to ensure icon stays registered
+				// Set up a periodic check to ensure icon stays registered
+				this.setupIconPersistenceCheck();
+			});
+		} else {
+			// Fallback for test environments or older Obsidian versions
+			this.registerJoplinIcon();
 			this.setupIconPersistenceCheck();
-		});
+		}
 
 		// Register on workspace change events (less frequent than file-open)
-		(this as any).registerEvent(
-			this.app.workspace.on('layout-change', () => {
-				// Only re-register if we have Joplin Portal tabs open
-				const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL);
-				if (leaves.length > 0) {
-					this.registerJoplinIcon();
-				}
-			})
-		);
+		if (this.app.workspace && typeof this.app.workspace.on === 'function') {
+			(this as any).registerEvent(
+				this.app.workspace.on('layout-change', () => {
+					// Only re-register if we have Joplin Portal tabs open
+					const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL);
+					if (leaves.length > 0) {
+						this.registerJoplinIcon();
+					}
+				})
+			);
+		}
 
 		this.logger.debug('Joplin Portal plugin loaded');
 	}
