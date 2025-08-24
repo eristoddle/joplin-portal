@@ -29,7 +29,8 @@ describe('Task 35: Test and validate all fixes', () => {
 			defaultImportFolder: 'Imported from Joplin',
 			importTemplate: '',
 			searchLimit: 50,
-			debugMode: false
+			debugMode: false,
+			includeMetadataInFrontmatter: true
 		};
 		joplinApiService = new JoplinApiService(mockSettings, mockLogger);
 
@@ -283,7 +284,8 @@ describe('Task 35: Test and validate all fixes', () => {
 				defaultImportFolder: '',
 				importTemplate: '',
 				searchLimit: 50,
-				debugMode: false
+				debugMode: false,
+				includeMetadataInFrontmatter: true
 			};
 			const service = new JoplinApiService(mockSettings, mockLogger);
 			const result = service.getResourceUrl('abc123def45678901234567890123456');
@@ -309,7 +311,8 @@ describe('Task 35: Test and validate all fixes', () => {
 				defaultImportFolder: '',
 				importTemplate: '',
 				searchLimit: 50,
-				debugMode: false
+				debugMode: false,
+				includeMetadataInFrontmatter: true
 			};
 			const service = new JoplinApiService(mockSettings, mockLogger);
 

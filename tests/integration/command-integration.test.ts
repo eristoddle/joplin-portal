@@ -63,6 +63,7 @@ describe('Command Integration Tests', () => {
       serverUrl: 'http://localhost:41184',
       apiToken: 'test-token',
       debugMode: false,
+      includeMetadataInFrontmatter: true,
     });
 
     // Load the plugin

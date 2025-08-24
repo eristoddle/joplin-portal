@@ -59,7 +59,8 @@ describe('Error Handling Integration Tests', () => {
 			defaultImportFolder: 'Joplin Notes',
 			searchLimit: 50,
 			importTemplate: '',
-			debugMode: false // Start with production mode
+			debugMode: false, // Start with production mode
+			includeMetadataInFrontmatter: true
 		};
 
 		// Create logger

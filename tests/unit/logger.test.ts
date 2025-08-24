@@ -17,7 +17,8 @@ describe('Logger', () => {
       defaultImportFolder: 'Test Folder',
       importTemplate: '',
       searchLimit: 50,
-      debugMode: false // Start with debug mode disabled
+      debugMode: false, // Start with debug mode disabled
+      includeMetadataInFrontmatter: true
     };
 
     logger = new Logger(mockSettings);

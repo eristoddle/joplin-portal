@@ -178,7 +178,8 @@ describe('ImportOptionsModal', () => {
 				defaultImportFolder: 'Test Folder',
 				importTemplate: '',
 				searchLimit: 50,
-				debugMode: false
+				debugMode: false,
+				includeMetadataInFrontmatter: true
 			},
 			importService: {
 				importNotes: vi.fn().mockResolvedValue({

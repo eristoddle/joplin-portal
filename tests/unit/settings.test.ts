@@ -233,7 +233,8 @@ describe('JoplinPortalSettingTab', () => {
         defaultImportFolder: 'Joplin Notes',
         importTemplate: '',
         searchLimit: 50,
-        debugMode: false
+        debugMode: false,
+        includeMetadataInFrontmatter: true
       },
       saveSettings: vi.fn(),
       joplinService: {

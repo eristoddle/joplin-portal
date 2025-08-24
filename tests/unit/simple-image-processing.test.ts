@@ -22,7 +22,8 @@ describe('Simple Image Processing', () => {
 			defaultImportFolder: 'Imported from Joplin',
 			importTemplate: '',
 			searchLimit: 50,
-			debugMode: false
+			debugMode: false,
+			includeMetadataInFrontmatter: true
 		};
 		joplinApiService = new JoplinApiService(mockSettings, mockLogger);
 	});
@@ -90,7 +91,8 @@ describe('Simple Image Processing', () => {
 				defaultImportFolder: 'Imported from Joplin',
 				importTemplate: '',
 				searchLimit: 50,
-				debugMode: false
+				debugMode: false,
+				includeMetadataInFrontmatter: true
 			};
 			const service = new JoplinApiService(mockSettings, mockLogger);
 			const result = service.getResourceUrl('abc123def45678901234567890123456');

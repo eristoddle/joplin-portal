@@ -28,7 +28,8 @@ describe('API Source URL Test', () => {
       defaultImportFolder: 'Imported from Joplin',
       importTemplate: '',
       searchLimit: 50,
-      debugMode: false
+      debugMode: false,
+      includeMetadataInFrontmatter: true
     };
 
     joplinApiService = new JoplinApiService(mockSettings, mockLogger);

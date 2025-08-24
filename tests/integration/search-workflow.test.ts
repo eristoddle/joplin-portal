@@ -29,7 +29,8 @@ describe.skip('Search Workflow Integration', () => {
         defaultImportFolder: 'Imported from Joplin',
         importTemplate: '',
         searchLimit: 50,
-        debugMode: false
+        debugMode: false,
+        includeMetadataInFrontmatter: true
       },
       joplinService: mockJoplinService
     };

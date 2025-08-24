@@ -34,7 +34,8 @@ describe.skip('Import Workflow Integration', () => {
         defaultImportFolder: 'Joplin Notes',
         importTemplate: '',
         searchLimit: 50,
-        debugMode: false
+        debugMode: false,
+        includeMetadataInFrontmatter: true
       },
       joplinService: mockJoplinService,
       importService: mockImportService

@@ -40,7 +40,8 @@ describe('JoplinApiService', () => {
       defaultImportFolder: 'Imported from Joplin',
       importTemplate: '',
       searchLimit: 50,
-      debugMode: false
+      debugMode: false,
+      includeMetadataInFrontmatter: true
     }, mockLogger);
   });
 
@@ -64,7 +65,8 @@ describe('JoplinApiService', () => {
         defaultImportFolder: 'Imported from Joplin',
         importTemplate: '',
         searchLimit: 50,
-        debugMode: false
+        debugMode: false,
+        includeMetadataInFrontmatter: true
       }, mockLogger);
       expect(serviceWithTrailingSlash['baseUrl']).toBe('http://localhost:41184');
     });

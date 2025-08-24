@@ -1,4 +1,4 @@
-import { Plugin, Notice, addIcon } from 'obsidian';
+import { Plugin, Notice, WorkspaceLeaf } from 'obsidian';
 import { JoplinPortalSettings, DEFAULT_SETTINGS } from './src/types';
 import { JoplinPortalSettingTab } from './src/settings';
 import { JoplinPortalView, VIEW_TYPE_JOPLIN_PORTAL } from './src/joplin-portal-view';
@@ -40,7 +40,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Register the Joplin Portal view
 		this.registerView(
 			VIEW_TYPE_JOPLIN_PORTAL,
-			(leaf: any) => new JoplinPortalView(leaf, this)
+			(leaf: WorkspaceLeaf) => new JoplinPortalView(leaf, this)
 		);
 
 		// Ensure icon is registered before adding ribbon icon
@@ -154,7 +154,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		});
 
 		// Register on workspace change events (less frequent than file-open)
-		this.registerEvent(
+		(this as any).registerEvent(
 			this.app.workspace.on('layout-change', () => {
 				// Only re-register if we have Joplin Portal tabs open
 				const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL);
@@ -375,7 +375,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		</svg>`;
 
 		try {
-			addIcon('joplin-icon', iconSvg);
+			(this.app as any).addIcon('joplin-icon', iconSvg);
 			console.log('Joplin Portal: Early icon registration completed');
 		} catch (error) {
 			console.error('Joplin Portal: Early icon registration failed:', error);
@@ -393,7 +393,7 @@ export default class JoplinPortalPlugin extends Plugin {
 
 		// Always register/re-register the icon - this is more reliable than checking registry
 		try {
-			addIcon('joplin-icon', iconSvg);
+			(this.app as any).addIcon('joplin-icon', iconSvg);
 			this.logger?.debug('Registered joplin-icon successfully');
 
 			// Note: Registry check removed as it's unreliable due to timing issues
@@ -405,17 +405,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Let Obsidian handle icon display naturally - no forced refresh needed
 	}
 
-	/**
-	 * Refresh icon display in existing tabs
-	 */
-	private refreshIconInExistingTabs(): void {
-		// Simplified approach - just log existing tabs, let Obsidian handle icon display
-		this.app.workspace.iterateAllLeaves((leaf) => {
-			if (leaf.view.getViewType() === VIEW_TYPE_JOPLIN_PORTAL) {
-				this.logger?.debug('Found existing Joplin Portal tab - icon should display automatically');
-			}
-		});
-	}
+
 
 	/**
 	 * Check if plugin is properly configured
@@ -527,7 +517,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL);
 		debugInfo += `- Active tabs: ${leaves.length}\n`;
 
-		leaves.forEach((leaf, index) => {
+		leaves.forEach((leaf: WorkspaceLeaf, index: number) => {
 			const iconEl = leaf.tabHeaderEl?.querySelector('.workspace-tab-header-inner-icon');
 			debugInfo += `- Tab ${index + 1} icon element: ${iconEl ? 'EXISTS' : 'MISSING'}\n`;
 			if (iconEl) {
