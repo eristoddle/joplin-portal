@@ -3,5 +3,7 @@
   "apiToken": "0bec5ebc92b59d6493cb7b77cfab0920500dcf68b04bc5a4950cb7d6abc4ba0b61c1acbd0f3f19e65f6087cd839210c6fc75cd0176765c23d5fa30e753086220",
   "defaultImportFolder": "Imported from Joplin",
   "importTemplate": "",
-  "searchLimit": 50
+  "searchLimit": 50,
+  "debugMode": true,
+  "includeMetadataInFrontmatter": true
 }

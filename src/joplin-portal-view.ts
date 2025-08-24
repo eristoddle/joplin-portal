@@ -52,6 +52,9 @@ export class JoplinPortalView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		// Ensure the icon is registered before the view opens
+		this.plugin.registerJoplinIcon();
+
 		const container = this.containerEl.children[1];
 		container.empty();
 		container.addClass('joplin-portal-view');
