@@ -11,6 +11,10 @@ export default defineConfig({
     alias: {
       '@': './src',
       'obsidian': resolve(__dirname, './tests/mocks/obsidian-mock.ts'),
+      // Ensure tests import the TypeScript source, not compiled JS
+      './main': resolve(__dirname, './main.ts'),
+      '../main': resolve(__dirname, './main.ts'),
+      '../../main': resolve(__dirname, './main.ts'),
     },
   },
 });

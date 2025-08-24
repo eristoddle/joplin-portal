@@ -543,7 +543,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		debugInfo += `- Active tabs: ${leaves.length}\n`;
 
 		leaves.forEach((leaf: WorkspaceLeaf, index: number) => {
-			const iconEl = leaf.tabHeaderEl?.querySelector('.workspace-tab-header-inner-icon');
+			const iconEl = (leaf as any).tabHeaderEl?.querySelector('.workspace-tab-header-inner-icon');
 			debugInfo += `- Tab ${index + 1} icon element: ${iconEl ? 'EXISTS' : 'MISSING'}\n`;
 			if (iconEl) {
 				debugInfo += `  - Classes: ${iconEl.className}\n`;
