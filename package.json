@@ -1,6 +1,6 @@
 {
   "name": "joplin-portal",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Access and import notes from Joplin server within Obsidian",
   "main": "main.js",
   "scripts": {
