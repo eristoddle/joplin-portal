@@ -1,4 +1,4 @@
-import { Plugin, Notice, WorkspaceLeaf, addIcon } from 'obsidian';
+import { Plugin, Notice, WorkspaceLeaf } from 'obsidian';
 import { JoplinPortalSettings, DEFAULT_SETTINGS } from './src/types';
 import { JoplinPortalSettingTab } from './src/settings';
 import { JoplinPortalView, VIEW_TYPE_JOPLIN_PORTAL } from './src/joplin-portal-view';
@@ -375,8 +375,18 @@ export default class JoplinPortalPlugin extends Plugin {
 		</svg>`;
 
 		try {
-			// Use the correct Obsidian API - addIcon is a standalone function
-			addIcon('joplin-icon', iconSvg);
+			// Try multiple methods to register the icon for compatibility
+			if (typeof (window as any).addIcon === 'function') {
+				(window as any).addIcon('joplin-icon', iconSvg);
+			} else if (this.app && typeof (this.app as any).addIcon === 'function') {
+				(this.app as any).addIcon('joplin-icon', iconSvg);
+			} else {
+				// Fallback: try to access the icon registry directly
+				const iconRegistry = (this.app as any).iconRegistry;
+				if (iconRegistry) {
+					iconRegistry['joplin-icon'] = iconSvg;
+				}
+			}
 			console.log('Joplin Portal: Early icon registration completed');
 		} catch (error) {
 			console.error('Joplin Portal: Early icon registration failed:', error);
@@ -394,8 +404,18 @@ export default class JoplinPortalPlugin extends Plugin {
 
 		// Always register/re-register the icon - this is more reliable than checking registry
 		try {
-			// Use the correct Obsidian API - addIcon is a standalone function
-			addIcon('joplin-icon', iconSvg);
+			// Try multiple methods to register the icon for compatibility
+			if (typeof (window as any).addIcon === 'function') {
+				(window as any).addIcon('joplin-icon', iconSvg);
+			} else if (this.app && typeof (this.app as any).addIcon === 'function') {
+				(this.app as any).addIcon('joplin-icon', iconSvg);
+			} else {
+				// Fallback: try to access the icon registry directly
+				const iconRegistry = (this.app as any).iconRegistry;
+				if (iconRegistry) {
+					iconRegistry['joplin-icon'] = iconSvg;
+				}
+			}
 			this.logger?.debug('Registered joplin-icon successfully');
 		} catch (error) {
 			this.logger?.error('Failed to register joplin-icon:', error);
