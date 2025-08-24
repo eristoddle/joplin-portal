@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.10] - 2025-08-24
+
+### 🐛 Bug Fixes
+
+- Fix Tests ([0a4a478])
+- Fix Actions ([cc74271])
+- Fix Icon Again ([65b08dc])
+
+### 📝 Other Changes
+
+- Who Knows If Fixes Actions ([6209cb5])
+
+### 👥 Contributors
+
+- eristoddle
+
 ## [1.0.9] - 2025-08-24
 
 ### 🐛 Bug Fixes
