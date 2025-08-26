@@ -235,7 +235,7 @@ describe('Command Integration Tests', () => {
       await freshPlugin.onload();
 
       // Verify commands were registered
-      expect(freshPlugin.addCommand).toHaveBeenCalledTimes(10);
+      expect(freshPlugin.addCommand).toHaveBeenCalledTimes(8);
 
       // Clean up
       await freshPlugin.onunload();

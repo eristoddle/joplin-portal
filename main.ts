@@ -1,4 +1,4 @@
-import { Plugin, Notice, WorkspaceLeaf } from 'obsidian';
+import { addIcon, Plugin, Notice, WorkspaceLeaf } from 'obsidian';
 import { JoplinPortalSettings, DEFAULT_SETTINGS } from './src/types';
 import { JoplinPortalSettingTab } from './src/settings';
 import { JoplinPortalView, VIEW_TYPE_JOPLIN_PORTAL } from './src/joplin-portal-view';
@@ -23,15 +23,12 @@ export default class JoplinPortalPlugin extends Plugin {
 	private offlineStatusListener: () => void;
 
 	async onload() {
-		// Register icon FIRST, before anything else
-		this.registerJoplinIconEarly();
-
 		await this.loadSettings();
 
 		// Initialize logger with current settings
 		this.logger = new Logger(this.settings);
 
-		// Register the actual Joplin icon again after logger is ready
+		// Register the Joplin icon
 		this.registerJoplinIcon();
 
 		// Initialize services
@@ -50,11 +47,8 @@ export default class JoplinPortalPlugin extends Plugin {
 			(leaf: WorkspaceLeaf) => new JoplinPortalView(leaf, this)
 		);
 
-		// Ensure icon is registered before adding ribbon icon
-		this.registerJoplinIcon();
-
 		// Add ribbon icon to open the view
-		this.addRibbonIcon('joplin-icon', 'Open Joplin Portal', () => {
+		this.addRibbonIcon(JoplinPortalPlugin.JOPLIN_ICON_ID, 'Open Joplin Portal', () => {
 			this.activateView();
 		});
 
@@ -130,54 +124,8 @@ export default class JoplinPortalPlugin extends Plugin {
 			}
 		});
 
-		// Add command to re-register the icon (for troubleshooting)
-		this.addCommand({
-			id: 'refresh-joplin-icon',
-			name: 'Refresh Joplin Portal Icon',
-			callback: () => {
-				this.registerJoplinIcon();
-				new Notice('Joplin Portal icon refreshed', 2000);
-			}
-		});
-
-		// Add debug command to check icon status
-		this.addCommand({
-			id: 'debug-joplin-icon',
-			name: 'Debug Joplin Portal Icon',
-			callback: () => {
-				this.debugIconStatus();
-			}
-		});
-
 		// Add settings tab
 		this.addSettingTab(new JoplinPortalSettingTab(this.app, this));
-
-		// Register icon again when workspace is ready (ensures it's available after full load)
-		if (this.app.workspace && typeof this.app.workspace.onLayoutReady === 'function') {
-			this.app.workspace.onLayoutReady(() => {
-				this.registerJoplinIcon();
-
-				// Set up a periodic check to ensure icon stays registered
-				this.setupIconPersistenceCheck();
-			});
-		} else {
-			// Fallback for test environments or older Obsidian versions
-			this.registerJoplinIcon();
-			this.setupIconPersistenceCheck();
-		}
-
-		// Register on workspace change events (less frequent than file-open)
-		if (this.app.workspace && typeof this.app.workspace.on === 'function') {
-			(this as any).registerEvent(
-				this.app.workspace.on('layout-change', () => {
-					// Only re-register if we have Joplin Portal tabs open
-					const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL);
-					if (leaves.length > 0) {
-						this.registerJoplinIcon();
-					}
-				})
-			);
-		}
 
 		this.logger.debug('Joplin Portal plugin loaded');
 	}
@@ -189,11 +137,6 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Clear any pending requests
 		if (this.joplinService) {
 			this.joplinService.clearQueue();
-		}
-
-		// Clear icon persistence check interval
-		if ((this as any).iconPersistenceInterval) {
-			clearInterval((this as any).iconPersistenceInterval);
 		}
 
 		this.logger.debug('Joplin Portal plugin unloaded');
@@ -380,57 +323,9 @@ export default class JoplinPortalPlugin extends Plugin {
 		);
 	}
 
-	/**
-	 * Register the Joplin icon early in the load process (before logger is ready)
-	 */
-	private registerJoplinIconEarly(): void {
-		const iconSvg = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-			<path d="M38.4317,4.4944l-14.4228,0L24,9.9723h2.4787a.9962.9962,0,0,1,1,.995c.0019,3.7661.0084,17.1686.0084,21.8249,0,2.4608-1.8151,3.4321-3.7911,3.4321-2.4178,0-7.2518-1.9777-7.2518-5.5467a3.9737,3.9737,0,0,1,4.2333-4.2691,6.5168,6.5168,0,0,1,3.2954,1.0568V20.2961a14.6734,14.6734,0,0,0-4.4756-.6537c-5.8628,0-9.929,4.9033-9.929,11.1556,0,6.8972,5.2718,12.7077,14.578,12.7077,8.8284,0,14.8492-5.8107,14.8492-14.2056V4.4944Z"
-				fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-		</svg>`;
-
+	private registerJoplinIcon(): void {
 		try {
-			// Try multiple methods to register the icon for compatibility
-			if (typeof (window as any).addIcon === 'function') {
-				(window as any).addIcon('joplin-icon', iconSvg);
-			} else if (this.app && typeof (this.app as any).addIcon === 'function') {
-				(this.app as any).addIcon('joplin-icon', iconSvg);
-			} else {
-				// Fallback: try to access the icon registry directly
-				const iconRegistry = (this.app as any).iconRegistry;
-				if (iconRegistry) {
-					iconRegistry['joplin-icon'] = iconSvg;
-				}
-			}
-			console.log('Joplin Portal: Early icon registration completed');
-		} catch (error) {
-			console.error('Joplin Portal: Early icon registration failed:', error);
-		}
-	}
-
-	/**
-	 * Register the Joplin icon - can be called multiple times safely
-	 */
-	registerJoplinIcon(): void {
-		const iconSvg = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-			<path d="M38.4317,4.4944l-14.4228,0L24,9.9723h2.4787a.9962.9962,0,0,1,1,.995c.0019,3.7661.0084,17.1686.0084,21.8249,0,2.4608-1.8151,3.4321-3.7911,3.4321-2.4178,0-7.2518-1.9777-7.2518-5.5467a3.9737,3.9737,0,0,1,4.2333-4.2691,6.5168,6.5168,0,0,1,3.2954,1.0568V20.2961a14.6734,14.6734,0,0,0-4.4756-.6537c-5.8628,0-9.929,4.9033-9.929,11.1556,0,6.8972,5.2718,12.7077,14.578,12.7077,8.8284,0,14.8492-5.8107,14.8492-14.2056V4.4944Z"
-				fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-		</svg>`;
-
-		// Always register/re-register the icon - this is more reliable than checking registry
-		try {
-			// Try multiple methods to register the icon for compatibility
-			if (typeof (window as any).addIcon === 'function') {
-				(window as any).addIcon('joplin-icon', iconSvg);
-			} else if (this.app && typeof (this.app as any).addIcon === 'function') {
-				(this.app as any).addIcon('joplin-icon', iconSvg);
-			} else {
-				// Fallback: try to access the icon registry directly
-				const iconRegistry = (this.app as any).iconRegistry;
-				if (iconRegistry) {
-					iconRegistry['joplin-icon'] = iconSvg;
-				}
-			}
+			addIcon(JoplinPortalPlugin.JOPLIN_ICON_ID, JoplinPortalPlugin.JOPLIN_ICON_SVG);
 			this.logger?.debug('Registered joplin-icon successfully');
 		} catch (error) {
 			this.logger?.error('Failed to register joplin-icon:', error);
@@ -511,54 +406,5 @@ export default class JoplinPortalPlugin extends Plugin {
 		} else {
 			new Notice('Joplin Portal view is not open');
 		}
-	}
-
-	/**
-	 * Set up periodic check to ensure icon persistence
-	 */
-	private setupIconPersistenceCheck(): void {
-		// Check every 30 seconds if we have active tabs and re-register icon if needed
-		const checkInterval = setInterval(() => {
-			const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL);
-			if (leaves.length > 0) {
-				// Only re-register if we have active tabs
-				this.registerJoplinIcon();
-			}
-		}, 30000); // 30 seconds
-
-		// Store the interval so we can clear it on unload
-		(this as any).iconPersistenceInterval = checkInterval;
-	}
-
-	/**
-	 * Debug icon registration status
-	 */
-	private debugIconStatus(): void {
-		const iconRegistry = (this.app as any).iconRegistry;
-		const hasIcon = iconRegistry && iconRegistry['joplin-icon'];
-
-		let debugInfo = `Icon Registry Status:\n`;
-		debugInfo += `- Icon registered: ${hasIcon ? 'YES' : 'NO'}\n`;
-		debugInfo += `- Registry exists: ${iconRegistry ? 'YES' : 'NO'}\n`;
-
-		if (hasIcon) {
-			debugInfo += `- Icon content length: ${iconRegistry['joplin-icon'].length} chars\n`;
-		}
-
-		// Check for existing tabs
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_JOPLIN_PORTAL);
-		debugInfo += `- Active tabs: ${leaves.length}\n`;
-
-		leaves.forEach((leaf: WorkspaceLeaf, index: number) => {
-			const iconEl = (leaf as any).tabHeaderEl?.querySelector('.workspace-tab-header-inner-icon');
-			debugInfo += `- Tab ${index + 1} icon element: ${iconEl ? 'EXISTS' : 'MISSING'}\n`;
-			if (iconEl) {
-				debugInfo += `  - Classes: ${iconEl.className}\n`;
-				debugInfo += `  - Content: ${iconEl.innerHTML || 'EMPTY'}\n`;
-			}
-		});
-
-		new Notice(debugInfo, 10000);
-		console.log('Joplin Portal Icon Debug:', debugInfo);
 	}
 }
