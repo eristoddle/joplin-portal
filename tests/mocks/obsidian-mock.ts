@@ -144,6 +144,7 @@ export class TFolder {
   }
 }
 
+export const addIcon = vi.fn();
 export const Notice = vi.fn();
 export const requestUrl = vi.fn();
 export const normalizePath = vi.fn((path: string) => path);
