@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2025-08-26
+
+### ✨ New Features
+
+- feat(tests): Add tests for simplified icon registration ([2911cb5])
+
+### 📝 Other Changes
+
+- Finish Tasks with Jules ([e047a07])
+- Refactor: Clean up icon registration logic ([38c5302])
+- Icon Fix Plan ([f4d198f])
+
+### 👥 Contributors
+
+- eristoddle
+- google-labs-jules[bot]
+
 ## [1.0.10] - 2025-08-24
 
 ### 🐛 Bug Fixes
