@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.13] - 2025-08-27
+
+### ✨ New Features
+
+- Add Screenshots ([48d90bf])
+
+### 🐛 Bug Fixes
+
+- fix(tests): handle async validation in settings tests ([2884560])
+- Fix List Items in Readme ([41e11a0])
+
+### 📝 Other Changes
+
+- Merge remote-tracking branch 'origin/fix/unhandled-rejection-in-settings-test' ([aee87af])
+
+### 👥 Contributors
+
+- eristoddle
+- google-labs-jules[bot]
+
 ## [1.0.12] - 2025-08-27
 
 ### 🐛 Bug Fixes
