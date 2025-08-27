@@ -3,7 +3,7 @@
 	"name": "Joplin Portal",
 	"version": "1.0.13",
 	"minAppVersion": "0.15.0",
-	"description": "Search, preview, and selectively import notes from Joplin. Seamlessly bridge your Joplin archive with your Obsidian workflow through a dedicated sidebar panel.",
+	"description": "Search, preview, and selectively import notes from Joplin. Seamlessly bridge your Joplin archive through a dedicated sidebar panel.",
 	"author": "Stephan Miller",
 	"authorUrl": "https://github.com/eristoddle",
 	"fundingUrl": "https://buymeacoffee.com/eristoddle",

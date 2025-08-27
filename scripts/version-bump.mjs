@@ -80,7 +80,7 @@ try {
   console.log('Next steps:');
   console.log('1. Review the changes');
   console.log('2. Commit: git commit -m "chore: bump version to ' + newVersion + '"');
-  console.log('3. Tag: git tag v' + newVersion);
+  console.log('3. Tag: git tag ' + newVersion);
   console.log('4. Push: git push && git push --tags');
 
 } catch (error) {

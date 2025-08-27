@@ -36,7 +36,7 @@ if (missingRequired.length > 0) {
 }
 
 // Create release directory
-const releaseDir = `releases/v${version}`;
+const releaseDir = `releases/${version}`;
 if (!existsSync('releases')) {
   mkdirSync('releases');
 }
@@ -148,6 +148,6 @@ console.log(`   Location: ${releaseDir}/`);
 console.log(`   Files: ${releaseFiles.join(', ')}`);
 console.log('\nNext steps:');
 console.log('1. Test the plugin in Obsidian');
-console.log('2. Create git tag: git tag v' + version);
+console.log('2. Create git tag: git tag ' + version);
 console.log('3. Push to repository: git push --tags');
 console.log('4. Create GitHub release with files from ' + releaseDir);

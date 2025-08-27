@@ -124,8 +124,8 @@ async function main() {
     const commitAndTag = skipConfirmation || await getUserConfirmation('Commit changes and create git tag?');
     if (commitAndTag) {
       runCommand('git add .', 'Staging changes');
-      runCommand(`git commit -m "chore: release v${newVersion}"`, 'Committing changes');
-      runCommand(`git tag v${newVersion}`, 'Creating git tag');
+      runCommand(`git commit -m "chore: release ${newVersion}"`, 'Committing changes');
+      runCommand(`git tag ${newVersion}`, 'Creating git tag');
 
       const pushChanges = skipConfirmation || await getUserConfirmation('Push changes and tags to remote?');
       if (pushChanges) {
@@ -148,14 +148,14 @@ async function main() {
 
         // Create release
         const releaseNotesFile = `release-notes-${newVersion}.md`;
-        const releaseDir = `releases/v${newVersion}`;
+        const releaseDir = `releases/${newVersion}`;
 
-        let releaseCommand = `gh release create v${newVersion} --title "v${newVersion}"`;
+        let releaseCommand = `gh release create ${newVersion} --title "${newVersion}"`;
 
         if (existsSync(releaseNotesFile)) {
           releaseCommand += ` --notes-file "${releaseNotesFile}"`;
         } else {
-          releaseCommand += ` --notes "Release v${newVersion}"`;
+          releaseCommand += ` --notes "Release ${newVersion}"`;
         }
 
         // Add release files
@@ -185,8 +185,8 @@ async function main() {
     console.log('\n🎉 Release process completed successfully!');
     console.log(`\n📋 Release Summary:`);
     console.log(`   Version: ${newVersion}`);
-    console.log(`   Tag: v${newVersion}`);
-    console.log(`   Release files: releases/v${newVersion}/`);
+    console.log(`   Tag: ${newVersion}`);
+    console.log(`   Release files: releases/${newVersion}/`);
 
     if (existsSync(`release-notes-${newVersion}.md`)) {
       console.log(`   Release notes: release-notes-${newVersion}.md`);
@@ -195,15 +195,15 @@ async function main() {
     if (!createGitHubRelease) {
       console.log(`\n📋 Manual steps remaining:`);
       console.log(`1. Go to GitHub repository releases page`);
-      console.log(`2. Create new release for tag v${newVersion}`);
+      console.log(`2. Create new release for tag ${newVersion}`);
       if (existsSync(`release-notes-${newVersion}.md`)) {
         console.log(`3. Use content from release-notes-${newVersion}.md as description`);
       }
-      console.log(`4. Attach files from releases/v${newVersion}/ directory`);
+      console.log(`4. Attach files from releases/${newVersion}/ directory`);
       console.log(`5. Publish the release`);
     }
 
-    console.log(`\n🚀 Release v${newVersion} is ready!`);
+    console.log(`\n🚀 Release ${newVersion} is ready!`);
 
   } catch (error) {
     console.error('\n❌ Release process failed:', error.message);
