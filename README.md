@@ -11,6 +11,12 @@ An Obsidian plugin that provides seamless access to your Joplin notes through a 
 🔒 **Secure Connection**: Direct connection to your Joplin server with API token authentication
 ⚡ **Performance Optimized**: Debounced search, caching, and efficient API usage
 
+## Screenshots
+
+| Search Interface | Import Dialog | Settings Panel |
+| :---: | :---: | :---: |
+| ![Search Interface](assets/search-interface.png) | ![Import Dialog](assets/import-dialog.png) | ![Settings Panel](assets/settings-panel.png) |
+
 ## Installation
 
 This plugin is not yet available in the Obsidian Community Plugins marketplace. You can install it manually or using the BRAT plugin.

@@ -19,7 +19,6 @@ This directory contains visual assets for the Joplin Portal plugin.
 
 ### Screenshots for Documentation
 - **search-interface.png**: Screenshot of the search interface in action
-- **preview-pane.png**: Screenshot showing note preview functionality
 - **import-dialog.png**: Screenshot of the import selection interface
 - **settings-panel.png**: Screenshot of the plugin settings
 
