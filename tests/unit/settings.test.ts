@@ -218,6 +218,9 @@ describe('JoplinPortalSettingTab', () => {
   let mockPlugin: any;
   let mockApp: any;
 
+  // Helper function to introduce a small delay for async operations to complete
+  const waitForValidation = () => new Promise(resolve => setTimeout(resolve, 20));
+
   beforeEach(() => {
     mockApp = {
       setting: {
@@ -255,8 +258,9 @@ describe('JoplinPortalSettingTab', () => {
   });
 
   describe('display', () => {
-    it('should create settings UI elements', () => {
+    it('should create settings UI elements', async () => {
       settingTab.display();
+      await waitForValidation();
 
       expect(settingTab.containerEl.children.length).toBeGreaterThan(0);
 
@@ -266,24 +270,27 @@ describe('JoplinPortalSettingTab', () => {
       expect((serverUrlInput as HTMLInputElement).value).toBe('http://localhost:41184');
     });
 
-    it('should create API token input with text type', () => {
+    it('should create API token input with text type', async () => {
       settingTab.display();
+      await waitForValidation();
 
       // API token is created as text input in our mock (the actual implementation might use password type)
       const tokenInputs = settingTab.containerEl.querySelectorAll('input[type="text"]');
       expect(tokenInputs.length).toBeGreaterThan(1); // Should have server URL and API token inputs
     });
 
-    it('should create test connection button', () => {
+    it('should create test connection button', async () => {
       settingTab.display();
+      await waitForValidation();
 
       const testButton = settingTab.containerEl.querySelector('button');
       expect(testButton).toBeTruthy();
       expect(testButton?.textContent).toContain('Test Connection');
     });
 
-    it('should create import folder setting', () => {
+    it('should create import folder setting', async () => {
       settingTab.display();
+      await waitForValidation();
 
       const inputs = settingTab.containerEl.querySelectorAll('input[type="text"]');
       const folderInput = Array.from(inputs).find(input =>
@@ -292,8 +299,9 @@ describe('JoplinPortalSettingTab', () => {
       expect(folderInput).toBeTruthy();
     });
 
-    it('should create search limit setting', () => {
+    it('should create search limit setting', async () => {
       settingTab.display();
+      await waitForValidation();
 
       const rangeInput = settingTab.containerEl.querySelector('input[type="range"]');
       expect(rangeInput).toBeTruthy();
@@ -302,8 +310,9 @@ describe('JoplinPortalSettingTab', () => {
   });
 
   describe('setting updates', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       settingTab.display();
+      await waitForValidation();
     });
 
     it('should update server URL setting', () => {
@@ -352,8 +361,9 @@ describe('JoplinPortalSettingTab', () => {
   });
 
   describe.skip('connection testing', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       settingTab.display();
+      await waitForValidation();
     });
 
     it('should test connection successfully', async () => {
@@ -412,8 +422,9 @@ describe('JoplinPortalSettingTab', () => {
   });
 
   describe('validation', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       settingTab.display();
+      await waitForValidation();
     });
 
     it('should validate server URL format', () => {
