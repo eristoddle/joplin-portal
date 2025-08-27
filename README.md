@@ -4,12 +4,12 @@ An Obsidian plugin that provides seamless access to your Joplin notes through a 
 
 ## Features
 
-🔍 **Smart Search**: Full-text search across all your Joplin notes with instant results
-👀 **Live Preview**: Preview note content without leaving Obsidian
-📥 **Selective Import**: Choose which notes to import with conflict resolution
-🎨 **Native Integration**: Seamlessly integrates with Obsidian's UI and themes
-🔒 **Secure Connection**: Direct connection to your Joplin server with API token authentication
-⚡ **Performance Optimized**: Debounced search, caching, and efficient API usage
+- 🔍 **Smart Search**: Full-text search across all your Joplin notes with instant results
+- 👀 **Live Preview**: Preview note content without leaving Obsidian
+- 📥 **Selective Import**: Choose which notes to import with conflict resolution
+- 🎨 **Native Integration**: Seamlessly integrates with Obsidian's UI and themes
+- 🔒 **Secure Connection**: Direct connection to your Joplin server with API token authentication
+- ⚡ **Performance Optimized**: Debounced search, caching, and efficient API usage
 
 ## Screenshots
 
