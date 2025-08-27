@@ -3,7 +3,8 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*' # GITHUB_REF_NAME will be 'vX.Y.Z'
+      - '[0-9]+.*' # GITHUB_REF_NAME will be 'X.Y.Z'
 
 jobs:
   release:
@@ -44,7 +45,7 @@ jobs:
         done
 
         # Validate manifest version matches tag
-        tag_version=${GITHUB_REF#refs/tags/v}
+        tag_version=$(echo $GITHUB_REF_NAME | sed 's/^v//')
         manifest_version=$(node -p "require('./manifest.json').version")
 
         if [ "$tag_version" != "$manifest_version" ]; then
