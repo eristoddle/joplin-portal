@@ -5,11 +5,17 @@
 
 import { SearchResult } from './types';
 
+interface SearchOptions {
+	searchType?: 'notes' | 'tags' | 'all';
+	limit?: number;
+	[key: string]: unknown;
+}
+
 interface CacheEntry {
 	results: SearchResult[];
 	timestamp: number;
 	query: string;
-	options?: any;
+	options?: SearchOptions;
 }
 
 interface CacheStats {
@@ -38,7 +44,7 @@ export class SearchCache {
 	/**
 	 * Generate cache key from query and options
 	 */
-	private generateKey(query: string, options?: any): string {
+	private generateKey(query: string, options?: SearchOptions): string {
 		const normalizedQuery = query.toLowerCase().trim();
 		const optionsStr = options ? JSON.stringify(options) : '';
 		return `${normalizedQuery}|${optionsStr}`;
@@ -93,7 +99,7 @@ export class SearchCache {
 	/**
 	 * Get cached search results if available and valid
 	 */
-	get(query: string, options?: any): SearchResult[] | null {
+	get(query: string, options?: SearchOptions): SearchResult[] | null {
 		if (!query.trim()) {
 			return null;
 		}
@@ -119,7 +125,7 @@ export class SearchCache {
 	/**
 	 * Store search results in cache
 	 */
-	set(query: string, results: SearchResult[], options?: any): void {
+	set(query: string, results: SearchResult[], options?: SearchOptions): void {
 		if (!query.trim()) {
 			return;
 		}
@@ -142,7 +148,7 @@ export class SearchCache {
 	/**
 	 * Check if query results are cached and valid
 	 */
-	has(query: string, options?: any): boolean {
+	has(query: string, options?: SearchOptions): boolean {
 		if (!query.trim()) {
 			return false;
 		}

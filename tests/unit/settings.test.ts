@@ -23,7 +23,9 @@ vi.mock('obsidian', () => ({
 
     private addObsidianMethods(element: any) {
       element.empty = vi.fn(() => {
-        element.innerHTML = '';
+        while (element.firstChild) {
+          element.removeChild(element.firstChild);
+        }
       });
 
       element.createEl = vi.fn((tagName: string, attrs?: any) => {

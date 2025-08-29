@@ -90,11 +90,8 @@ export class TooltipManager {
 
 		// Create a temporary element to measure the content
 		const temp = document.createElement('span');
+		temp.className = 'joplin-tooltip-temp-measure';
 		temp.style.cssText = window.getComputedStyle(element).cssText;
-		temp.style.position = 'absolute';
-		temp.style.visibility = 'hidden';
-		temp.style.width = 'auto';
-		temp.style.height = 'auto';
 		temp.textContent = content;
 
 		document.body.appendChild(temp);

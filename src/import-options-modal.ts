@@ -32,12 +32,7 @@ export class ImportOptionsModal extends Modal {
 		this.titleEl.setText('Import Options');
 
 		// Add modal description
-		const description = contentEl.createDiv('import-options-description');
-		description.style.cssText = `
-			margin-bottom: 20px;
-			color: var(--text-muted);
-			font-size: 0.9em;
-		`;
+		const description = contentEl.createDiv('joplin-import-options-description');
 		description.setText('Configure how the selected notes will be imported into your Obsidian vault.');
 
 		// Create settings container
@@ -47,12 +42,12 @@ export class ImportOptionsModal extends Modal {
 		new Setting(settingsContainer)
 			.setName('Target folder')
 			.setDesc('The folder where imported notes will be saved')
-			.addText((text: any) => {
+			.addText((text) => {
 				this.targetFolderInput = text.inputEl;
 				text
 					.setPlaceholder('Imported from Joplin')
 					.setValue(this.plugin.settings.defaultImportFolder || 'Imported from Joplin')
-					.onChange((value: any) => {
+					.onChange((value: string) => {
 						// Auto-create folder path as user types
 						if (value.trim()) {
 							this.validateFolderPath(value.trim());
@@ -64,11 +59,11 @@ export class ImportOptionsModal extends Modal {
 		new Setting(settingsContainer)
 			.setName('Apply template')
 			.setDesc('Apply a template to imported notes')
-			.addToggle((toggle: any) => {
+			.addToggle((toggle) => {
 				this.applyTemplateCheckbox = toggle.toggleEl;
 				toggle
 					.setValue(false)
-					.onChange((value: any) => {
+					.onChange((value: boolean) => {
 						this.updateTemplatePathVisibility(value);
 					});
 			});
@@ -77,25 +72,25 @@ export class ImportOptionsModal extends Modal {
 		const templatePathSetting = new Setting(settingsContainer)
 			.setName('Template path')
 			.setDesc('Path to the template file to apply to imported notes')
-			.addText((text: any) => {
+			.addText((text) => {
 				this.templatePathInput = text.inputEl;
 				text
 					.setPlaceholder('Templates/Note Template.md')
 					.setValue('')
-					.onChange((value: any) => {
+					.onChange((value: string) => {
 						this.validateTemplatePath(value.trim());
 					});
 			});
 
 		// Hide template path setting initially
-		templatePathSetting.settingEl.style.display = 'none';
+		templatePathSetting.settingEl.addClass('joplin-template-path-hidden');
 		templatePathSetting.settingEl.setAttribute('data-template-path-setting', 'true');
 
 		// Conflict resolution setting
 		new Setting(settingsContainer)
 			.setName('If file exists')
 			.setDesc('How to handle files that already exist in the target folder')
-			.addDropdown((dropdown: any) => {
+			.addDropdown((dropdown) => {
 				this.conflictResolutionSelect = dropdown.selectEl;
 				dropdown
 					.addOption('skip', 'Skip - Don\'t import if file exists')
@@ -126,77 +121,38 @@ export class ImportOptionsModal extends Modal {
 
 	private createAdvancedSettingsSection(container: HTMLElement): void {
 		// Advanced settings header
-		const advancedHeader = container.createDiv('import-options-advanced-header');
-		advancedHeader.style.cssText = `
-			margin-top: 30px;
-			margin-bottom: 15px;
-			padding-bottom: 8px;
-			border-bottom: 1px solid var(--background-modifier-border);
-			display: flex;
-			align-items: center;
-			cursor: pointer;
-		`;
+		const advancedHeader = container.createDiv('joplin-import-options-advanced-header');
 
-		const advancedToggle = advancedHeader.createSpan('import-options-advanced-toggle');
-		advancedToggle.style.cssText = `
-			margin-right: 8px;
-			font-size: 0.8em;
-			transition: transform 0.2s;
-		`;
+		const advancedToggle = advancedHeader.createSpan('joplin-import-options-advanced-toggle');
 		advancedToggle.setText('▶');
 
-		const advancedTitle = advancedHeader.createSpan('import-options-advanced-title');
-		advancedTitle.style.cssText = `
-			font-weight: 600;
-			font-size: 1.1em;
-		`;
+		const advancedTitle = advancedHeader.createSpan('joplin-import-options-advanced-title');
 		advancedTitle.setText('Advanced Settings');
 
 		// Advanced settings container (initially hidden)
-		const advancedContainer = container.createDiv('import-options-advanced-container');
-		advancedContainer.style.cssText = `
-			display: none;
-			margin-top: 15px;
-			padding: 15px;
-			background: var(--background-secondary);
-			border-radius: 6px;
-		`;
+		const advancedContainer = container.createDiv('joplin-import-options-advanced-container');
 
 		// Toggle advanced settings visibility
 		let advancedExpanded = false;
 		advancedHeader.addEventListener('click', () => {
 			advancedExpanded = !advancedExpanded;
 			if (advancedExpanded) {
-				advancedContainer.style.display = 'block';
+				advancedContainer.addClass('expanded');
 				advancedToggle.setText('▼');
-				advancedToggle.style.transform = 'rotate(90deg)';
+				advancedToggle.addClass('expanded');
 			} else {
-				advancedContainer.style.display = 'none';
+				advancedContainer.removeClass('expanded');
 				advancedToggle.setText('▶');
-				advancedToggle.style.transform = 'rotate(0deg)';
+				advancedToggle.removeClass('expanded');
 			}
 		});
 
 		// Add advanced settings
-		const advancedNote = advancedContainer.createDiv('import-options-advanced-note');
-		advancedNote.style.cssText = `
-			color: var(--text-muted);
-			font-size: 0.85em;
-			margin-bottom: 15px;
-			font-style: italic;
-		`;
+		const advancedNote = advancedContainer.createDiv('joplin-import-options-advanced-note');
 		advancedNote.setText('Additional import configuration options will be available here in future updates.');
 
 		// Placeholder for future advanced settings
-		const placeholderSetting = advancedContainer.createDiv('import-options-placeholder-setting');
-		placeholderSetting.style.cssText = `
-			padding: 10px;
-			border: 1px dashed var(--background-modifier-border);
-			border-radius: 4px;
-			text-align: center;
-			color: var(--text-muted);
-			font-size: 0.9em;
-		`;
+		const placeholderSetting = advancedContainer.createDiv('joplin-import-options-placeholder-setting');
 		placeholderSetting.setText('Future settings: Image processing options, metadata handling, etc.');
 	}
 
@@ -559,7 +515,7 @@ export class ImportOptionsModal extends Modal {
 		}
 	}
 
-	private showImportResults(result: { successful: any[]; failed: any[] }): void {
+	private showImportResults(result: { successful: unknown[]; failed: unknown[] }): void {
 		if (!this.progressStatus) {
 			return;
 		}
@@ -623,40 +579,20 @@ export class ImportOptionsModal extends Modal {
 		new Notice(`Import failed: ${errorMessage}`, 5000);
 	}
 
-	private showFailureDetails(failures: Array<{ note: any; error: string }>): void {
+	private showFailureDetails(failures: Array<{ note: unknown; error: string }>): void {
 		const progressContainer = this.contentEl.querySelector('.import-progress-container');
 		if (!progressContainer) {
 			return;
 		}
 
 		const failuresContainer = progressContainer.createDiv('import-failures-container');
-		failuresContainer.style.cssText = `
-			margin-top: 15px;
-			padding: 10px;
-			background: var(--background-modifier-error);
-			border-radius: 4px;
-			border-left: 3px solid var(--text-error);
-		`;
 
 		const failuresTitle = failuresContainer.createEl('h5', { text: 'Failed Imports:' });
-		failuresTitle.style.cssText = `
-			margin: 0 0 8px 0;
-			color: var(--text-error);
-		`;
 
 		const failuresList = failuresContainer.createEl('ul');
-		failuresList.style.cssText = `
-			margin: 0;
-			padding-left: 20px;
-			font-size: 0.85em;
-		`;
 
 		failures.forEach(failure => {
 			const listItem = failuresList.createEl('li');
-			listItem.style.cssText = `
-				margin-bottom: 4px;
-				color: var(--text-muted);
-			`;
 			listItem.setText(`${failure.note.title || 'Untitled'}: ${failure.error}`);
 		});
 	}

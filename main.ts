@@ -55,7 +55,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Add command to open the view
 		this.addCommand({
 			id: 'open-joplin-portal',
-			name: 'Open Joplin Portal',
+			name: 'Open Portal',
 			callback: () => {
 				this.activateView();
 			}
@@ -64,7 +64,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Add command to check connection status
 		this.addCommand({
 			id: 'check-joplin-connection',
-			name: 'Check Joplin Connection',
+			name: 'Check Connection',
 			callback: () => {
 				this.checkConnectionStatus();
 			}
@@ -73,7 +73,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Add command to clear request queue
 		this.addCommand({
 			id: 'clear-joplin-queue',
-			name: 'Clear Joplin Request Queue',
+			name: 'Clear Request Queue',
 			callback: () => {
 				this.clearRequestQueue();
 			}
@@ -82,7 +82,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Add command to clear search cache
 		this.addCommand({
 			id: 'clear-joplin-cache',
-			name: 'Clear Joplin Search Cache',
+			name: 'Clear Search Cache',
 			callback: () => {
 				this.clearSearchCache();
 			}
@@ -91,7 +91,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Add command to show cache statistics
 		this.addCommand({
 			id: 'show-joplin-cache-stats',
-			name: 'Show Joplin Cache Statistics',
+			name: 'Show Cache Statistics',
 			callback: () => {
 				this.showCacheStatistics();
 			}
@@ -100,7 +100,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Add command to focus search input
 		this.addCommand({
 			id: 'focus-joplin-search',
-			name: 'Focus Joplin Search',
+			name: 'Focus Search',
 			callback: () => {
 				this.focusSearchInput();
 			}
@@ -109,7 +109,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Add command to select all for import
 		this.addCommand({
 			id: 'select-all-joplin-import',
-			name: 'Select All Notes for Import',
+			name: 'Select All for Import',
 			callback: () => {
 				this.selectAllForImport();
 			}
@@ -118,7 +118,7 @@ export default class JoplinPortalPlugin extends Plugin {
 		// Add command to import selected notes
 		this.addCommand({
 			id: 'import-selected-joplin-notes',
-			name: 'Import Selected Joplin Notes',
+			name: 'Import Selected Notes',
 			callback: () => {
 				this.importSelectedNotes();
 			}

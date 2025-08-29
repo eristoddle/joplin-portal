@@ -101,9 +101,9 @@ export interface RateLimitConfig {
 
 export interface RequestQueueItem {
 	id: string;
-	request: () => Promise<any>;
-	resolve: (value: any) => void;
-	reject: (error: any) => void;
+	request: () => Promise<unknown>;
+	resolve: (value: unknown) => void;
+	reject: (error: Error) => void;
 	timestamp: number;
 	retryCount: number;
 }

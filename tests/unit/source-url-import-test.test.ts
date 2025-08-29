@@ -52,8 +52,6 @@ describe('Source URL Import Test', () => {
 
       const frontmatter = importService.generateFrontmatter(noteWithSource);
 
-      console.log('Generated frontmatter:', frontmatter);
-
       // Verify the frontmatter contains the source URL
       expect(frontmatter).toContain('source: "https://example.com/original-article"');
       expect(frontmatter).toContain('joplin-id: test-note-1');
@@ -76,8 +74,6 @@ describe('Source URL Import Test', () => {
 
       const frontmatter = importService.generateFrontmatter(noteWithoutSource);
 
-      console.log('Generated frontmatter (no source):', frontmatter);
-
       // Verify the frontmatter does not contain source field
       expect(frontmatter).not.toContain('source:');
       expect(frontmatter).toContain('joplin-id: test-note-2');
@@ -96,8 +92,6 @@ describe('Source URL Import Test', () => {
 
       const frontmatter = importService.generateFrontmatter(noteWithEmptySource);
 
-      console.log('Generated frontmatter (empty source):', frontmatter);
-
       // Verify the frontmatter does not contain source field for empty string
       expect(frontmatter).not.toContain('source:');
       expect(frontmatter).toContain('joplin-id: test-note-3');
@@ -115,8 +109,6 @@ describe('Source URL Import Test', () => {
       };
 
       const frontmatter = importService.generateFrontmatter(noteWithSpecialUrl);
-
-      console.log('Generated frontmatter (special chars):', frontmatter);
 
       // Verify the URL is properly escaped
       expect(frontmatter).toContain('source: "https://example.com/path?param=\\"quoted value\\"&other=test"');
@@ -142,8 +134,6 @@ describe('Source URL Import Test', () => {
         };
 
         const frontmatter = importService.generateFrontmatter(note);
-
-        console.log(`Generated frontmatter for ${url}:`, frontmatter);
 
         expect(frontmatter).toContain(`source: "${url}"`);
       });

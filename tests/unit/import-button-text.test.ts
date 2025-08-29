@@ -27,7 +27,9 @@ describe('Import Button Text Integration', () => {
 
   beforeEach(() => {
     // Set up DOM
-    document.body.innerHTML = '';
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
 
     // Create mock import options panel
     mockImportOptionsPanel = document.createElement('div');
