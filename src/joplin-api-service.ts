@@ -213,7 +213,7 @@ export class JoplinApiService {
 		const normalizedQuery = validation.normalizedQuery || query.trim();
 
 		// Check cache first
-		const cachedResults = this.searchCache.get(normalizedQuery, options);
+		const cachedResults = this.searchCache.get(normalizedQuery, this.mapSearchOptions(options));
 		if (cachedResults) {
 			this.logger.debug('Using cached search results');
 			return cachedResults;
@@ -227,10 +227,10 @@ export class JoplinApiService {
 				return [];
 			}
 
-			const results = await this.searchNotesWithRetry(normalizedQuery, options);
+			const results = await this.searchNotesWithRetry(normalizedQuery, this.mapSearchOptions(options));
 
 			// Cache the results
-			this.searchCache.set(normalizedQuery, results, options);
+			this.searchCache.set(normalizedQuery, results, this.mapSearchOptions(options));
 
 			return results;
 		} catch (error) {
@@ -312,10 +312,10 @@ export class JoplinApiService {
 				return cachedResults;
 			}
 
-			const results = await this.searchNotesWithRetry(searchQuery, {
+			const results = await this.searchNotesWithRetry(searchQuery, this.mapSearchOptions({
 				searchType: 'tag',
 				tags: tagOptions.tags
-			});
+			}));
 
 			// Log the API response for debugging
 			this.logger.debug('Tag search API response:', {
@@ -339,6 +339,29 @@ export class JoplinApiService {
 	/**
 	 * Internal search notes method (without retry wrapper)
 	 */
+	private mapSearchOptions(options?: SearchOptions): any {
+		if (!options) return undefined;
+		
+		const joplinOptions: any = { ...options };
+		
+		// Map searchType to Joplin API format
+		if (options.searchType) {
+			switch (options.searchType) {
+				case 'text':
+					joplinOptions.searchType = 'notes';
+					break;
+				case 'tag':
+					joplinOptions.searchType = 'tags';
+					break;
+				case 'combined':
+					joplinOptions.searchType = 'all';
+					break;
+			}
+		}
+		
+		return joplinOptions;
+	}
+
 	private async searchNotesInternal(query: string, options?: SearchOptions): Promise<SearchResult[]> {
 		const params = new URLSearchParams({
 			query: query.trim(),

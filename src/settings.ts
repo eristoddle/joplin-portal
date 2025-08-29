@@ -25,9 +25,9 @@ interface ValidationState {
 export class JoplinPortalSettingTab extends PluginSettingTab {
 	plugin: JoplinPortalPlugin;
 	private validationState: ValidationState;
-	private serverUrlSetting: Setting;
-	private apiTokenSetting: Setting;
-	private connectionTestSetting: Setting;
+	private serverUrlSetting: any;
+	private apiTokenSetting: any;
+	private connectionTestSetting: any;
 	private validationStatusEl: HTMLElement;
 	private debouncedValidateUrl: (url: string) => void;
 	private debouncedValidateToken: (token: string) => void;
@@ -62,7 +62,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		this.serverUrlSetting = new Setting(containerEl)
 			.setName('Joplin Server URL')
 			.setDesc('The URL of your Joplin server (e.g., http://localhost:41184)')
-			.addText((text) => text
+			.addText((text: any) => text
 				.setPlaceholder('http://localhost:41184')
 				.setValue(this.plugin.settings.serverUrl)
 				.onChange(async (value: string) => {
@@ -88,7 +88,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		this.apiTokenSetting = new Setting(containerEl)
 			.setName('API Token')
 			.setDesc('Your Joplin API token (found in Joplin > Tools > Options > Web Clipper)')
-			.addText((text) => text
+			.addText((text: any) => text
 				.setPlaceholder('Enter your API token')
 				.setValue(this.plugin.settings.apiToken)
 				.onChange(async (value: string) => {
@@ -101,7 +101,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		this.connectionTestSetting = new Setting(containerEl)
 			.setName('Test Connection')
 			.setDesc('Verify that your Joplin server is accessible with the provided credentials')
-			.addButton((button) => button
+			.addButton((button: any) => button
 				.setButtonText('Test Connection')
 				.setCta()
 				.onClick(async () => {
@@ -115,7 +115,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Default Import Folder')
 			.setDesc('The folder where imported Joplin notes will be saved')
-			.addText((text) => text
+			.addText((text: any) => text
 				.setPlaceholder('Imported from Joplin')
 				.setValue(this.plugin.settings.defaultImportFolder)
 				.onChange(async (value: string) => {
@@ -127,7 +127,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Search Results Limit')
 			.setDesc('Maximum number of search results to display (1-100)')
-			.addSlider((slider) => slider
+			.addSlider((slider: any) => slider
 				.setLimits(1, 100, 1)
 				.setValue(this.plugin.settings.searchLimit)
 				.setDynamicTooltip()
@@ -140,7 +140,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Import Template')
 			.setDesc('Optional template to apply when importing notes (leave empty for no template)')
-			.addText((text) => text
+			.addText((text: any) => text
 				.setPlaceholder('Template name (optional)')
 				.setValue(this.plugin.settings.importTemplate)
 				.onChange(async (value: string) => {
@@ -152,7 +152,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Include Metadata in Frontmatter')
 			.setDesc('Add Joplin metadata (ID, creation date, update date, source URL) to imported notes as YAML frontmatter')
-			.addToggle((toggle) => toggle
+			.addToggle((toggle: any) => toggle
 				.setValue(this.plugin.settings.includeMetadataInFrontmatter)
 				.onChange(async (value: boolean) => {
 					this.plugin.settings.includeMetadataInFrontmatter = value;
@@ -165,7 +165,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Debug Mode')
 			.setDesc(this.createDebugModeDescription())
-			.addToggle((toggle) => toggle
+			.addToggle((toggle: any) => toggle
 				.setValue(this.plugin.settings.debugMode)
 				.onChange(async (value: boolean) => {
 					this.plugin.settings.debugMode = value;
@@ -209,38 +209,38 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 
 		const connectionFailedLi = issuesList.createEl('li');
 		connectionFailedLi.createEl('strong', { text: 'Connection Failed:' });
-		connectionFailedLi.appendText(' Ensure Joplin is running and Web Clipper service is enabled (Tools → Options → Web Clipper)');
+		connectionFailedLi.createSpan().setText(' Ensure Joplin is running and Web Clipper service is enabled (Tools → Options → Web Clipper)');
 
 		const invalidTokenLi = issuesList.createEl('li');
 		invalidTokenLi.createEl('strong', { text: 'Invalid API Token:' });
-		invalidTokenLi.appendText(' Copy the token from Joplin (Tools → Options → Web Clipper → Advanced options)');
+		invalidTokenLi.createSpan().setText(' Copy the token from Joplin (Tools → Options → Web Clipper → Advanced options)');
 
 		const serverNotFoundLi = issuesList.createEl('li');
 		serverNotFoundLi.createEl('strong', { text: 'Server Not Found:' });
-		serverNotFoundLi.appendText(' Check if the server URL is correct (default: http://localhost:41184)');
+		serverNotFoundLi.createSpan().setText(' Check if the server URL is correct (default: http://localhost:41184)');
 
 		const firewallLi = issuesList.createEl('li');
 		firewallLi.createEl('strong', { text: 'Firewall Issues:' });
-		firewallLi.appendText(' Ensure port 41184 is not blocked by firewall or antivirus software');
+		firewallLi.createSpan().setText(' Ensure port 41184 is not blocked by firewall or antivirus software');
 
 		const httpsLi = issuesList.createEl('li');
 		httpsLi.createEl('strong', { text: 'HTTPS Issues:' });
-		httpsLi.appendText(' If using HTTPS, ensure the certificate is valid and trusted');
+		httpsLi.createSpan().setText(' If using HTTPS, ensure the certificate is valid and trusted');
 
 		troubleshootingContent.createEl('h4', { text: 'Setup Steps' });
 
 		const setupList = troubleshootingContent.createEl('ol');
 
 		const step1Li = setupList.createEl('li');
-		step1Li.appendText('Open Joplin and go to ');
+		step1Li.createSpan().setText('Open Joplin and go to ');
 		step1Li.createEl('strong', { text: 'Tools → Options → Web Clipper' });
 
 		setupList.createEl('li', { text: 'Enable the Web Clipper service if not already enabled' });
 
 		const step3Li = setupList.createEl('li');
-		step3Li.appendText('Copy the API token from the ');
+		step3Li.createSpan().setText('Copy the API token from the ');
 		step3Li.createEl('strong', { text: 'Advanced options' });
-		step3Li.appendText(' section');
+		step3Li.createSpan().setText(' section');
 
 		setupList.createEl('li', { text: 'Note the server URL (usually http://localhost:41184)' });
 
@@ -449,9 +449,9 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		// Server URL status with suggestions
 		const urlStatus = this.validationStatusEl.createDiv('validation-item');
 		const urlIcon = this.getValidationIcon(this.validationState.serverUrl);
-		urlStatus.appendText(`${urlIcon} `);
+		urlStatus.createSpan().setText(`${urlIcon} `);
 		urlStatus.createEl('strong', { text: 'Server URL:' });
-		urlStatus.appendText(` ${this.validationState.serverUrl.message || 'Not validated'}`);
+		urlStatus.createSpan().setText(` ${this.validationState.serverUrl.message || 'Not validated'}`);
 
 		// Add suggestions for server URL if available
 		if (this.validationState.serverUrl.suggestions && this.validationState.serverUrl.suggestions.length > 0) {
@@ -467,16 +467,16 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		// API Token status
 		const tokenStatus = this.validationStatusEl.createDiv('validation-item');
 		const tokenIcon = this.getValidationIcon(this.validationState.apiToken);
-		tokenStatus.appendText(`${tokenIcon} `);
+		tokenStatus.createSpan().setText(`${tokenIcon} `);
 		tokenStatus.createEl('strong', { text: 'API Token:' });
-		tokenStatus.appendText(` ${this.validationState.apiToken.message || 'Not validated'}`);
+		tokenStatus.createSpan().setText(` ${this.validationState.apiToken.message || 'Not validated'}`);
 
 		// Connection status
 		const connectionStatus = this.validationStatusEl.createDiv('validation-item');
 		const connectionIcon = this.getValidationIcon(this.validationState.connection);
-		connectionStatus.appendText(`${connectionIcon} `);
+		connectionStatus.createSpan().setText(`${connectionIcon} `);
 		connectionStatus.createEl('strong', { text: 'Connection:' });
-		connectionStatus.appendText(` ${this.validationState.connection.message || 'Not tested'}`);
+		connectionStatus.createSpan().setText(` ${this.validationState.connection.message || 'Not tested'}`);
 
 		// Overall status
 		const isFullyValid = this.isConfigurationValid();
@@ -486,7 +486,7 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 			? 'Configuration is valid and ready to use'
 			: 'Configuration needs attention before plugin can be used';
 
-		overallStatus.appendText(`${overallIcon} `);
+		overallStatus.createSpan().setText(`${overallIcon} `);
 		overallStatus.createEl('strong', { text: overallMessage });
 		overallStatus.addClass(isFullyValid ? 'validation-success' : 'validation-error');
 

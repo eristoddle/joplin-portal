@@ -42,7 +42,7 @@ export class ImportOptionsModal extends Modal {
 		new Setting(settingsContainer)
 			.setName('Target folder')
 			.setDesc('The folder where imported notes will be saved')
-			.addText((text) => {
+			.addText((text: any) => {
 				this.targetFolderInput = text.inputEl;
 				text
 					.setPlaceholder('Imported from Joplin')
@@ -59,7 +59,7 @@ export class ImportOptionsModal extends Modal {
 		new Setting(settingsContainer)
 			.setName('Apply template')
 			.setDesc('Apply a template to imported notes')
-			.addToggle((toggle) => {
+			.addToggle((toggle: any) => {
 				this.applyTemplateCheckbox = toggle.toggleEl;
 				toggle
 					.setValue(false)
@@ -72,7 +72,7 @@ export class ImportOptionsModal extends Modal {
 		const templatePathSetting = new Setting(settingsContainer)
 			.setName('Template path')
 			.setDesc('Path to the template file to apply to imported notes')
-			.addText((text) => {
+			.addText((text: any) => {
 				this.templatePathInput = text.inputEl;
 				text
 					.setPlaceholder('Templates/Note Template.md')
@@ -90,7 +90,7 @@ export class ImportOptionsModal extends Modal {
 		new Setting(settingsContainer)
 			.setName('If file exists')
 			.setDesc('How to handle files that already exist in the target folder')
-			.addDropdown((dropdown) => {
+			.addDropdown((dropdown: any) => {
 				this.conflictResolutionSelect = dropdown.selectEl;
 				dropdown
 					.addOption('skip', 'Skip - Don\'t import if file exists')
@@ -550,7 +550,7 @@ export class ImportOptionsModal extends Modal {
 
 		// Show detailed results if there were failures
 		if (failedCount > 0) {
-			this.showFailureDetails(result.failed);
+				this.showFailureDetails(result.failed as { note: unknown; error: string }[]);
 		}
 
 		// Show success notice
@@ -593,7 +593,7 @@ export class ImportOptionsModal extends Modal {
 
 		failures.forEach(failure => {
 			const listItem = failuresList.createEl('li');
-			listItem.setText(`${failure.note.title || 'Untitled'}: ${failure.error}`);
+			listItem.setText(`${(failure.note as any)?.title || 'Untitled'}: ${failure.error}`);
 		});
 	}
 
