@@ -88,7 +88,9 @@ vi.mock('obsidian', () => ({
 		constructor(containerEl: any) {
 			this.settingEl = {
 				style: {},
-				setAttribute: vi.fn()
+				setAttribute: vi.fn(),
+				addClass: vi.fn(),
+				removeClass: vi.fn()
 			};
 		}
 

@@ -209,38 +209,46 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 
 		const connectionFailedLi = issuesList.createEl('li');
 		connectionFailedLi.createEl('strong', { text: 'Connection Failed:' });
-		connectionFailedLi.createSpan().setText(' Ensure Joplin is running and Web Clipper service is enabled (Tools → Options → Web Clipper)');
+		const connectionFailedSpan = connectionFailedLi.createSpan();
+		connectionFailedSpan.textContent = ' Ensure Joplin is running and Web Clipper service is enabled (Tools → Options → Web Clipper)';
 
 		const invalidTokenLi = issuesList.createEl('li');
 		invalidTokenLi.createEl('strong', { text: 'Invalid API Token:' });
-		invalidTokenLi.createSpan().setText(' Copy the token from Joplin (Tools → Options → Web Clipper → Advanced options)');
+		const invalidTokenSpan = invalidTokenLi.createSpan();
+		invalidTokenSpan.textContent = ' Copy the token from Joplin (Tools → Options → Web Clipper → Advanced options)';
 
 		const serverNotFoundLi = issuesList.createEl('li');
 		serverNotFoundLi.createEl('strong', { text: 'Server Not Found:' });
-		serverNotFoundLi.createSpan().setText(' Check if the server URL is correct (default: http://localhost:41184)');
+		const serverNotFoundSpan = serverNotFoundLi.createSpan();
+		serverNotFoundSpan.textContent = ' Check if the server URL is correct (default: http://localhost:41184)';
 
 		const firewallLi = issuesList.createEl('li');
 		firewallLi.createEl('strong', { text: 'Firewall Issues:' });
-		firewallLi.createSpan().setText(' Ensure port 41184 is not blocked by firewall or antivirus software');
+		const firewallSpan = firewallLi.createSpan();
+		firewallSpan.textContent = ' Ensure port 41184 is not blocked by firewall or antivirus software';
 
 		const httpsLi = issuesList.createEl('li');
 		httpsLi.createEl('strong', { text: 'HTTPS Issues:' });
-		httpsLi.createSpan().setText(' If using HTTPS, ensure the certificate is valid and trusted');
+		const httpsSpan = httpsLi.createSpan();
+		httpsSpan.textContent = ' If using HTTPS, ensure the certificate is valid and trusted';
 
 		troubleshootingContent.createEl('h4', { text: 'Setup Steps' });
 
 		const setupList = troubleshootingContent.createEl('ol');
 
 		const step1Li = setupList.createEl('li');
-		step1Li.createSpan().setText('Open Joplin and go to ');
+		const step1Span = step1Li.createSpan();
+		step1Span.textContent = 'Open Joplin and go to ';
 		step1Li.createEl('strong', { text: 'Tools → Options → Web Clipper' });
 
 		setupList.createEl('li', { text: 'Enable the Web Clipper service if not already enabled' });
 
 		const step3Li = setupList.createEl('li');
-		step3Li.createSpan().setText('Copy the API token from the ');
+		const step3Span1 = step3Li.createSpan();
+		step3Span1.textContent = 'Copy the API token from the ';
 		step3Li.createEl('strong', { text: 'Advanced options' });
-		step3Li.createSpan().setText(' section');
+		const step3Span2 = step3Li.createSpan();
+		step3Span2.textContent = ' section';
 
 		setupList.createEl('li', { text: 'Note the server URL (usually http://localhost:41184)' });
 
@@ -449,9 +457,11 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		// Server URL status with suggestions
 		const urlStatus = this.validationStatusEl.createDiv('validation-item');
 		const urlIcon = this.getValidationIcon(this.validationState.serverUrl);
-		urlStatus.createSpan().setText(`${urlIcon} `);
+		const urlIconSpan = urlStatus.createSpan();
+		urlIconSpan.textContent = `${urlIcon} `;
 		urlStatus.createEl('strong', { text: 'Server URL:' });
-		urlStatus.createSpan().setText(` ${this.validationState.serverUrl.message || 'Not validated'}`);
+		const urlMessageSpan = urlStatus.createSpan();
+		urlMessageSpan.textContent = ` ${this.validationState.serverUrl.message || 'Not validated'}`;
 
 		// Add suggestions for server URL if available
 		if (this.validationState.serverUrl.suggestions && this.validationState.serverUrl.suggestions.length > 0) {
@@ -467,16 +477,20 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 		// API Token status
 		const tokenStatus = this.validationStatusEl.createDiv('validation-item');
 		const tokenIcon = this.getValidationIcon(this.validationState.apiToken);
-		tokenStatus.createSpan().setText(`${tokenIcon} `);
+		const tokenIconSpan = tokenStatus.createSpan();
+		tokenIconSpan.textContent = `${tokenIcon} `;
 		tokenStatus.createEl('strong', { text: 'API Token:' });
-		tokenStatus.createSpan().setText(` ${this.validationState.apiToken.message || 'Not validated'}`);
+		const tokenMessageSpan = tokenStatus.createSpan();
+		tokenMessageSpan.textContent = ` ${this.validationState.apiToken.message || 'Not validated'}`;
 
 		// Connection status
 		const connectionStatus = this.validationStatusEl.createDiv('validation-item');
 		const connectionIcon = this.getValidationIcon(this.validationState.connection);
-		connectionStatus.createSpan().setText(`${connectionIcon} `);
+		const connectionIconSpan = connectionStatus.createSpan();
+		connectionIconSpan.textContent = `${connectionIcon} `;
 		connectionStatus.createEl('strong', { text: 'Connection:' });
-		connectionStatus.createSpan().setText(` ${this.validationState.connection.message || 'Not tested'}`);
+		const connectionMessageSpan = connectionStatus.createSpan();
+		connectionMessageSpan.textContent = ` ${this.validationState.connection.message || 'Not tested'}`;
 
 		// Overall status
 		const isFullyValid = this.isConfigurationValid();
@@ -486,7 +500,8 @@ export class JoplinPortalSettingTab extends PluginSettingTab {
 			? 'Configuration is valid and ready to use'
 			: 'Configuration needs attention before plugin can be used';
 
-		overallStatus.createSpan().setText(`${overallIcon} `);
+		const overallIconSpan = overallStatus.createSpan();
+		overallIconSpan.textContent = `${overallIcon} `;
 		overallStatus.createEl('strong', { text: overallMessage });
 		overallStatus.addClass(isFullyValid ? 'validation-success' : 'validation-error');
 
