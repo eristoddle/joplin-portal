@@ -1,0 +1,19 @@
+{
+  "pluginId": "joplin-portal",
+  "name": "Joplin Portal",
+  "version": "1.0.16",
+  "description": "Search, preview, and selectively import notes from Joplin. Seamlessly bridge your Joplin archive through a dedicated sidebar panel.",
+  "author": "Stephan Miller",
+  "minAppVersion": "0.15.0",
+  "releaseDate": "2025-08-29T01:20:57.881Z",
+  "files": [
+    "main.js",
+    "manifest.json",
+    "styles.css"
+  ],
+  "checksums": {
+    "main.js": "ea964493c52de79765b05d4de8b39ea64820e3cff142fdbd7c56830321aaf225",
+    "manifest.json": "840e5d70892d26ec2ce517c4d668ee3c4425c16bfaf5641bfae928ccca2d355e",
+    "styles.css": "072ee6a377422aaeda7842f30580a5f1edfebea6bbeb049b196933a65b5bf8a7"
+  }
+}

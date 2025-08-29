@@ -1,0 +1,1762 @@
+/* Joplin Portal View Styles */
+
+.joplin-portal-view {
+  padding: var(--size-4-3);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+  line-height: var(--line-height-normal);
+  color: var(--text-normal);
+  background: var(--background-primary);
+  overflow: hidden;
+}
+
+/* Container for better responsive behavior */
+.joplin-portal-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0; /* Allow flex items to shrink */
+  gap: var(--size-4-2);
+}
+
+/* Search Interface */
+.joplin-search-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+  padding: var(--size-4-2);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  flex-shrink: 0;
+}
+
+.joplin-search-type-container {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  flex-wrap: wrap;
+}
+
+.joplin-search-type-container label {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.joplin-search-type-select {
+  padding: var(--size-2-1) var(--size-4-1);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  min-width: 120px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.joplin-search-type-select:hover {
+  border-color: var(--background-modifier-border-hover);
+}
+
+.joplin-search-type-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.joplin-search-inputs {
+  display: flex;
+  gap: var(--size-4-1);
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.joplin-search-input,
+.joplin-tag-search-input {
+  flex: 1;
+  min-width: 200px;
+  padding: var(--size-4-1) var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-family: var(--font-interface);
+  transition: all 0.15s ease;
+}
+
+.joplin-tag-search-input {
+  border-color: var(--interactive-accent);
+  border-style: dashed;
+  border-width: 1px;
+}
+
+.joplin-search-input:focus,
+.joplin-tag-search-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.joplin-search-input:hover,
+.joplin-tag-search-input:hover {
+  border-color: var(--background-modifier-border-hover);
+}
+
+.joplin-search-input::placeholder,
+.joplin-tag-search-input::placeholder {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* Cache status removed for cleaner UI */
+.joplin-cache-status {
+  display: none; /* Hidden but kept for potential future use */
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 2px;
+}
+
+.joplin-search-button {
+  padding: var(--size-4-1) var(--size-4-3);
+  border: none;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  min-width: 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.joplin-search-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-s);
+}
+
+.joplin-search-button:active {
+  transform: translateY(0);
+}
+
+.joplin-search-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.joplin-search-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+/* Loading state for search button */
+.joplin-search-button.loading {
+  color: transparent;
+}
+
+.joplin-search-button.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Results Section */
+.joplin-results-section {
+  flex: 1;
+  margin-bottom: 16px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.joplin-results-header h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: var(--text-normal);
+}
+
+.joplin-results-container {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  position: relative;
+}
+
+.joplin-results-list {
+  /* Container for the actual results */
+}
+
+.joplin-result-item {
+  position: relative;
+  border-bottom: 1px solid var(--background-modifier-border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+  display: flex;
+  align-items: stretch;
+}
+
+.joplin-result-item:last-child {
+  border-bottom: none;
+}
+
+.joplin-result-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.joplin-result-item:focus {
+  background: var(--background-modifier-hover);
+  box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+.joplin-result-item.joplin-result-selected {
+  background: var(--background-modifier-active-hover);
+  box-shadow: inset 3px 0 0 var(--interactive-accent);
+}
+
+.joplin-result-content {
+  flex: 1;
+  padding: 12px 16px;
+  min-width: 0; /* Allow content to shrink */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.joplin-result-selection-indicator {
+  width: 3px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.joplin-result-item.joplin-result-selected .joplin-result-selection-indicator {
+  background: var(--interactive-accent);
+}
+
+.joplin-result-title {
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 6px;
+  font-size: 14px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Removed tooltip dependency - title is readable with proper truncation */
+}
+
+.joplin-result-snippet {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  /* Removed tooltip dependency - snippet is properly formatted and readable */
+}
+
+.joplin-result-metadata {
+  color: var(--text-faint);
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.joplin-metadata-created,
+.joplin-metadata-updated {
+  white-space: nowrap;
+}
+
+.joplin-result-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.joplin-result-tag {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.joplin-result-tag-more {
+  background: var(--background-modifier-border-hover);
+  color: var(--text-faint);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.joplin-results-count {
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-top: 1px solid var(--background-modifier-border);
+  color: var(--text-faint);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* Preview Section */
+.joplin-preview-section {
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.joplin-preview-header h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: var(--text-normal);
+}
+
+.joplin-preview-container {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  padding: 12px;
+}
+
+.joplin-preview-note-header h4 {
+  margin: 0 0 12px 0;
+  color: var(--text-normal);
+  font-size: 16px;
+  font-weight: 600;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  /* Allow long titles to wrap instead of relying on tooltips */
+}
+
+.joplin-preview-content {
+  color: var(--text-normal);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.joplin-preview-metadata {
+  color: var(--text-muted);
+  font-size: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 8px;
+}
+
+.joplin-preview-metadata div {
+  margin-bottom: 4px;
+}
+
+/* Loading and No Results States */
+.joplin-loading,
+.joplin-no-results,
+.joplin-no-preview {
+  padding: var(--size-4-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.joplin-loading {
+  position: relative;
+}
+
+.joplin-loading::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--background-modifier-border);
+  border-top: 3px solid var(--interactive-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--size-4-2);
+}
+
+/* Progress bar for operations */
+.joplin-progress-container {
+  width: 100%;
+  max-width: 300px;
+  margin: var(--size-4-2) auto;
+}
+
+.joplin-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  position: relative;
+}
+
+.joplin-progress-fill {
+  height: 100%;
+  background: var(--interactive-accent);
+  border-radius: var(--radius-s);
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.joplin-progress-fill.indeterminate {
+  width: 30%;
+  animation: progress-indeterminate 2s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.joplin-progress-text {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin-top: var(--size-2-1);
+  text-align: center;
+}
+
+/* Enhanced loading states */
+.joplin-loading-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--background-secondary) 25%,
+    var(--background-modifier-hover) 50%,
+    var(--background-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: var(--radius-s);
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.joplin-skeleton-title {
+  height: 16px;
+  width: 70%;
+  margin-bottom: var(--size-2-1);
+}
+
+.joplin-skeleton-text {
+  height: 12px;
+  width: 100%;
+  margin-bottom: var(--size-2-1);
+}
+
+.joplin-skeleton-text:last-child {
+  width: 60%;
+}
+
+/* Responsive adjustments */
+@container (max-width: 400px) {
+  .joplin-search-inputs {
+    flex-direction: column;
+  }
+
+  .joplin-search-input,
+  .joplin-tag-search-input {
+    min-width: unset;
+  }
+
+  .joplin-search-type-container {
+    justify-content: space-between;
+  }
+
+  .joplin-search-type-select {
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 500px) {
+  .joplin-portal-view {
+    padding: var(--size-4-2);
+  }
+
+  .joplin-search-container {
+    padding: var(--size-4-1);
+  }
+
+  .joplin-search-inputs {
+    flex-direction: column;
+    gap: var(--size-2-3);
+  }
+
+  .joplin-search-input,
+  .joplin-tag-search-input {
+    min-width: unset;
+  }
+
+  .joplin-search-button {
+    margin-top: var(--size-2-1);
+    width: 100%;
+  }
+
+  .joplin-result-content {
+    padding: var(--size-4-1) var(--size-4-2);
+  }
+
+  .joplin-result-title {
+    font-size: var(--font-ui-smaller);
+  }
+
+  .joplin-result-snippet {
+    font-size: var(--font-ui-smaller);
+    -webkit-line-clamp: 3;
+  }
+
+  .joplin-result-tags {
+    margin-top: var(--size-2-2);
+  }
+
+  .joplin-result-tag,
+  .joplin-result-tag-more {
+    font-size: var(--font-ui-smallest);
+    padding: var(--size-2-1) var(--size-2-2);
+  }
+
+  .joplin-preview-container {
+    padding: var(--size-4-1);
+  }
+}
+
+@media (max-width: 300px) {
+  .joplin-search-type-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--size-2-1);
+  }
+
+  .joplin-search-type-select {
+    min-width: unset;
+  }
+
+  .joplin-result-metadata {
+    font-size: var(--font-ui-smallest);
+  }
+
+  .joplin-metadata-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--size-2-1);
+  }
+
+  /* Ensure inline checkbox layout even at very narrow widths */
+  .joplin-result-item {
+    flex-direction: row !important;
+  }
+
+  .joplin-result-checkbox {
+    padding: var(--size-2-2) var(--size-2-1);
+    min-width: 36px;
+  }
+
+  .joplin-result-content {
+    padding: var(--size-4-1) var(--size-2-3);
+  }
+}
+
+/* Container queries for better responsive behavior */
+@supports (container-type: inline-size) {
+  .joplin-portal-view {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 350px) {
+    .joplin-search-inputs {
+      flex-direction: column;
+    }
+
+    /* Keep result items in row layout to maintain inline checkboxes */
+    .joplin-result-item {
+      flex-direction: row;
+    }
+
+    /* Optimize checkbox spacing for narrow widths */
+    .joplin-result-checkbox {
+      padding: var(--size-4-1) var(--size-2-3);
+      flex-shrink: 0;
+    }
+  }
+}
+
+/* Flexible layout for different panel sizes */
+.joplin-portal-view[data-layout="compact"] .joplin-result-snippet {
+  -webkit-line-clamp: 1;
+}
+
+.joplin-portal-view[data-layout="comfortable"] .joplin-result-snippet {
+  -webkit-line-clamp: 3;
+}
+
+/* Adaptive font sizes based on container width */
+@container (max-width: 250px) {
+  .joplin-portal-view {
+    font-size: var(--font-ui-smaller);
+  }
+
+  .joplin-result-title {
+    font-size: var(--font-ui-smaller);
+  }
+
+  .joplin-result-snippet {
+    font-size: var(--font-ui-smallest);
+  }
+
+  /* Further optimize checkbox spacing for very narrow widths */
+  .joplin-result-checkbox {
+    padding: var(--size-2-3) var(--size-2-2);
+    min-width: 40px;
+  }
+
+  .joplin-import-checkbox {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus indicators for accessibility */
+.joplin-search-input:focus,
+.joplin-tag-search-input:focus,
+.joplin-search-type-select:focus,
+.joplin-search-button:focus,
+.joplin-result-item:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .joplin-result-item {
+    border-bottom: 2px solid var(--background-modifier-border);
+  }
+
+  .joplin-result-item.joplin-result-selected {
+    box-shadow: inset 4px 0 0 var(--interactive-accent);
+  }
+
+  .joplin-result-tag {
+    border: 1px solid var(--text-muted);
+  }
+
+  .joplin-search-input:focus,
+  .joplin-tag-search-input:focus,
+  .joplin-search-type-select:focus,
+  .joplin-search-button:focus,
+  .joplin-result-item:focus {
+    outline-width: 3px;
+  }
+}
+
+/* Preview Content Styles */
+.joplin-preview-loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.joplin-preview-error {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-error);
+  background: var(--background-modifier-error);
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.joplin-preview-content-wrapper {
+  margin-bottom: 16px;
+}
+
+.joplin-preview-scrollable {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.joplin-preview-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+/* Markdown content styling in preview */
+.joplin-preview-scrollable h1,
+.joplin-preview-scrollable h2,
+.joplin-preview-scrollable h3 {
+  color: var(--text-normal);
+  margin: 16px 0 8px 0;
+  font-weight: 600;
+}
+
+.joplin-preview-scrollable h1 {
+  font-size: 1.5em;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 4px;
+}
+
+.joplin-preview-scrollable h2 {
+  font-size: 1.3em;
+}
+
+.joplin-preview-scrollable h3 {
+  font-size: 1.1em;
+}
+
+.joplin-preview-scrollable p {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.joplin-preview-scrollable code {
+  background: var(--background-modifier-border);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+}
+
+.joplin-preview-scrollable pre {
+  background: var(--background-secondary);
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.joplin-preview-scrollable pre code {
+  background: none;
+  padding: 0;
+}
+
+.joplin-preview-scrollable a {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.joplin-preview-scrollable a:hover {
+  text-decoration: underline;
+}
+
+.joplin-preview-scrollable ul,
+.joplin-preview-scrollable ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.joplin-preview-scrollable li {
+  margin: 4px 0;
+}
+
+.joplin-preview-scrollable strong {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.joplin-preview-scrollable em {
+  font-style: italic;
+}
+
+/* Preview metadata styling */
+.joplin-preview-metadata-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Simplified preview metadata styling */
+.joplin-preview-metadata-simplified {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.joplin-metadata-inline {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.joplin-metadata-source-link {
+  color: var(--text-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.joplin-metadata-source-link:hover {
+  text-decoration: underline;
+}
+
+.joplin-metadata-source-link:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.joplin-metadata-separator {
+  color: var(--text-faint);
+}
+
+.joplin-metadata-updated-text {
+  color: var(--text-muted);
+}
+
+.joplin-metadata-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.joplin-metadata-label {
+  font-weight: 500;
+  color: var(--text-muted);
+  min-width: 60px;
+}
+
+.joplin-metadata-value {
+  color: var(--text-normal);
+}
+
+.joplin-metadata-id {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.joplin-metadata-link {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.joplin-metadata-link:hover {
+  text-decoration: underline;
+}
+
+.joplin-metadata-tags {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.joplin-metadata-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.joplin-metadata-tag {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Settings Validation Styles */
+.joplin-portal-validation-status {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.joplin-portal-validation-status h3 {
+  margin: 0 0 12px 0;
+  color: var(--text-normal);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.validation-status-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.validation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+
+.validation-suggestions {
+  margin-left: 24px;
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--background-primary);
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.suggestions-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-accent);
+  margin-bottom: 6px;
+}
+
+.suggestions-list {
+  margin: 0;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.suggestions-list li {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.suggestions-list li:last-child {
+  margin-bottom: 0;
+}
+
+.validation-overall {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.validation-success {
+  background: var(--background-modifier-success);
+  color: var(--text-success);
+  border: 1px solid var(--color-green);
+}
+
+.validation-error {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+  border: 1px solid var(--color-red);
+}
+
+/* Troubleshooting Section */
+.joplin-portal-troubleshooting {
+  margin: 20px 0;
+  padding: 16px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.joplin-portal-troubleshooting h3 {
+  margin: 0 0 16px 0;
+  color: var(--text-normal);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.joplin-portal-troubleshooting h4 {
+  margin: 16px 0 8px 0;
+  color: var(--text-normal);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.troubleshooting-content ul,
+.troubleshooting-content ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.troubleshooting-content li {
+  margin: 8px 0;
+  line-height: 1.5;
+  color: var(--text-normal);
+}
+
+.troubleshooting-content strong {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+/* Settings button states */
+.setting-item button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.setting-item button[title] {
+  position: relative;
+}
+
+/* Validation icons animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.validation-item:has-text("🔄") {
+  animation: spin 1s linear infinite;
+}
+
+/* Input field validation styling */
+.setting-item input.validation-valid {
+  border-color: var(--color-green);
+  box-shadow: 0 0 0 1px var(--color-green);
+}
+
+.setting-item input.validation-invalid {
+  border-color: var(--color-red);
+  box-shadow: 0 0 0 1px var(--color-red);
+}
+
+.setting-item input.validation-validating {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.setting-item input.validation-valid:focus {
+  border-color: var(--color-green);
+  box-shadow: 0 0 0 2px var(--color-green);
+}
+
+.setting-item input.validation-invalid:focus {
+  border-color: var(--color-red);
+  box-shadow: 0 0 0 2px var(--color-red);
+}
+
+.setting-item input.validation-validating:focus {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+/* High contrast mode support for validation */
+@media (prefers-contrast: high) {
+  .validation-success {
+    border-width: 2px;
+  }
+
+  .validation-error {
+    border-width: 2px;
+  }
+
+  .joplin-portal-validation-status,
+  .joplin-portal-troubleshooting {
+    border-width: 2px;
+  }
+
+  .setting-item input.validation-valid,
+  .setting-item input.validation-invalid,
+  .setting-item input.validation-validating {
+    border-width: 2px;
+  }
+
+  .setting-item input.validation-valid:focus,
+  .setting-item input.validation-invalid:focus,
+  .setting-item input.validation-validating:focus {
+    box-shadow: 0 0 0 3px var(--color-green);
+  }
+}
+
+/* Import Options Panel Styles */
+.joplin-import-section {
+  flex-shrink: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  padding: var(--size-4-2);
+  margin-top: var(--size-4-2);
+}
+
+/* Simplified Import Section Styles */
+.joplin-import-section-simplified {
+  flex-shrink: 0;
+  border: 1px solid var(--interactive-accent);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  padding: var(--size-4-3);
+  margin-top: var(--size-4-2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  /* Ensure maximum space utilization */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.joplin-import-options-simplified {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  align-items: center;
+}
+
+.joplin-selected-count-prominent {
+  padding: var(--size-4-2) var(--size-4-3);
+  background: var(--background-secondary);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+  width: 100%;
+  text-align: center;
+}
+
+.joplin-selected-count-prominent .joplin-selected-count-text {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+}
+
+.joplin-import-button-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.joplin-import-btn-prominent {
+  padding: var(--size-4-3) var(--size-4-6);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-weight-bold);
+  transition: all 0.15s ease;
+  min-width: 160px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.joplin-import-btn-prominent:hover {
+  background: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.joplin-import-btn-prominent:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.joplin-import-btn-prominent:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.joplin-import-btn-prominent:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--interactive-accent-hover), 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.joplin-import-header h3 {
+  margin: 0 0 var(--size-4-2) 0;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+
+.joplin-import-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+}
+
+.joplin-selected-count {
+  padding: var(--size-2-3) var(--size-4-2);
+  background: var(--background-secondary);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.joplin-selected-count-text {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-normal);
+}
+
+.joplin-import-folder,
+.joplin-import-template,
+.joplin-import-conflict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-1);
+}
+
+.joplin-import-folder label,
+.joplin-import-template label,
+.joplin-import-conflict label {
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-normal);
+}
+
+.joplin-import-folder-input,
+.joplin-template-path-input {
+  padding: var(--size-2-3) var(--size-4-1);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+
+.joplin-import-folder-input:focus,
+.joplin-template-path-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.joplin-conflict-resolution-select {
+  padding: var(--size-2-3) var(--size-4-1);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+
+.joplin-conflict-resolution-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.joplin-template-checkbox-div {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-1);
+}
+
+.joplin-apply-template-checkbox {
+  cursor: pointer;
+}
+
+.joplin-import-buttons {
+  display: flex;
+  gap: var(--size-2-3);
+  flex-wrap: wrap;
+  margin-top: var(--size-4-1);
+}
+
+.joplin-select-all-btn,
+.joplin-clear-selection-btn,
+.joplin-import-btn {
+  padding: var(--size-2-3) var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-weight-medium);
+  transition: all 0.15s ease;
+}
+
+.joplin-select-all-btn:hover,
+.joplin-clear-selection-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+}
+
+.joplin-import-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.joplin-import-btn:hover {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
+}
+
+.joplin-import-btn:focus,
+.joplin-select-all-btn:focus,
+.joplin-clear-selection-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+/* Result checkbox styling */
+.joplin-result-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--size-4-2);
+  flex-shrink: 0;
+  min-width: 48px; /* Ensure consistent width for touch targets */
+}
+
+.joplin-import-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--interactive-accent);
+}
+
+.joplin-import-checkbox:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+/* Responsive adjustments for simplified import interface */
+@media (max-width: 500px) {
+  .joplin-import-section-simplified {
+    padding: var(--size-4-2);
+    margin-top: var(--size-4-1);
+  }
+
+  .joplin-import-options-simplified {
+    gap: var(--size-4-2);
+  }
+
+  .joplin-selected-count-prominent {
+    padding: var(--size-4-1) var(--size-4-2);
+  }
+
+  .joplin-selected-count-prominent .joplin-selected-count-text {
+    font-size: var(--font-ui-small);
+  }
+
+  .joplin-import-btn-prominent {
+    padding: var(--size-4-2) var(--size-4-4);
+    font-size: var(--font-ui-small);
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 300px) {
+  .joplin-import-btn-prominent {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+/* Container queries for simplified import interface */
+@supports (container-type: inline-size) {
+  @container (max-width: 350px) {
+    .joplin-import-section-simplified {
+      padding: var(--size-4-1);
+    }
+
+    .joplin-import-btn-prominent {
+      width: 100%;
+      min-width: unset;
+    }
+  }
+
+  @container (max-width: 250px) {
+    .joplin-selected-count-prominent .joplin-selected-count-text {
+      font-size: var(--font-ui-smaller);
+    }
+
+    .joplin-import-btn-prominent {
+      font-size: var(--font-ui-smaller);
+      padding: var(--size-4-2) var(--size-4-3);
+    }
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .joplin-result-item,
+  .joplin-result-selection-indicator,
+  .joplin-search-button,
+  .joplin-import-btn,
+  .joplin-import-btn-prominent,
+  .joplin-select-all-btn,
+  .joplin-clear-selection-btn {
+    transition: none;
+  }
+
+  .joplin-search-button.loading::after {
+    animation: none;
+  }
+
+  .joplin-loading::before {
+    animation: none;
+  }
+
+  .joplin-progress-fill.indeterminate {
+    animation: none;
+  }
+
+  .joplin-loading-skeleton {
+    animation: none;
+  }
+
+  .joplin-import-btn-prominent:hover {
+    transform: none;
+  }
+}
+/* J
+oplin Portal Icon Fixes */
+/* Fix for yellow flash and icon disappearing issues */
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon {
+  /* Prevent flash during icon loading */
+  background-color: transparent !important;
+  transition: none !important;
+
+  /* Ensure icon is properly sized and positioned */
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Prevent any background color changes */
+  background: none !important;
+}
+
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon.iconic-icon {
+  /* Ensure the icon SVG is properly displayed */
+  opacity: 1;
+  visibility: visible;
+}
+
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+  /* Ensure SVG icon is properly sized and colored */
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  /* Prevent any color flashing */
+  transition: none !important;
+}
+
+/* Ensure icon persists during tab state changes */
+.workspace-tab-header[data-type="joplin-portal-view"].is-active .workspace-tab-header-inner-icon,
+.workspace-tab-header[data-type="joplin-portal-view"].mod-active .workspace-tab-header-inner-icon {
+  background: none !important;
+  background-color: transparent !important;
+}
+
+/* Fix for ribbon icon to ensure consistency */
+.side-dock-ribbon-action[aria-label="Open Joplin Portal"] {
+  /* Ensure ribbon icon is stable */
+  background: none !important;
+}
+
+.side-dock-ribbon-action[aria-label="Open Joplin Portal"] svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Prevent any loading states from affecting the icon */
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon::before,
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon::after {
+  display: none !important;
+}
+
+/* High contrast mode support for icon */
+@media (prefers-contrast: high) {
+  .workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+    stroke-width: 2.5;
+  }
+}
+
+/* Dark mode icon adjustments */
+.theme-dark .workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+  stroke: var(--icon-color, currentColor);
+}
+
+/* Light mode icon adjustments */
+.theme-light .workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+  stroke: var(--icon-color, currentColor);
+}
+/* J
+oplin Portal Icon Fixes - Prevent yellow flash */
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon {
+  background-color: transparent !important;
+}
+
+.workspace-tab-header[data-type="joplin-portal-view"] .workspace-tab-header-inner-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+}
+
+/* Import Options Modal Styles */
+.joplin-import-options-description {
+  margin-bottom: 20px;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.joplin-import-options-advanced-header {
+  margin-top: 30px;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.joplin-import-options-advanced-toggle {
+  margin-right: 8px;
+  font-size: 0.8em;
+  transition: transform 0.2s;
+}
+
+.joplin-import-options-advanced-toggle.expanded {
+  transform: rotate(90deg);
+}
+
+.joplin-import-options-advanced-title {
+  font-weight: 600;
+  font-size: 1.1em;
+}
+
+.joplin-import-options-advanced-container {
+  display: none;
+  margin-top: 15px;
+  padding: 15px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.joplin-import-options-advanced-container.expanded {
+  display: block;
+}
+
+.joplin-import-options-advanced-note {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  margin-bottom: 15px;
+  font-style: italic;
+}
+
+.joplin-import-options-placeholder-setting {
+  padding: 10px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 4px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.joplin-import-options-action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.joplin-import-options-progress-container {
+  margin-top: 20px;
+  padding: 15px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.joplin-import-options-progress-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.joplin-import-options-progress-icon {
+  margin-right: 10px;
+  font-size: 1.2em;
+}
+
+.joplin-import-options-progress-title {
+  font-weight: 600;
+  font-size: 1em;
+}
+
+.joplin-import-options-progress-bar-container {
+  margin-bottom: 10px;
+}
+
+.joplin-import-options-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.joplin-import-options-progress-bar-fill {
+  height: 100%;
+  background: var(--interactive-accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.joplin-import-options-progress-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.joplin-import-options-progress-stats {
+  display: flex;
+  gap: 15px;
+}
+
+.joplin-import-options-progress-current-file {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-top: 5px;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.joplin-template-path-hidden {
+  display: none;
+}
+
+/* Tooltip Manager Styles */
+.joplin-tooltip-temp-measure {
+  position: absolute;
+  visibility: hidden;
+  width: auto;
+  height: auto;
+}
+
+/* Import Options Modal Additional Styles */
+.import-options-validation-error {
+  color: var(--text-error);
+  font-size: 0.85em;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--background-modifier-error);
+  border-radius: 4px;
+  border-left: 3px solid var(--text-error);
+}
+
+.import-progress-container {
+  margin-top: 20px;
+  padding: 15px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border-left: 3px solid var(--interactive-accent);
+}
+
+.import-progress-container h4 {
+  margin: 0 0 10px 0;
+  color: var(--interactive-accent);
+}
+
+.import-progress-status {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.import-progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.import-progress-bar {
+  height: 100%;
+  background: var(--interactive-accent);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.import-failures-container {
+  margin-top: 15px;
+  padding: 10px;
+  background: var(--background-modifier-error);
+  border-radius: 4px;
+  border-left: 3px solid var(--text-error);
+}
+
+.import-failures-container h5 {
+  margin: 0 0 8px 0;
+  color: var(--text-error);
+}
+
+.import-failures-container ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.85em;
+}
+
+.import-failures-container li {
+  margin-bottom: 4px;
+  color: var(--text-muted);
+}
