@@ -158,14 +158,6 @@ export class ImportOptionsModal extends Modal {
 
 	private createActionButtons(container: HTMLElement): void {
 		const buttonsContainer = container.createDiv('import-options-buttons');
-		buttonsContainer.style.cssText = `
-			display: flex;
-			gap: 10px;
-			justify-content: flex-end;
-			margin-top: 30px;
-			padding-top: 20px;
-			border-top: 1px solid var(--background-modifier-border);
-		`;
 
 		// Cancel button (secondary action)
 		const cancelButton = buttonsContainer.createEl('button', {
@@ -248,7 +240,7 @@ export class ImportOptionsModal extends Modal {
 	private updateTemplatePathVisibility(applyTemplate: boolean): void {
 		const templatePathSetting = this.contentEl.querySelector('[data-template-path-setting="true"]') as HTMLElement;
 		if (templatePathSetting) {
-			templatePathSetting.style.display = applyTemplate ? 'block' : 'none';
+			templatePathSetting.className = applyTemplate ? 'joplin-template-path-setting visible' : 'joplin-template-path-setting hidden';
 		}
 	}
 
@@ -283,15 +275,6 @@ export class ImportOptionsModal extends Modal {
 
 		// Create error message element
 		const errorEl = this.contentEl.createDiv('import-options-validation-error');
-		errorEl.style.cssText = `
-			color: var(--text-error);
-			font-size: 0.85em;
-			margin-top: 10px;
-			padding: 8px 12px;
-			background: var(--background-modifier-error);
-			border-radius: 4px;
-			border-left: 3px solid var(--text-error);
-		`;
 		errorEl.setText(message);
 
 		// Auto-remove after 5 seconds
@@ -452,45 +435,16 @@ export class ImportOptionsModal extends Modal {
 
 		// Create progress container
 		const progressContainer = this.contentEl.createDiv('import-progress-container');
-		progressContainer.style.cssText = `
-			margin-top: 20px;
-			padding: 15px;
-			background: var(--background-secondary);
-			border-radius: 6px;
-			border-left: 3px solid var(--interactive-accent);
-		`;
 
 		const progressTitle = progressContainer.createEl('h4', { text: 'Import Progress' });
-		progressTitle.style.cssText = `
-			margin: 0 0 10px 0;
-			color: var(--interactive-accent);
-		`;
 
 		const progressStatus = progressContainer.createDiv('import-progress-status');
-		progressStatus.style.cssText = `
-			font-size: 0.9em;
-			color: var(--text-muted);
-			margin-bottom: 10px;
-		`;
 		progressStatus.setText('Starting import...');
 
 		// Progress bar
 		const progressBarContainer = progressContainer.createDiv('import-progress-bar-container');
-		progressBarContainer.style.cssText = `
-			width: 100%;
-			height: 8px;
-			background: var(--background-modifier-border);
-			border-radius: 4px;
-			overflow: hidden;
-		`;
 
 		const progressBar = progressBarContainer.createDiv('import-progress-bar');
-		progressBar.style.cssText = `
-			height: 100%;
-			background: var(--interactive-accent);
-			width: 0%;
-			transition: width 0.3s ease;
-		`;
 
 		// Store references for updates
 		this.progressStatus = progressStatus;
@@ -532,15 +486,15 @@ export class ImportOptionsModal extends Modal {
 
 		if (failedCount === 0) {
 			// All successful
-			this.progressStatus.style.color = 'var(--text-success)';
+			this.progressStatus.className = 'import-progress-status success';
 			this.progressStatus.setText(`✅ Successfully imported ${successCount} of ${totalCount} notes`);
 		} else if (successCount === 0) {
 			// All failed
-			this.progressStatus.style.color = 'var(--text-error)';
+			this.progressStatus.className = 'import-progress-status error';
 			this.progressStatus.setText(`❌ Failed to import ${failedCount} notes`);
 		} else {
 			// Mixed results
-			this.progressStatus.style.color = 'var(--text-warning)';
+			this.progressStatus.className = 'import-progress-status warning';
 			this.progressStatus.setText(`⚠️ Imported ${successCount} of ${totalCount} notes (${failedCount} failed)`);
 		}
 
@@ -561,7 +515,7 @@ export class ImportOptionsModal extends Modal {
 
 	private showImportError(errorMessage: string): void {
 		if (this.progressStatus) {
-			this.progressStatus.style.color = 'var(--text-error)';
+			this.progressStatus.className = 'import-progress-status error';
 			this.progressStatus.setText(`❌ Import failed: ${errorMessage}`);
 		}
 

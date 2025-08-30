@@ -142,7 +142,7 @@ export class JoplinPortalView extends ItemView {
 			placeholder: 'Enter tags separated by commas (e.g., work, project)',
 			cls: 'joplin-tag-search-input'
 		});
-		this.tagSearchInput.style.display = 'none';
+		this.tagSearchInput.classList.add('hidden');
 		this.tagSearchInput.setAttribute('aria-label', 'Search by tags in Joplin notes');
 		this.tagSearchInput.setAttribute('aria-describedby', 'tag-search-help');
 

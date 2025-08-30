@@ -25,9 +25,9 @@ interface ValidationState {
 export class JoplinPortalSettingTab extends PluginSettingTab {
 	plugin: JoplinPortalPlugin;
 	private validationState: ValidationState;
-	private serverUrlSetting: any;
-	private apiTokenSetting: any;
-	private connectionTestSetting: any;
+	private serverUrlSetting: Setting;
+	private apiTokenSetting: Setting;
+	private connectionTestSetting: Setting;
 	private validationStatusEl: HTMLElement;
 	private debouncedValidateUrl: (url: string) => void;
 	private debouncedValidateToken: (token: string) => void;

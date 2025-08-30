@@ -2,6 +2,8 @@
  * Core TypeScript interfaces for Joplin Portal plugin
  */
 
+import { TFile } from 'obsidian';
+
 export interface JoplinPortalSettings {
 	serverUrl: string;
 	apiToken: string;
@@ -41,7 +43,7 @@ export interface ImportOptions {
 export interface ConflictInfo {
 	note: JoplinNote;
 	conflictPath: string;
-	existingFile: any; // TFile from Obsidian
+	existingFile: TFile;
 }
 
 export interface ConflictResolution {
